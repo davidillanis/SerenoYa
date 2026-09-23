@@ -2,60 +2,81 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:sereno_ya/ui/auth/view_models/session_view_model.dart';
 
+import 'package:sereno_ya/ui/core/widgets/app_drawer.dart';
+
 class RoleHomeScreen extends StatelessWidget {
   const RoleHomeScreen({
     super.key,
     required this.title,
     required this.description,
     required this.icon,
+    this.onFabPressed,
+    this.fabIcon,
+    this.fabLabel,
   });
 
   final String title;
   final String description;
   final IconData icon;
+  final VoidCallback? onFabPressed;
+  final IconData? fabIcon;
+  final String? fabLabel;
 
   @override
   Widget build(BuildContext context) {
     final session = context.watch<SessionViewModel>().state.session;
+    
     return Scaffold(
       appBar: AppBar(
         title: Text(title),
-        actions: [
-          IconButton(
-            tooltip: 'Cerrar sesión',
-            onPressed: () => context.read<SessionViewModel>().logout(),
-            icon: const Icon(Icons.logout),
-          ),
-        ],
       ),
+      drawer: const AppDrawer(),
       body: Center(
-        child: Padding(
+        child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(
                 icon,
-                size: 72,
-                color: Theme.of(context).colorScheme.primary,
+                size: 80,
+                color: Theme.of(context).colorScheme.primary.withAlpha(204),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 24),
               Text(
-                'Hola, ${session?.user.displayName ?? 'usuario'}',
-                style: Theme.of(context).textTheme.headlineSmall,
+                'Bienvenido(a),\n${session?.user.displayName ?? 'usuario'}',
+                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
                 textAlign: TextAlign.center,
               ),
-              Text(
-                'Tu rol es: ${session?.user.primaryRole?.name ?? 'rol'}',
-                style: Theme.of(context).textTheme.headlineSmall,
-                textAlign: TextAlign.center,
+              const SizedBox(height: 24),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 16,
+                ),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  description,
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.bodyLarge,
+                ),
               ),
-              const SizedBox(height: 12),
-              Text(description, textAlign: TextAlign.center),
             ],
           ),
         ),
       ),
+      floatingActionButton: onFabPressed != null && fabIcon != null
+          ? FloatingActionButton.extended(
+              onPressed: onFabPressed,
+              icon: Icon(fabIcon),
+              label: Text(fabLabel ?? ''),
+            )
+          : null,
     );
   }
 }

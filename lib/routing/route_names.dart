@@ -9,4 +9,5 @@ abstract final class RouteNames {
   static const admin = '/admin';
   static const dev = '/dev';
   static const unauthorized = '/unauthorized';
+  static const reportIncident = '/citizen/report';
 }

@@ -17,9 +17,14 @@ import 'package:sereno_ya/ui/auth/view_models/register_view_model.dart';
 import 'package:sereno_ya/ui/auth/view_models/reset_password_view_model.dart';
 import 'package:sereno_ya/ui/core/role_home_screen.dart';
 import 'package:sereno_ya/ui/core/unauthorized_screen.dart';
+import 'package:sereno_ya/data/repositories/citizen/incident_repository.dart';
+import 'package:sereno_ya/ui/citizen/citizen_home_screen.dart';
+import 'package:sereno_ya/ui/citizen/report_incident/report_incident_screen.dart';
+import 'package:sereno_ya/ui/citizen/report_incident/view_models/report_incident_view_model.dart';
 
 GoRouter createAppRouter({
   required AuthRepository authRepository,
+  required IncidentRepository incidentRepository,
   required AuthRouterNotifier routerNotifier,
 }) {
   const publicRoutes = {
@@ -97,11 +102,20 @@ GoRouter createAppRouter({
       ),
       GoRoute(
         path: RouteNames.citizen,
-        builder: (_, _) => const RoleHomeScreen(
-          title: 'Ciudadano',
-          description: 'Desde aquí podrás reportar y seguir incidentes.',
-          icon: Icons.person_pin_circle_outlined,
-        ),
+        builder: (context, _) {
+          // Pre-cargar las categorías en segundo plano para que el botón SOS sea instantáneo
+          incidentRepository.getCategories();
+          return const CitizenHomeScreen();
+        },
+        routes: [
+          GoRoute(
+            path: 'report',
+            builder: (_, _) => ChangeNotifierProvider(
+              create: (_) => ReportIncidentViewModel(incidentRepository),
+              child: const ReportIncidentScreen(),
+            ),
+          ),
+        ],
       ),
       GoRoute(
         path: RouteNames.officer,
