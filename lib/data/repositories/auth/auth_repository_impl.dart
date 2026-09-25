@@ -281,7 +281,7 @@ class AuthRepositoryImpl implements AuthRepository {
   AuthSession _sessionFromResponse(AuthResponseDto dto) {
     final claims = JwtClaims.decode(dto.accessToken);
     final roles = UserRole.parseAuthorities(claims.authorities);
-    _ensureSingleOperationalRole(roles);
+    _ensureHasOperationalRole(roles);
     return AuthSession(
       accessToken: dto.accessToken,
       refreshToken: dto.refreshToken,
@@ -303,7 +303,7 @@ class AuthRepositoryImpl implements AuthRepository {
   AuthSession _sessionFromTokens(StoredTokens tokens) {
     final claims = JwtClaims.decode(tokens.accessToken);
     final roles = UserRole.parseAuthorities(claims.authorities);
-    _ensureSingleOperationalRole(roles);
+    _ensureHasOperationalRole(roles);
     return AuthSession(
       accessToken: tokens.accessToken,
       refreshToken: tokens.refreshToken,
@@ -320,11 +320,11 @@ class AuthRepositoryImpl implements AuthRepository {
     );
   }
 
-  void _ensureSingleOperationalRole(List<UserRole> roles) {
-    if (roles.length != 1) {
+  void _ensureHasOperationalRole(List<UserRole> roles) {
+    if (roles.isEmpty) {
       throw const AuthFailure(
         AuthFailureCode.unauthorized,
-        'La cuenta no tiene un único rol operativo reconocido.',
+        'La cuenta no tiene ningún rol operativo reconocido.',
       );
     }
   }

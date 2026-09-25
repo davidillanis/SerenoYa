@@ -28,5 +28,11 @@ class AuthenticatedUser {
     return fullName.isEmpty ? email : fullName;
   }
 
-  UserRole? get primaryRole => roles.length == 1 ? roles.single : null;
+  UserRole? get primaryRole {
+    if (roles.isEmpty) return null;
+    if (roles.contains(UserRole.developer)) return UserRole.developer;
+    if (roles.contains(UserRole.administrator)) return UserRole.administrator;
+    if (roles.contains(UserRole.officer)) return UserRole.officer;
+    return UserRole.citizen;
+  }
 }

@@ -11,11 +11,14 @@ class CitizenHomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final session = context.watch<SessionViewModel>().state.session;
-    final userName = session?.user.firstName ?? 'Usuario';
+    final userName = session?.user.email ?? 'Usuario';
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('SOS San Jerónimo', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: const Text(
+          'SOS San Jerónimo',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
         backgroundColor: Colors.green.shade600,
         foregroundColor: Colors.white,
       ),
@@ -35,15 +38,16 @@ class CitizenHomeScreen extends StatelessWidget {
                     children: [
                       Text(
                         'Bienvenido',
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              color: Colors.grey.shade600,
-                            ),
+                        style: Theme.of(context).textTheme.bodyMedium
+                            ?.copyWith(color: Colors.grey.shade600),
                       ),
                       Text(
                         'Hola, $userName',
-                        style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                        style: Theme.of(context).textTheme.headlineMedium
+                            ?.copyWith(
                               fontWeight: FontWeight.bold,
                               color: const Color(0xFF0D253C),
+                              fontSize: 22,
                             ),
                       ),
                     ],
@@ -54,15 +58,21 @@ class CitizenHomeScreen extends StatelessWidget {
                       color: Colors.blue.shade50,
                       shape: BoxShape.circle,
                     ),
-                    child: Icon(Icons.verified_user_outlined, color: Colors.blue.shade800),
+                    child: Icon(
+                      Icons.verified_user_outlined,
+                      color: Colors.blue.shade800,
+                    ),
                   ),
                 ],
               ),
               const SizedBox(height: 12),
-              
+
               // GPS Chip
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
                 decoration: BoxDecoration(
                   color: Colors.blue.shade50,
                   borderRadius: BorderRadius.circular(20),
@@ -89,9 +99,9 @@ class CitizenHomeScreen extends StatelessWidget {
                   ],
                 ),
               ),
-              
+
               const SizedBox(height: 40),
-              
+
               // SOS Button Area
               Center(
                 child: Column(
@@ -153,27 +163,27 @@ class CitizenHomeScreen extends StatelessWidget {
                     Text(
                       '¿Necesitas ayuda inmediata?',
                       style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                            fontWeight: FontWeight.bold,
-                            color: const Color(0xFF0D253C),
-                          ),
+                        fontWeight: FontWeight.bold,
+                        color: const Color(0xFF0D253C),
+                      ),
                     ),
                   ],
                 ),
               ),
-              
+
               const SizedBox(height: 40),
-              
+
               // Acciones Rápidas
               Text(
                 'ACCIONES RÁPIDAS',
                 style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: Colors.grey.shade700,
-                      letterSpacing: 1,
-                    ),
+                  fontWeight: FontWeight.bold,
+                  color: Colors.grey.shade700,
+                  letterSpacing: 1,
+                ),
               ),
               const SizedBox(height: 16),
-              
+
               // Action Cards
               const ActionCard(
                 title: 'Serenazgo San Jerónimo',
@@ -277,7 +287,11 @@ class ActionCard extends StatelessWidget {
               color: Colors.green.shade600,
               shape: BoxShape.circle,
             ),
-            child: const Icon(Icons.phone_in_talk, color: Colors.white, size: 16),
+            child: const Icon(
+              Icons.phone_in_talk,
+              color: Colors.white,
+              size: 16,
+            ),
           ),
         ],
       ),

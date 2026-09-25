@@ -11,10 +11,17 @@ enum UserRole {
       'REPARTIDOR' ||
       'DEALER_EDITOR' ||
       'SERENAZGO' ||
+      'OFFICER_SERENO' ||
       'OFFICER' => UserRole.officer,
-      'ADMINISTRADOR' || 'ADMINISTRATOR' => UserRole.administrator,
+      'ADMINISTRADOR' || 'ADMINISTRATOR' || 'ADMIN' || 'OFFICER_ADMINISTRADOR' => UserRole.administrator,
       'DEVELOPMENT' || 'DEVELOPER' => UserRole.developer,
-      _ => null,
+      _ => () {
+          if (normalized.contains('ADMIN')) return UserRole.administrator;
+          if (normalized.contains('SERENO')) return UserRole.officer;
+          if (normalized.contains('OFICIAL')) return UserRole.officer;
+          if (normalized.contains('OFFICER')) return UserRole.officer;
+          return null;
+        }(),
     };
   }
 

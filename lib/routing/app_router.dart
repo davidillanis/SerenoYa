@@ -52,16 +52,20 @@ GoRouter createAppRouter({
         return publicRoutes.contains(location) ? null : RouteNames.login;
       }
 
-      final role = authState.session?.user.primaryRole;
-      final roleRoute = RoleRouteResolver.routeFor(role);
+      final roles = authState.session?.user.roles ?? [];
+      final primaryRole = authState.session?.user.primaryRole;
+      final defaultRoute = RoleRouteResolver.routeFor(primaryRole);
+
       if (location == RouteNames.splash || publicRoutes.contains(location)) {
-        return roleRoute;
+        return defaultRoute;
       }
       if (location == RouteNames.unauthorized) {
-        return role == null ? null : roleRoute;
+        return roles.isEmpty ? null : defaultRoute;
       }
-      if (role == null || !RoleRouteResolver.canAccess(location, role)) {
-        return roleRoute;
+      
+      final hasAccess = roles.any((r) => RoleRouteResolver.canAccess(location, r));
+      if (!hasAccess) {
+        return defaultRoute;
       }
       return null;
     },
