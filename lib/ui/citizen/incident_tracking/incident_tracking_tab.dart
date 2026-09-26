@@ -1,3 +1,4 @@
+import 'package:sereno_ya/ui/core/theme/colors.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:sereno_ya/ui/citizen/incident_tracking/view_models/incident_tracking_view_model.dart';
@@ -12,45 +13,55 @@ class IncidentTrackingTab extends StatelessWidget {
     final viewModel = context.watch<IncidentTrackingViewModel>();
 
     return Scaffold(
-      backgroundColor: Colors.grey.shade50,
+      backgroundColor: context.appColors.background,
       body: viewModel.isLoading && viewModel.incidents.isEmpty
           ? const Center(child: CircularProgressIndicator())
           : RefreshIndicator(
               onRefresh: viewModel.loadActiveIncidents,
-              child: viewModel.errorMessage != null && viewModel.incidents.isEmpty
+              child:
+                  viewModel.errorMessage != null && viewModel.incidents.isEmpty
                   ? _buildErrorState(context, viewModel.errorMessage!)
                   : viewModel.incidents.isEmpty
-                      ? _buildEmptyState()
-                      : ListView.builder(
-                          padding: const EdgeInsets.all(16),
-                          itemCount: viewModel.incidents.length,
-                          itemBuilder: (context, index) {
-                            final incident = viewModel.incidents[index];
-                            return _IncidentCard(
-                              incident: incident,
-                              onCancel: () => _confirmCancel(context, viewModel, incident),
-                            );
-                          },
-                        ),
+                  ? _buildEmptyState(context)
+                  : ListView.builder(
+                      padding: const EdgeInsets.all(16),
+                      itemCount: viewModel.incidents.length,
+                      itemBuilder: (context, index) {
+                        final incident = viewModel.incidents[index];
+                        return _IncidentCard(
+                          incident: incident,
+                          onCancel: () =>
+                              _confirmCancel(context, viewModel, incident),
+                        );
+                      },
+                    ),
             ),
     );
   }
 
-  Widget _buildEmptyState() {
+  Widget _buildEmptyState(BuildContext context) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.track_changes_outlined, size: 80, color: Colors.grey.shade300),
+          Icon(
+            Icons.track_changes_outlined,
+            size: 80,
+            color: context.appColors.textTertiary,
+          ),
           const SizedBox(height: 16),
           Text(
             'No tienes incidencias en curso',
-            style: TextStyle(fontSize: 18, color: Colors.grey.shade600, fontWeight: FontWeight.bold),
+            style: TextStyle(
+              fontSize: 18,
+              color: context.appColors.textSecondary,
+              fontWeight: FontWeight.bold,
+            ),
           ),
           const SizedBox(height: 8),
           Text(
             'Las incidencias que reportes aparecerán aquí.',
-            style: TextStyle(color: Colors.grey.shade500),
+            style: TextStyle(color: context.appColors.textTertiary),
           ),
         ],
       ),
@@ -64,12 +75,18 @@ class IncidentTrackingTab extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.error_outline, size: 60, color: Colors.red.shade300),
+            Icon(Icons.error_outline, size: 60, color: context.appColors.error),
             const SizedBox(height: 16),
-            Text(error, textAlign: TextAlign.center, style: TextStyle(color: Colors.grey.shade700)),
+            Text(
+              error,
+              textAlign: TextAlign.center,
+              style: TextStyle(color: context.appColors.textSecondary),
+            ),
             const SizedBox(height: 24),
             ElevatedButton(
-              onPressed: () => context.read<IncidentTrackingViewModel>().loadActiveIncidents(),
+              onPressed: () => context
+                  .read<IncidentTrackingViewModel>()
+                  .loadActiveIncidents(),
               child: const Text('Reintentar'),
             ),
           ],
@@ -78,17 +95,28 @@ class IncidentTrackingTab extends StatelessWidget {
     );
   }
 
-  Future<void> _confirmCancel(BuildContext context, IncidentTrackingViewModel viewModel, Incident incident) async {
+  Future<void> _confirmCancel(
+    BuildContext context,
+    IncidentTrackingViewModel viewModel,
+    Incident incident,
+  ) async {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Cancelar Incidencia'),
-        content: const Text('¿Estás seguro de que deseas cancelar este reporte?'),
+        content: const Text(
+          '¿Estás seguro de que deseas cancelar este reporte?',
+        ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('No')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('No'),
+          ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            style: TextButton.styleFrom(
+              foregroundColor: context.appColors.error,
+            ),
             child: const Text('Sí, cancelar'),
           ),
         ],
@@ -99,7 +127,10 @@ class IncidentTrackingTab extends StatelessWidget {
       await viewModel.cancelIncident(incident.id);
       if (context.mounted && viewModel.errorMessage != null) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(viewModel.errorMessage!), backgroundColor: Colors.red),
+          SnackBar(
+            content: Text(viewModel.errorMessage!),
+            backgroundColor: context.appColors.error,
+          ),
         );
       }
     }
@@ -126,12 +157,15 @@ class _IncidentCard extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                _buildStatusChip(),
+                _buildStatusChip(context),
                 Text(
                   incident.createdAt != null
                       ? DateFormat('dd/MM HH:mm').format(incident.createdAt!)
                       : '',
-                  style: TextStyle(color: Colors.grey.shade500, fontSize: 12),
+                  style: TextStyle(
+                    color: context.appColors.textTertiary,
+                    fontSize: 12,
+                  ),
                 ),
               ],
             ),
@@ -141,10 +175,13 @@ class _IncidentCard extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: Colors.blue.shade50,
+                    color: context.appColors.infoLight,
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: Icon(Icons.report_problem, color: Colors.blue.shade700),
+                  child: Icon(
+                    Icons.report_problem,
+                    color: context.appColors.info,
+                  ),
                 ),
                 const SizedBox(width: 16),
                 Expanded(
@@ -153,14 +190,22 @@ class _IncidentCard extends StatelessWidget {
                     children: [
                       Text(
                         incident.category?.name ?? 'Incidencia',
-                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        incident.description.isNotEmpty ? incident.description : 'Sin descripción',
+                        incident.description.isNotEmpty
+                            ? incident.description
+                            : 'Sin descripción',
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
-                        style: TextStyle(color: Colors.grey.shade700, fontSize: 14),
+                        style: TextStyle(
+                          color: context.appColors.textSecondary,
+                          fontSize: 14,
+                        ),
                       ),
                     ],
                   ),
@@ -170,14 +215,21 @@ class _IncidentCard extends StatelessWidget {
             const SizedBox(height: 16),
             Row(
               children: [
-                Icon(Icons.location_on_outlined, size: 16, color: Colors.grey.shade600),
+                Icon(
+                  Icons.location_on_outlined,
+                  size: 16,
+                  color: context.appColors.textSecondary,
+                ),
                 const SizedBox(width: 4),
                 Expanded(
                   child: Text(
                     incident.referenceAddress?.isNotEmpty == true
                         ? incident.referenceAddress!
                         : 'Ubicación enviada por GPS',
-                    style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
+                    style: TextStyle(
+                      color: context.appColors.textSecondary,
+                      fontSize: 12,
+                    ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -188,17 +240,24 @@ class _IncidentCard extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                if (incident.status == 'REQUESTED' || incident.status == 'ACCEPTED')
+                if (incident.status == 'REQUESTED' ||
+                    incident.status == 'ACCEPTED')
                   TextButton.icon(
                     onPressed: onCancel,
                     icon: const Icon(Icons.cancel_outlined, size: 18),
                     label: const Text('Cancelar'),
-                    style: TextButton.styleFrom(foregroundColor: Colors.red.shade600),
+                    style: TextButton.styleFrom(
+                      foregroundColor: context.appColors.error,
+                    ),
                   )
                 else
                   Text(
                     'El sereno ya está en el lugar',
-                    style: TextStyle(color: Colors.green.shade700, fontSize: 12, fontWeight: FontWeight.bold),
+                    style: TextStyle(
+                      color: context.appColors.success,
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
               ],
             ),
@@ -208,29 +267,29 @@ class _IncidentCard extends StatelessWidget {
     );
   }
 
-  Widget _buildStatusChip() {
+  Widget _buildStatusChip(BuildContext context) {
     Color color;
     String label;
     IconData icon;
 
     switch (incident.status) {
       case 'REQUESTED':
-        color = Colors.orange;
+        color = context.appColors.warning;
         label = 'Solicitada';
         icon = Icons.access_time;
         break;
       case 'ACCEPTED':
-        color = Colors.blue;
+        color = context.appColors.info;
         label = 'Aceptada (Sereno en camino)';
         icon = Icons.directions_run;
         break;
       case 'ON_SITE':
-        color = Colors.green;
+        color = context.appColors.success;
         label = 'Sereno en el lugar';
         icon = Icons.where_to_vote;
         break;
       default:
-        color = Colors.grey;
+        color = context.appColors.textSecondary;
         label = incident.status;
         icon = Icons.info_outline;
     }

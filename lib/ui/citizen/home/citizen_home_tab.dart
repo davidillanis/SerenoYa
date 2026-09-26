@@ -1,3 +1,4 @@
+import 'package:sereno_ya/ui/core/theme/colors.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -29,14 +30,14 @@ class CitizenHomeTab extends StatelessWidget {
                     Text(
                       'Bienvenido',
                       style: Theme.of(context).textTheme.bodyMedium
-                          ?.copyWith(color: Colors.grey.shade600),
+                          ?.copyWith(color: context.appColors.textSecondary),
                     ),
                     Text(
                       'Hola, $userName',
                       style: Theme.of(context).textTheme.headlineMedium
                           ?.copyWith(
                             fontWeight: FontWeight.bold,
-                            color: const Color(0xFF0D253C),
+                            color: context.appColors.text,
                             fontSize: 22,
                           ),
                     ),
@@ -45,12 +46,12 @@ class CitizenHomeTab extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: Colors.blue.shade50,
+                    color: context.appColors.infoLight,
                     shape: BoxShape.circle,
                   ),
                   child: Icon(
                     Icons.verified_user_outlined,
-                    color: Colors.blue.shade800,
+                    color: context.appColors.info,
                   ),
                 ),
               ],
@@ -59,12 +60,9 @@ class CitizenHomeTab extends StatelessWidget {
 
             // GPS Chip
             Container(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 12,
-                vertical: 6,
-              ),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
-                color: Colors.blue.shade50,
+                color: context.appColors.infoLight,
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Row(
@@ -74,17 +72,14 @@ class CitizenHomeTab extends StatelessWidget {
                     width: 8,
                     height: 8,
                     decoration: BoxDecoration(
-                      color: Colors.blue.shade700,
+                      color: context.appColors.info,
                       shape: BoxShape.circle,
                     ),
                   ),
                   const SizedBox(width: 8),
                   const Text(
                     'GPS Activo:',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 12,
-                    ),
+                    style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
                   ),
                 ],
               ),
@@ -103,34 +98,38 @@ class CitizenHomeTab extends StatelessWidget {
                       height: 200,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: Colors.red.shade700,
+                        color: context.appColors.error,
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.red.withAlpha(100),
+                            color: context.appColors.error.withAlpha(100),
                             blurRadius: 40,
                             spreadRadius: 20,
                           ),
                           BoxShadow(
-                            color: Colors.red.withAlpha(50),
+                            color: context.appColors.error.withAlpha(50),
                             blurRadius: 60,
                             spreadRadius: 40,
                           ),
                         ],
                         border: Border.all(
-                          color: Colors.white.withAlpha(150),
+                          color: context.appColors.textInverse.withAlpha(150),
                           width: 15,
                           strokeAlign: BorderSide.strokeAlignOutside,
                         ),
                       ),
-                      child: const Column(
+                      child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(Icons.campaign, color: Colors.white, size: 50),
+                          Icon(
+                            Icons.campaign,
+                            color: context.appColors.textInverse,
+                            size: 50,
+                          ),
                           SizedBox(height: 8),
                           Text(
                             'SOS',
                             style: TextStyle(
-                              color: Colors.white,
+                              color: context.appColors.textInverse,
                               fontSize: 32,
                               fontWeight: FontWeight.bold,
                               letterSpacing: 2,
@@ -139,7 +138,7 @@ class CitizenHomeTab extends StatelessWidget {
                           Text(
                             'PRESIONAR',
                             style: TextStyle(
-                              color: Colors.white,
+                              color: context.appColors.textInverse,
                               fontSize: 12,
                               fontWeight: FontWeight.w600,
                               letterSpacing: 1,
@@ -154,7 +153,7 @@ class CitizenHomeTab extends StatelessWidget {
                     '¿Necesitas ayuda inmediata?',
                     style: Theme.of(context).textTheme.titleLarge?.copyWith(
                       fontWeight: FontWeight.bold,
-                      color: const Color(0xFF0D253C),
+                      color: context.appColors.text,
                     ),
                   ),
                 ],
@@ -168,7 +167,7 @@ class CitizenHomeTab extends StatelessWidget {
               'ACCIONES RÁPIDAS',
               style: Theme.of(context).textTheme.labelLarge?.copyWith(
                 fontWeight: FontWeight.bold,
-                color: Colors.grey.shade700,
+                color: context.appColors.textSecondary,
                 letterSpacing: 1,
               ),
             ),

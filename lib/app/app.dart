@@ -1,3 +1,4 @@
+import 'package:sereno_ya/ui/core/theme/theme_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:sereno_ya/app/app_dependencies.dart';
@@ -5,8 +6,13 @@ import 'package:sereno_ya/data/repositories/auth/auth_repository.dart';
 import 'package:sereno_ya/ui/auth/view_models/session_view_model.dart';
 
 class SerenoYaApp extends StatefulWidget {
-  const SerenoYaApp({super.key, required this.dependencies});
+  const SerenoYaApp({
+    super.key,
+    required this.dependencies,
+    required this.themeController,
+  });
   final AppDependencies dependencies;
+  final ThemeController themeController;
 
   @override
   State<SerenoYaApp> createState() => _SerenoYaAppState();
@@ -25,6 +31,7 @@ class _SerenoYaAppState extends State<SerenoYaApp> {
   @override
   void dispose() {
     _sessionViewModel.dispose();
+    widget.themeController.dispose();
     widget.dependencies.routerNotifier.dispose();
     super.dispose();
   }
@@ -33,6 +40,9 @@ class _SerenoYaAppState extends State<SerenoYaApp> {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
+        ChangeNotifierProvider<ThemeController>.value(
+          value: widget.themeController,
+        ),
         Provider<AuthRepository>.value(
           value: widget.dependencies.authRepository,
         ),
@@ -40,17 +50,15 @@ class _SerenoYaAppState extends State<SerenoYaApp> {
           value: _sessionViewModel,
         ),
       ],
-      child: MaterialApp.router(
-        title: 'SerenoYa',
-        debugShowCheckedModeBanner: false,
-        theme: ThemeData(
-          colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF0A6E5C)),
-          useMaterial3: true,
-          inputDecorationTheme: const InputDecorationTheme(
-            border: OutlineInputBorder(),
-          ),
+      child: Consumer<ThemeController>(
+        builder: (context, controller, child) => MaterialApp.router(
+          title: 'SerenoYa',
+          debugShowCheckedModeBanner: false,
+          theme: controller.light,
+          darkTheme: controller.dark,
+          themeMode: controller.themeMode,
+          routerConfig: widget.dependencies.router,
         ),
-        routerConfig: widget.dependencies.router,
       ),
     );
   }

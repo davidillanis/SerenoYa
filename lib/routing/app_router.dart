@@ -17,6 +17,7 @@ import 'package:sereno_ya/ui/auth/view_models/register_view_model.dart';
 import 'package:sereno_ya/ui/auth/view_models/reset_password_view_model.dart';
 import 'package:sereno_ya/ui/core/role_home_screen.dart';
 import 'package:sereno_ya/ui/core/unauthorized_screen.dart';
+import 'package:sereno_ya/ui/profile/profile_screen.dart';
 import 'package:sereno_ya/data/repositories/citizen/incident_repository.dart';
 import 'package:sereno_ya/ui/citizen/citizen_home_screen.dart';
 import 'package:sereno_ya/ui/citizen/report_incident/report_incident_screen.dart';
@@ -64,14 +65,22 @@ GoRouter createAppRouter({
       if (location == RouteNames.unauthorized) {
         return roles.isEmpty ? null : defaultRoute;
       }
-      
-      final hasAccess = roles.any((r) => RoleRouteResolver.canAccess(location, r));
+      // Any authenticated user can manage their own preferences.
+      if (location == RouteNames.profile) return null;
+
+      final hasAccess = roles.any(
+        (r) => RoleRouteResolver.canAccess(location, r),
+      );
       if (!hasAccess) {
         return defaultRoute;
       }
       return null;
     },
     routes: [
+      GoRoute(
+        path: RouteNames.profile,
+        builder: (_, _) => const ProfileScreen(),
+      ),
       GoRoute(
         path: RouteNames.splash,
         builder: (_, _) => const SessionGateScreen(),

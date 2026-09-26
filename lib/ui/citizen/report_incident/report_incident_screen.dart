@@ -1,3 +1,4 @@
+import 'package:sereno_ya/ui/core/theme/colors.dart';
 import 'package:sereno_ya/ui/core/widgets/responsive_body.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -52,9 +53,9 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
 
     if (success) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
+        SnackBar(
           content: Text('Incidente reportado exitosamente'),
-          backgroundColor: Colors.green,
+          backgroundColor: context.appColors.success,
         ),
       );
       Navigator.of(context).pop();
@@ -82,10 +83,10 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF7F9FC), // Fondo gris muy claro
+      backgroundColor: context.appColors.background,
       appBar: AppBar(
-        backgroundColor: Colors.green.shade600,
-        foregroundColor: Colors.white,
+        backgroundColor: context.appColors.primary,
+        foregroundColor: context.appColors.textInverse,
         title: const Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -117,7 +118,7 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
                     // ¿Qué está sucediendo? - Puede actuar como el input de descripción
                     Container(
                       decoration: BoxDecoration(
-                        color: Colors.blue.shade50,
+                        color: context.appColors.infoLight,
                         borderRadius: BorderRadius.circular(16),
                       ),
                       padding: const EdgeInsets.symmetric(
@@ -126,18 +127,18 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
                       ),
                       child: TextFormField(
                         controller: _descriptionController,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 24,
                           fontWeight: FontWeight.bold,
-                          color: Color(0xFF0D253C),
+                          color: context.appColors.text,
                         ),
-                        decoration: const InputDecoration(
+                        decoration: InputDecoration(
                           border: InputBorder.none,
                           hintText: '¿Qué está sucediendo?',
                           hintStyle: TextStyle(
                             fontSize: 24,
                             fontWeight: FontWeight.bold,
-                            color: Color(0xFF1D3557),
+                            color: context.appColors.text,
                           ),
                         ),
                         maxLines: 2,
@@ -147,12 +148,12 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
                     const SizedBox(height: 24),
 
                     // TIPO DE INCIDENTE
-                    const Text(
+                    Text(
                       'TIPO DE INCIDENTE',
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 12,
-                        color: Colors.grey,
+                        color: context.appColors.textSecondary,
                         letterSpacing: 1,
                       ),
                     ),
@@ -169,12 +170,12 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
                       Container(
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
-                          color: Colors.red.shade50,
+                          color: context.appColors.errorLight,
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Text(
                           viewModel.errorMessage!,
-                          style: TextStyle(color: Colors.red.shade900),
+                          style: TextStyle(color: context.appColors.error),
                           textAlign: TextAlign.center,
                         ),
                       )
@@ -203,12 +204,13 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
                               padding: const EdgeInsets.all(16),
                               decoration: BoxDecoration(
                                 color: isSelected
-                                    ? Colors.green.shade600
-                                    : Colors.white,
+                                    ? context.appColors.primary
+                                    : context.appColors.card,
                                 borderRadius: BorderRadius.circular(16),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: Colors.grey.withAlpha(20),
+                                    color: context.appColors.textSecondary
+                                        .withAlpha(20),
                                     blurRadius: 10,
                                     offset: const Offset(0, 4),
                                   ),
@@ -229,8 +231,8 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
                                           fontWeight: FontWeight.bold,
                                           fontSize: 16,
                                           color: isSelected
-                                              ? Colors.white
-                                              : const Color(0xFF0D253C),
+                                              ? context.appColors.textInverse
+                                              : context.appColors.text,
                                         ),
                                         maxLines: 1,
                                         overflow: TextOverflow.ellipsis,
@@ -241,8 +243,9 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
                                         style: TextStyle(
                                           fontSize: 11,
                                           color: isSelected
-                                              ? Colors.white70
-                                              : Colors.grey.shade600,
+                                              ? context.appColors.textInverse
+                                                    .withValues(alpha: 0.7)
+                                              : context.appColors.textSecondary,
                                           fontWeight: FontWeight.w600,
                                         ),
                                         maxLines: 1,
@@ -256,14 +259,14 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
                                       right: 0,
                                       child: Container(
                                         decoration: BoxDecoration(
-                                          color: Colors.blue.shade300,
+                                          color: context.appColors.info,
                                           shape: BoxShape.circle,
                                         ),
                                         padding: const EdgeInsets.all(2),
-                                        child: const Icon(
+                                        child: Icon(
                                           Icons.check,
                                           size: 16,
-                                          color: Colors.white,
+                                          color: context.appColors.textInverse,
                                         ),
                                       ),
                                     ),
@@ -280,17 +283,17 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
                     Container(
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: context.appColors.card,
                         borderRadius: BorderRadius.circular(16),
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Row(
+                          Row(
                             children: [
                               Icon(
                                 Icons.attachment,
-                                color: Colors.blue,
+                                color: context.appColors.info,
                                 size: 20,
                               ),
                               SizedBox(width: 8),
@@ -299,7 +302,7 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
                                   'Agregar evidencia multimedia',
                                   style: TextStyle(
                                     fontWeight: FontWeight.bold,
-                                    color: Color(0xFF0D253C),
+                                    color: context.appColors.text,
                                     fontSize: 14,
                                   ),
                                 ),
@@ -315,14 +318,14 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
                                     vertical: 12,
                                   ),
                                   decoration: BoxDecoration(
-                                    color: Colors.blue.shade50,
+                                    color: context.appColors.infoLight,
                                     borderRadius: BorderRadius.circular(12),
                                   ),
                                   child: Column(
                                     children: [
                                       Icon(
                                         Icons.camera_alt_outlined,
-                                        color: Colors.blue.shade800,
+                                        color: context.appColors.info,
                                       ),
                                       const SizedBox(height: 4),
                                       Text(
@@ -330,7 +333,7 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
                                         style: TextStyle(
                                           fontSize: 12,
                                           fontWeight: FontWeight.bold,
-                                          color: Colors.blue.shade900,
+                                          color: context.appColors.info,
                                         ),
                                       ),
                                     ],
@@ -344,14 +347,14 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
                                     vertical: 12,
                                   ),
                                   decoration: BoxDecoration(
-                                    color: Colors.blue.shade50,
+                                    color: context.appColors.infoLight,
                                     borderRadius: BorderRadius.circular(12),
                                   ),
                                   child: Column(
                                     children: [
                                       Icon(
                                         Icons.mic_none_outlined,
-                                        color: Colors.blue.shade800,
+                                        color: context.appColors.info,
                                       ),
                                       const SizedBox(height: 4),
                                       Text(
@@ -359,7 +362,7 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
                                         style: TextStyle(
                                           fontSize: 12,
                                           fontWeight: FontWeight.bold,
-                                          color: Colors.blue.shade900,
+                                          color: context.appColors.info,
                                         ),
                                       ),
                                     ],
@@ -375,7 +378,7 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
                           Container(
                             padding: const EdgeInsets.only(right: 12),
                             decoration: BoxDecoration(
-                              color: Colors.blue.shade50,
+                              color: context.appColors.infoLight,
                               borderRadius: BorderRadius.circular(12),
                             ),
                             child: Row(
@@ -388,19 +391,19 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
                                   child: Container(
                                     width: 80,
                                     height: 60,
-                                    color: Colors.grey.shade400,
-                                    child: const Stack(
+                                    color: context.appColors.textTertiary,
+                                    child: Stack(
                                       alignment: Alignment.center,
                                       children: [
                                         Icon(
                                           Icons.image,
-                                          color: Colors.white,
+                                          color: context.appColors.textInverse,
                                           size: 30,
                                         ),
                                         Positioned(
                                           child: Icon(
                                             Icons.check_circle_outline,
-                                            color: Colors.white,
+                                            color: context.appColors.textInverse,
                                             size: 20,
                                           ),
                                         ),
@@ -409,7 +412,7 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
                                   ),
                                 ),
                                 const SizedBox(width: 12),
-                                const Expanded(
+                                Expanded(
                                   child: Column(
                                     crossAxisAlignment:
                                         CrossAxisAlignment.start,
@@ -425,16 +428,17 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
                                         '1.8 MB · Imagen lista',
                                         style: TextStyle(
                                           fontSize: 11,
-                                          color: Colors.grey,
+                                          color:
+                                              context.appColors.textSecondary,
                                         ),
                                       ),
                                     ],
                                   ),
                                 ),
-                                const Icon(
+                                Icon(
                                   Icons.close,
                                   size: 20,
-                                  color: Colors.grey,
+                                  color: context.appColors.textSecondary,
                                 ),
                               ],
                             ),
@@ -450,16 +454,16 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
                       children: [
                         Icon(
                           Icons.location_on,
-                          color: Colors.red.shade700,
+                          color: context.appColors.error,
                           size: 20,
                         ),
                         const SizedBox(width: 8),
-                        const Expanded(
+                        Expanded(
                           child: Text(
                             'Ubicación detectada',
                             style: TextStyle(
                               fontWeight: FontWeight.bold,
-                              color: Color(0xFF0D253C),
+                              color: context.appColors.text,
                               fontSize: 14,
                             ),
                           ),
@@ -471,7 +475,7 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
                             vertical: 4,
                           ),
                           decoration: BoxDecoration(
-                            color: Colors.blue.shade100,
+                            color: context.appColors.infoLight,
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Row(
@@ -481,7 +485,7 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
                                 width: 6,
                                 height: 6,
                                 decoration: BoxDecoration(
-                                  color: Colors.blue.shade700,
+                                  color: context.appColors.info,
                                   shape: BoxShape.circle,
                                 ),
                               ),
@@ -491,7 +495,7 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
                                 style: TextStyle(
                                   fontSize: 10,
                                   fontWeight: FontWeight.bold,
-                                  color: Colors.blue.shade900,
+                                  color: context.appColors.info,
                                 ),
                               ),
                             ],
@@ -507,17 +511,17 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
                       children: [
                         Icon(
                           Icons.near_me_outlined,
-                          color: Colors.blue.shade700,
+                          color: context.appColors.info,
                           size: 20,
                         ),
                         const SizedBox(width: 8),
                         Expanded(
                           child: TextFormField(
                             controller: _referenceController,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontWeight: FontWeight.bold,
                               fontSize: 16,
-                              color: Color(0xFF0D253C),
+                              color: context.appColors.text,
                             ),
                             decoration: const InputDecoration(
                               border: InputBorder.none,
@@ -541,7 +545,7 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
                     Container(
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        color: Colors.blue.shade50.withAlpha(150),
+                        color: context.appColors.infoLight.withAlpha(150),
                         borderRadius: BorderRadius.circular(16),
                       ),
                       child: Column(
@@ -554,25 +558,25 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
                                   : () => _submit(context, viewModel),
                               icon: viewModel.isSubmitting
                                   ? const SizedBox()
-                                  : const Icon(
+                                  : Icon(
                                       Icons.report_problem,
-                                      color: Colors.white,
+                                      color: context.appColors.textInverse,
                                     ),
                               label: viewModel.isSubmitting
-                                  ? const SizedBox(
+                                  ? SizedBox(
                                       width: 24,
                                       height: 24,
                                       child: CircularProgressIndicator(
-                                        color: Colors.white,
+                                        color: context.appColors.textInverse,
                                         strokeWidth: 2,
                                       ),
                                     )
-                                  : const Text(
+                                  : Text(
                                       'ENVIAR ALERTA INMEDIATA',
                                       textAlign: TextAlign.center,
                                       style: TextStyle(
                                         fontWeight: FontWeight.bold,
-                                        color: Colors.white,
+                                        color: context.appColors.textInverse,
                                         letterSpacing: 1,
                                       ),
                                     ),
@@ -582,8 +586,8 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
                                   horizontal: 16,
                                   vertical: 16,
                                 ),
-                                backgroundColor: Colors.red.shade700,
-                                foregroundColor: Colors.white,
+                                backgroundColor: context.appColors.error,
+                                foregroundColor: context.appColors.textInverse,
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(12),
                                 ),
@@ -598,16 +602,16 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
                               style: TextButton.styleFrom(
                                 minimumSize: const Size(0, 56),
                                 padding: const EdgeInsets.all(16),
-                                backgroundColor: Colors.blue.shade100,
+                                backgroundColor: context.appColors.infoLight,
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                               ),
-                              child: const Text(
+                              child: Text(
                                 'Cancelar reporte',
                                 style: TextStyle(
                                   fontWeight: FontWeight.bold,
-                                  color: Color(0xFF1D3557),
+                                  color: context.appColors.text,
                                 ),
                               ),
                             ),
@@ -621,7 +625,7 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
                         padding: const EdgeInsets.only(top: 16),
                         child: Text(
                           viewModel.errorMessage!,
-                          style: TextStyle(color: Colors.red.shade900),
+                          style: TextStyle(color: context.appColors.error),
                           textAlign: TextAlign.center,
                         ),
                       ),

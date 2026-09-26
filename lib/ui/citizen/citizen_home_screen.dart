@@ -1,8 +1,6 @@
+import 'package:sereno_ya/ui/core/theme/colors.dart';
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
-import 'package:sereno_ya/routing/route_names.dart';
-import 'package:sereno_ya/ui/auth/view_models/session_view_model.dart';
 import 'package:sereno_ya/ui/core/widgets/app_drawer.dart';
 
 import 'package:sereno_ya/ui/citizen/home/citizen_home_tab.dart';
@@ -34,14 +32,11 @@ class _CitizenHomeScreenState extends State<CitizenHomeScreen> {
           'SOS San Jerónimo',
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
-        backgroundColor: Colors.green.shade600,
-        foregroundColor: Colors.white,
+        backgroundColor: context.appColors.primary,
+        foregroundColor: context.appColors.textInverse,
       ),
       drawer: const AppDrawer(),
-      body: IndexedStack(
-        index: _currentIndex,
-        children: _tabs,
-      ),
+      body: IndexedStack(index: _currentIndex, children: _tabs),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
         onTap: (index) {
@@ -52,8 +47,8 @@ class _CitizenHomeScreenState extends State<CitizenHomeScreen> {
             context.read<IncidentTrackingViewModel>().loadActiveIncidents();
           }
         },
-        selectedItemColor: Colors.green.shade600,
-        unselectedItemColor: Colors.grey,
+        selectedItemColor: context.appColors.tabIconSelected,
+        unselectedItemColor: context.appColors.tabIconDefault,
         items: const [
           BottomNavigationBarItem(
             icon: Icon(Icons.home_outlined),
@@ -93,11 +88,11 @@ class ActionCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.appColors.card,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withAlpha(20),
+            color: context.appColors.textSecondary.withAlpha(20),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -108,10 +103,13 @@ class ActionCard extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: Colors.green.shade600,
+              color: context.appColors.primary,
               borderRadius: BorderRadius.circular(12),
             ),
-            child: const Icon(Icons.phone_in_talk, color: Colors.white),
+            child: Icon(
+              Icons.phone_in_talk,
+              color: context.appColors.textInverse,
+            ),
           ),
           const SizedBox(width: 16),
           Expanded(
@@ -123,16 +121,16 @@ class ActionCard extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 10,
                     fontWeight: FontWeight.bold,
-                    color: Colors.grey.shade600,
+                    color: context.appColors.textSecondary,
                   ),
                 ),
                 const SizedBox(height: 2),
                 Text(
                   title,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 16,
-                    color: Color(0xFF0D253C),
+                    color: context.appColors.text,
                   ),
                 ),
                 const SizedBox(height: 2),
@@ -140,7 +138,7 @@ class ActionCard extends StatelessWidget {
                   subtitle,
                   style: TextStyle(
                     fontSize: 12,
-                    color: Colors.blue.shade700,
+                    color: context.appColors.info,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -150,12 +148,12 @@ class ActionCard extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: Colors.green.shade600,
+              color: context.appColors.primary,
               shape: BoxShape.circle,
             ),
-            child: const Icon(
+            child: Icon(
               Icons.phone_in_talk,
-              color: Colors.white,
+              color: context.appColors.textInverse,
               size: 16,
             ),
           ),

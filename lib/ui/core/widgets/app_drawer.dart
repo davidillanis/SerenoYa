@@ -1,8 +1,10 @@
+import 'package:sereno_ya/ui/core/theme/colors.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import 'package:sereno_ya/models/auth/user_role.dart';
 import 'package:sereno_ya/routing/role_route_resolver.dart';
+import 'package:sereno_ya/routing/route_names.dart';
 import 'package:sereno_ya/ui/auth/view_models/session_view_model.dart';
 
 class AppDrawer extends StatelessWidget {
@@ -38,13 +40,13 @@ class AppDrawer extends StatelessWidget {
               ),
             ),
             if (session != null && session.user.roles.length > 1) ...[
-              const Padding(
+              Padding(
                 padding: EdgeInsets.fromLTRB(16, 8, 16, 0),
                 child: Text(
                   'Tus interfaces',
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
-                    color: Colors.grey,
+                    color: context.appColors.textSecondary,
                   ),
                 ),
               ),
@@ -85,6 +87,18 @@ class AppDrawer extends StatelessWidget {
                 ),
               ),
             ],
+            const Divider(),
+            ListTile(
+              leading: const Icon(Icons.person_outline),
+              title: const Text('Mi perfil'),
+              subtitle: const Text('Datos de tu cuenta y tema'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () {
+                final router = GoRouter.of(context);
+                Navigator.of(context).pop();
+                router.push(RouteNames.profile);
+              },
+            ),
             const Divider(),
             ListTile(
               leading: Icon(
