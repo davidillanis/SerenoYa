@@ -18,14 +18,18 @@ class AuthScaffold extends StatelessWidget {
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
+            padding: EdgeInsets.all(
+              MediaQuery.sizeOf(context).width < 400 ? 12 : 24,
+            ),
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 460),
               child: Card(
                 elevation: 0,
                 color: Theme.of(context).colorScheme.surfaceContainerLow,
                 child: Padding(
-                  padding: const EdgeInsets.all(28),
+                  padding: EdgeInsets.all(
+                    MediaQuery.sizeOf(context).width < 400 ? 16 : 28,
+                  ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
