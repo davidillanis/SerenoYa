@@ -16,4 +16,12 @@ class IncidentCategory {
       description: json['description'] as String? ?? '',
     );
   }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'name': name,
+      'description': description,
+    };
+  }
 }

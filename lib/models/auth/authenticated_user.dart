@@ -13,14 +13,14 @@ class AuthenticatedUser {
     this.officerId,
   });
 
-  final int id;
+  final String id;
   final String email;
   final String firstName;
   final String lastName;
   final String? phone;
   final String? imageUrl;
-  final int? citizenId;
-  final int? officerId;
+  final String? citizenId;
+  final String? officerId;
   final List<UserRole> roles;
 
   String get displayName {

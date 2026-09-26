@@ -287,7 +287,7 @@ class AuthRepositoryImpl implements AuthRepository {
       refreshToken: dto.refreshToken,
       accessTokenExpiresAt: claims.expiresAt,
       user: AuthenticatedUser(
-        id: dto.id == 0 ? claims.userId ?? 0 : dto.id,
+        id: dto.id.isEmpty ? claims.userId ?? '' : dto.id,
         email: claims.email,
         firstName: dto.firstName,
         lastName: dto.lastName,
@@ -309,7 +309,7 @@ class AuthRepositoryImpl implements AuthRepository {
       refreshToken: tokens.refreshToken,
       accessTokenExpiresAt: claims.expiresAt,
       user: AuthenticatedUser(
-        id: claims.userId ?? 0,
+        id: claims.userId ?? '',
         email: claims.email,
         firstName: '',
         lastName: '',

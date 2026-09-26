@@ -21,7 +21,7 @@ class AuthResponseDto {
     }
 
     return AuthResponseDto(
-      id: _toInt(json['id']) ?? 0,
+      id: json['id']?.toString() ?? '',
       firstName: json['name']?.toString() ?? '',
       lastName: json['lastName']?.toString() ?? '',
       imageUrl: json['imageUrl']?.toString(),
@@ -31,16 +31,11 @@ class AuthResponseDto {
     );
   }
 
-  final int id;
+  final String id;
   final String firstName;
   final String lastName;
   final String? imageUrl;
   final String? phone;
   final String accessToken;
   final String refreshToken;
-
-  static int? _toInt(Object? value) {
-    if (value is int) return value;
-    return int.tryParse(value?.toString() ?? '');
-  }
 }

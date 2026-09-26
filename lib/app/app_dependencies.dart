@@ -6,6 +6,7 @@ import 'package:sereno_ya/data/services/api/api_client.dart';
 import 'package:sereno_ya/data/services/api/auth/auth_api_service.dart';
 import 'package:sereno_ya/data/services/api/auth/auth_interceptor.dart';
 import 'package:sereno_ya/data/services/api/citizen/incident_api_service.dart';
+import 'package:sereno_ya/data/services/local/citizen/incident_local_data_source.dart';
 import 'package:sereno_ya/data/services/storage/session_storage_service.dart';
 import 'package:sereno_ya/routing/app_router.dart';
 import 'package:sereno_ya/routing/auth_router_notifier.dart';
@@ -23,7 +24,11 @@ class AppDependencies {
     final authRepository = AuthRepositoryImpl(authApiService, storageService);
     
     final incidentApiService = IncidentApiService(apiClient.dio);
-    final incidentRepository = IncidentRepository(incidentApiService);
+    final localDataSource = IncidentLocalDataSourceImpl();
+    final incidentRepository = IncidentRepository(
+      apiService: incidentApiService,
+      localDataSource: localDataSource,
+    );
 
     apiClient.dio.interceptors.add(
       AuthInterceptor(apiClient.dio, storageService.readAccessToken, () async {

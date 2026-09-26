@@ -9,6 +9,8 @@ class AuthApiService {
 
   final Dio _dio;
 
+  static const String _basepath = '/auth';
+
   Options get _publicOptions =>
       Options(extra: const {AuthInterceptor.skipAuthenticationKey: true});
 
@@ -17,7 +19,7 @@ class AuthApiService {
     required String password,
   }) => _request(
     () => _dio.post<dynamic>(
-      '/auth/login',
+      '$_basepath/login',
       data: {'email': email, 'password': password},
       options: _publicOptions,
     ),
@@ -27,7 +29,7 @@ class AuthApiService {
   Future<ApiResponseDto<AuthResponseDto>> loginWithGoogle(String idToken) =>
       _request(
         () => _dio.post<dynamic>(
-          '/auth/google-login',
+          '$_basepath/google-login',
           data: {'idToken': idToken},
           options: _publicOptions,
         ),
@@ -36,7 +38,7 @@ class AuthApiService {
 
   Future<ApiResponseDto<bool>> validateToken(String token) => _request(
     () => _dio.get<dynamic>(
-      '/auth/validateToken/${Uri.encodeComponent(token)}',
+      '$_basepath/validateToken/${Uri.encodeComponent(token)}',
       options: _publicOptions,
     ),
     (value) => value == true,
@@ -45,7 +47,7 @@ class AuthApiService {
   Future<ApiResponseDto<AuthResponseDto>> refresh(String refreshToken) =>
       _request(
         () => _dio.post<dynamic>(
-          '/auth/refresh',
+          '$_basepath/refresh',
           data: {'refreshToken': refreshToken},
           options: _publicOptions,
         ),
@@ -54,7 +56,7 @@ class AuthApiService {
 
   Future<ApiResponseDto<String>> forgotPassword(String email) => _request(
     () => _dio.post<dynamic>(
-      '/auth/forgot-password',
+      '$_basepath/forgot-password',
       data: {'email': email},
       options: _publicOptions,
     ),
@@ -67,7 +69,7 @@ class AuthApiService {
     required String newPassword,
   }) => _request(
     () => _dio.post<dynamic>(
-      '/auth/reset-password',
+      '$_basepath/reset-password',
       data: {'email': email, 'token': token, 'newPassword': newPassword},
       options: _publicOptions,
     ),

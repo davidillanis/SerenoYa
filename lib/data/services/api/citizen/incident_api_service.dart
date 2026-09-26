@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:sereno_ya/data/models/auth/api_response_dto.dart';
 import 'package:sereno_ya/data/models/citizen/incident_category.dart';
 import 'package:sereno_ya/data/models/citizen/incident_create_request.dart';
+import 'package:sereno_ya/data/models/citizen/incident.dart';
 import 'package:sereno_ya/models/auth/auth_failure.dart';
 
 class IncidentApiService {
@@ -11,7 +12,7 @@ class IncidentApiService {
 
   Future<ApiResponseDto<List<IncidentCategory>>> getCategories() async {
     return _request(
-      () => _dio.get<dynamic>('/incidents/categories?fields=id,name,description'),
+      () => _dio.get<dynamic>('/incidents/categories/list?fields=id,name,description'),
       (value) {
         if (value is Map && value.containsKey('content')) {
           final content = value['content'];
@@ -29,8 +30,53 @@ class IncidentApiService {
 
   Future<ApiResponseDto<String>> createIncident(IncidentCreateRequest request) async {
     return _request(
-      () => _dio.post<dynamic>('/incidents', data: request.toJson()),
+      () => _dio.post<dynamic>('/incidents/create', data: request.toJson()),
       (value) => value?.toString() ?? 'Incidente creado',
+    );
+  }
+
+  Future<ApiResponseDto<List<Incident>>> listIncidents({
+    String? citizenId,
+    String? status,
+    String? fields = 'id,status,latitude,longitude,description,referenceAddress,createdAt,category.name',
+  }) async {
+    return _request(
+      () => _dio.get<dynamic>(
+        '/incidents/list',
+        queryParameters: {
+          if (citizenId != null) 'citizenId': citizenId,
+          if (status != null) 'status': status,
+          if (fields != null) 'fields': fields,
+        },
+      ),
+      (value) {
+        if (value is Map && value.containsKey('content')) {
+          final content = value['content'];
+          if (content is List) {
+            return content.map((e) => Incident.fromJson(e as Map<String, dynamic>)).toList();
+          }
+        }
+        if (value is List) {
+          return value.map((e) => Incident.fromJson(e as Map<String, dynamic>)).toList();
+        }
+        return [];
+      },
+    );
+  }
+
+  Future<ApiResponseDto<String>> updateStatus({
+    required String incidentId,
+    required String status,
+  }) async {
+    return _request(
+      () => _dio.put<dynamic>(
+        '/incidents/update-status',
+        queryParameters: {
+          'incidentId': incidentId,
+          'status': status,
+        },
+      ),
+      (value) => value?.toString() ?? 'Estado actualizado',
     );
   }
 

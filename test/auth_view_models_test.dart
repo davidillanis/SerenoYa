@@ -96,7 +96,7 @@ class RecordingAuthRepository implements AuthRepository {
     accessToken: 'access-token',
     refreshToken: 'refresh-token',
     user: AuthenticatedUser(
-      id: 1,
+      id: '1',
       email: 'citizen@example.com',
       firstName: 'Dani',
       lastName: 'Quispe',

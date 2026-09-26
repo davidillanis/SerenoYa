@@ -24,19 +24,16 @@ class JwtClaims {
   String get email =>
       values['email']?.toString() ?? values['sub']?.toString() ?? '';
   Object? get authorities => values['authorities'] ?? values['roles'];
-  int? get userId => _toInt(values['userId'] ?? values['id']);
-  int? get citizenId => _toInt(values['customerId'] ?? values['citizenId']);
-  int? get officerId => _toInt(values['dealerId'] ?? values['officerId']);
+  String? get userId => (values['userId'] ?? values['id'])?.toString();
+  String? get citizenId => (values['customerId'] ?? values['citizenId'])?.toString();
+  String? get officerId => (values['dealerId'] ?? values['officerId'])?.toString();
 
   DateTime? get expiresAt {
-    final seconds = _toInt(values['exp']);
-    return seconds == null
+    final seconds = values['exp'];
+    if (seconds == null) return null;
+    final intSeconds = seconds is int ? seconds : int.tryParse(seconds.toString());
+    return intSeconds == null
         ? null
-        : DateTime.fromMillisecondsSinceEpoch(seconds * 1000, isUtc: true);
-  }
-
-  static int? _toInt(Object? value) {
-    if (value is int) return value;
-    return int.tryParse(value?.toString() ?? '');
+        : DateTime.fromMillisecondsSinceEpoch(intSeconds * 1000, isUtc: true);
   }
 }
