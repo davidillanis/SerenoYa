@@ -6,6 +6,7 @@ import 'package:sereno_ya/data/services/api/api_client.dart';
 import 'package:sereno_ya/data/services/api/auth/auth_api_service.dart';
 import 'package:sereno_ya/data/services/api/auth/auth_interceptor.dart';
 import 'package:sereno_ya/data/services/api/citizen/incident_api_service.dart';
+import 'package:sereno_ya/data/services/api/file/image_api_service.dart';
 import 'package:sereno_ya/data/services/local/citizen/incident_local_data_source.dart';
 import 'package:sereno_ya/data/services/storage/session_storage_service.dart';
 import 'package:sereno_ya/routing/app_router.dart';
@@ -15,6 +16,7 @@ class AppDependencies {
   AppDependencies._({
     required this.authRepository,
     required this.incidentRepository,
+    required this.storageService,
   });
 
   factory AppDependencies.create() {
@@ -22,13 +24,15 @@ class AppDependencies {
     final apiClient = ApiClient();
     final authApiService = AuthApiService(apiClient.dio);
     final authRepository = AuthRepositoryImpl(authApiService, storageService);
-    
+
     final incidentApiService = IncidentApiService(apiClient.dio);
     final localDataSource = IncidentLocalDataSourceImpl();
     final incidentRepository = IncidentRepository(
       apiService: incidentApiService,
       localDataSource: localDataSource,
     );
+
+    final imageApiService = StorageService();
 
     apiClient.dio.interceptors.add(
       AuthInterceptor(apiClient.dio, storageService.readAccessToken, () async {
@@ -40,11 +44,13 @@ class AppDependencies {
     final dependencies = AppDependencies._(
       authRepository: authRepository,
       incidentRepository: incidentRepository,
+      storageService: imageApiService,
     );
     dependencies.routerNotifier = AuthRouterNotifier(authRepository);
     dependencies.router = createAppRouter(
       authRepository: authRepository,
       incidentRepository: incidentRepository,
+      storageService: imageApiService,
       routerNotifier: dependencies.routerNotifier,
     );
     return dependencies;
@@ -52,6 +58,7 @@ class AppDependencies {
 
   final AuthRepository authRepository;
   final IncidentRepository incidentRepository;
+  final StorageService storageService;
 
   late final AuthRouterNotifier routerNotifier;
   late final GoRouter router;

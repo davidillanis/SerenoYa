@@ -4,6 +4,7 @@ class IncidentCreateRequest {
   final double longitude;
   final String referenceAddress;
   final String categoryId;
+  final String? imageUrl;
 
   IncidentCreateRequest({
     required this.description,
@@ -11,6 +12,7 @@ class IncidentCreateRequest {
     required this.longitude,
     required this.referenceAddress,
     required this.categoryId,
+    this.imageUrl,
   });
 
   Map<String, dynamic> toJson() {
@@ -20,6 +22,7 @@ class IncidentCreateRequest {
       'longitude': longitude,
       'referenceAddress': referenceAddress,
       'categoryId': categoryId,
+      if (imageUrl != null) 'imageUrl': imageUrl,
     };
   }
 }

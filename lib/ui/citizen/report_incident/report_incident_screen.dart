@@ -1,7 +1,8 @@
+import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:provider/provider.dart';
 import 'package:sereno_ya/ui/core/theme/colors.dart';
 import 'package:sereno_ya/ui/core/widgets/responsive_body.dart';
-import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import 'package:sereno_ya/ui/citizen/report_incident/view_models/report_incident_view_model.dart';
 
 class ReportIncidentScreen extends StatefulWidget {
@@ -78,6 +79,108 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
     }
 
     return Text(emoji, style: const TextStyle(fontSize: 24));
+  }
+
+  Widget _buildSelectedImage(
+    BuildContext context,
+    ReportIncidentViewModel viewModel,
+  ) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: context.appColors.infoLight,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: SizedBox(
+              width: 80,
+              height: 60,
+              child: viewModel.isUploadingImage
+                  ? Container(
+                      color: context.appColors.textTertiary,
+                      child: const Center(
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
+                    )
+                  : viewModel.selectedImage != null
+                  ? Image.file(
+                      viewModel.selectedImage!,
+                      fit: BoxFit.cover,
+                      width: 80,
+                      height: 60,
+                    )
+                  : viewModel.imageUrl != null
+                  ? Image.network(
+                      viewModel.imageUrl!,
+                      fit: BoxFit.cover,
+                      width: 80,
+                      height: 60,
+                      errorBuilder: (_, __, ___) => Container(
+                        color: context.appColors.textTertiary,
+                        child: Icon(
+                          Icons.broken_image,
+                          color: context.appColors.textInverse,
+                          size: 30,
+                        ),
+                      ),
+                    )
+                  : Container(
+                      color: context.appColors.textTertiary,
+                      child: Icon(
+                        Icons.image,
+                        color: context.appColors.textInverse,
+                        size: 30,
+                      ),
+                    ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  viewModel.isUploadingImage
+                      ? 'Subiendo imagen...'
+                      : viewModel.selectedImage != null
+                      ? 'Imagen seleccionada'
+                      : 'Imagen subida',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13,
+                    color: context.appColors.text,
+                  ),
+                ),
+                Text(
+                  viewModel.isUploadingImage
+                      ? 'Por favor espere...'
+                      : viewModel.selectedImage != null
+                      ? 'Toca para cambiar o eliminar'
+                      : 'Lista para enviar',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: context.appColors.textSecondary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          IconButton(
+            icon: Icon(
+              Icons.close,
+              size: 20,
+              color: context.appColors.textSecondary,
+            ),
+            onPressed: viewModel.isUploadingImage
+                ? null
+                : () => viewModel.removeImage(),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -313,59 +416,87 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
                           Row(
                             children: [
                               Expanded(
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    vertical: 12,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: context.appColors.infoLight,
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  child: Column(
-                                    children: [
-                                      Icon(
-                                        Icons.camera_alt_outlined,
-                                        color: context.appColors.info,
-                                      ),
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        'Tomar foto',
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.bold,
-                                          color: context.appColors.info,
+                                child: InkWell(
+                                  onTap: viewModel.isUploadingImage
+                                      ? null
+                                      : () => viewModel.pickImage(ImageSource.camera),
+                                  borderRadius: BorderRadius.circular(12),
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(vertical: 12),
+                                    decoration: BoxDecoration(
+                                      color: viewModel.isUploadingImage
+                                          ? context.appColors.textTertiary
+                                          : context.appColors.infoLight,
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: Column(
+                                      children: [
+                                        Icon(
+                                          Icons.camera_alt_outlined,
+                                          color: viewModel.isUploadingImage
+                                              ? context.appColors.textSecondary
+                                              : context.appColors.info,
                                         ),
-                                      ),
-                                    ],
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          'Tomar foto',
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.bold,
+                                            color: viewModel.isUploadingImage
+                                                ? context
+                                                      .appColors
+                                                      .textSecondary
+                                                : context.appColors.info,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
                                   ),
                                 ),
                               ),
                               const SizedBox(width: 12),
                               Expanded(
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    vertical: 12,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: context.appColors.infoLight,
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  child: Column(
-                                    children: [
-                                      Icon(
-                                        Icons.mic_none_outlined,
-                                        color: context.appColors.info,
-                                      ),
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        'Grabar audio',
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.bold,
-                                          color: context.appColors.info,
+                                child: InkWell(
+                                  onTap: viewModel.isUploadingImage
+                                      ? null
+                                      : () => viewModel.pickImage(
+                                          ImageSource.gallery,
                                         ),
-                                      ),
-                                    ],
+                                  borderRadius: BorderRadius.circular(12),
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 12,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: viewModel.isUploadingImage
+                                          ? context.appColors.textTertiary
+                                          : context.appColors.infoLight,
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: Column(
+                                      children: [
+                                        Icon(
+                                          Icons.photo_library_outlined,
+                                          color: viewModel.isUploadingImage
+                                              ? context.appColors.textSecondary
+                                              : context.appColors.info,
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          'Subir Imagen',
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.bold,
+                                            color: viewModel.isUploadingImage
+                                                ? context
+                                                      .appColors
+                                                      .textSecondary
+                                                : context.appColors.info,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
                                   ),
                                 ),
                               ),
@@ -374,75 +505,11 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
 
                           const SizedBox(height: 16),
 
-                          // Mock de evidencia subida
-                          Container(
-                            padding: const EdgeInsets.only(right: 12),
-                            decoration: BoxDecoration(
-                              color: context.appColors.infoLight,
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Row(
-                              children: [
-                                ClipRRect(
-                                  borderRadius: const BorderRadius.only(
-                                    topLeft: Radius.circular(12),
-                                    bottomLeft: Radius.circular(12),
-                                  ),
-                                  child: Container(
-                                    width: 80,
-                                    height: 60,
-                                    color: context.appColors.textTertiary,
-                                    child: Stack(
-                                      alignment: Alignment.center,
-                                      children: [
-                                        Icon(
-                                          Icons.image,
-                                          color: context.appColors.textInverse,
-                                          size: 30,
-                                        ),
-                                        Positioned(
-                                          child: Icon(
-                                            Icons.check_circle_outline,
-                                            color: context.appColors.textInverse,
-                                            size: 20,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        'evidencia_01.jpg',
-                                        style: TextStyle(
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 13,
-                                        ),
-                                      ),
-                                      Text(
-                                        '1.8 MB · Imagen lista',
-                                        style: TextStyle(
-                                          fontSize: 11,
-                                          color:
-                                              context.appColors.textSecondary,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                Icon(
-                                  Icons.close,
-                                  size: 20,
-                                  color: context.appColors.textSecondary,
-                                ),
-                              ],
-                            ),
-                          ),
+                          // Imagen seleccionada o subida
+                          if (viewModel.selectedImage != null ||
+                              viewModel.imageUrl != null ||
+                              viewModel.isUploadingImage)
+                            _buildSelectedImage(context, viewModel),
                         ],
                       ),
                     ),

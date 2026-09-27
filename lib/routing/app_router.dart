@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:sereno_ya/data/repositories/auth/auth_repository.dart';
+import 'package:sereno_ya/data/services/api/file/image_api_service.dart';
 import 'package:sereno_ya/models/auth/auth_state.dart';
 import 'package:sereno_ya/routing/auth_router_notifier.dart';
 import 'package:sereno_ya/routing/role_route_resolver.dart';
@@ -28,6 +29,7 @@ import 'package:sereno_ya/ui/auth/view_models/session_view_model.dart';
 GoRouter createAppRouter({
   required AuthRepository authRepository,
   required IncidentRepository incidentRepository,
+  required StorageService storageService,
   required AuthRouterNotifier routerNotifier,
 }) {
   const publicRoutes = {
@@ -132,7 +134,8 @@ GoRouter createAppRouter({
           GoRoute(
             path: 'report',
             builder: (_, _) => ChangeNotifierProvider(
-              create: (_) => ReportIncidentViewModel(incidentRepository),
+              create: (_) =>
+                  ReportIncidentViewModel(incidentRepository, storageService),
               child: const ReportIncidentScreen(),
             ),
           ),
