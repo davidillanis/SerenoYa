@@ -29,10 +29,16 @@ class Incident {
       latitude: (json['latitude'] as num?)?.toDouble() ?? 0.0,
       longitude: (json['longitude'] as num?)?.toDouble() ?? 0.0,
       referenceAddress: json['referenceAddress'] as String?,
-      createdAt: json['createdAt'] != null ? DateTime.tryParse(json['createdAt']) : null,
+      createdAt: _parseLocalDateTime(json['createdAt']),
       category: json['category'] != null
           ? IncidentCategory.fromJson(json['category'] as Map<String, dynamic>)
           : null,
     );
+  }
+
+  static DateTime? _parseLocalDateTime(Object? value) {
+    if (value is! String) return null;
+
+    return DateTime.tryParse(value)?.toLocal();
   }
 }
