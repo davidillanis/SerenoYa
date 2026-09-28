@@ -1,10 +1,26 @@
+class IncidentEvidenceCreateRequest {
+  const IncidentEvidenceCreateRequest({
+    required this.fileUrl,
+    required this.fileName,
+    required this.mimeType,
+  });
+
+  final String fileUrl;
+  final String fileName;
+  final String mimeType;
+
+  Map<String, dynamic> toJson() {
+    return {'fileUrl': fileUrl, 'fileName': fileName, 'mimeType': mimeType};
+  }
+}
+
 class IncidentCreateRequest {
   final String description;
   final double latitude;
   final double longitude;
   final String referenceAddress;
   final String categoryId;
-  final String? imageUrl;
+  final IncidentEvidenceCreateRequest evidence;
 
   IncidentCreateRequest({
     required this.description,
@@ -12,7 +28,7 @@ class IncidentCreateRequest {
     required this.longitude,
     required this.referenceAddress,
     required this.categoryId,
-    this.imageUrl,
+    required this.evidence,
   });
 
   Map<String, dynamic> toJson() {
@@ -22,7 +38,7 @@ class IncidentCreateRequest {
       'longitude': longitude,
       'referenceAddress': referenceAddress,
       'categoryId': categoryId,
-      if (imageUrl != null) 'imageUrl': imageUrl,
+      'evidence': evidence.toJson(),
     };
   }
 }

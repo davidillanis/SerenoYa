@@ -118,7 +118,7 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
                       fit: BoxFit.cover,
                       width: 80,
                       height: 60,
-                      errorBuilder: (_, __, ___) => Container(
+                      errorBuilder: (_, _, _) => Container(
                         color: context.appColors.textTertiary,
                         child: Icon(
                           Icons.broken_image,
@@ -419,10 +419,14 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
                                 child: InkWell(
                                   onTap: viewModel.isUploadingImage
                                       ? null
-                                      : () => viewModel.pickImage(ImageSource.camera),
+                                      : () => viewModel.pickImage(
+                                          ImageSource.camera,
+                                        ),
                                   borderRadius: BorderRadius.circular(12),
                                   child: Container(
-                                    padding: const EdgeInsets.symmetric(vertical: 12),
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 12,
+                                    ),
                                     decoration: BoxDecoration(
                                       color: viewModel.isUploadingImage
                                           ? context.appColors.textTertiary
@@ -620,7 +624,9 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
                           SizedBox(
                             width: double.infinity,
                             child: ElevatedButton.icon(
-                              onPressed: viewModel.isSubmitting
+                              onPressed:
+                                  viewModel.isSubmitting ||
+                                      viewModel.isUploadingImage
                                   ? null
                                   : () => _submit(context, viewModel),
                               icon: viewModel.isSubmitting

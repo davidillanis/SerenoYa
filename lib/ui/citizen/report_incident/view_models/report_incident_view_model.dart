@@ -33,8 +33,8 @@ class ReportIncidentViewModel extends ChangeNotifier {
   IncidentCategory? _selectedCategory;
   IncidentCategory? get selectedCategory => _selectedCategory;
 
-  String? _imageUrl;
-  String? get imageUrl => _imageUrl;
+  ImageUploadResponse? _uploadedImage;
+  String? get imageUrl => _uploadedImage?.publicUrl;
 
   File? _selectedImage;
   File? get selectedImage => _selectedImage;
@@ -55,7 +55,7 @@ class ReportIncidentViewModel extends ChangeNotifier {
 
     if (pickedFile != null) {
       _selectedImage = File(pickedFile.path);
-      _imageUrl = null;
+      _uploadedImage = null;
       notifyListeners();
       await _uploadImage();
     }
@@ -69,13 +69,15 @@ class ReportIncidentViewModel extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final response = await _storageService.uploadImage(file: _selectedImage!);
-      _imageUrl = response.publicUrl;
+      _uploadedImage = await _storageService.uploadImage(
+        file: _selectedImage!,
+        folder: 'INCIDENTS',
+      );
       _errorMessage = null;
     } catch (e) {
       _errorMessage = 'Error al subir imagen: ${e.toString()}';
       _selectedImage = null;
-      _imageUrl = null;
+      _uploadedImage = null;
     } finally {
       _isUploadingImage = false;
       notifyListeners();
@@ -84,7 +86,7 @@ class ReportIncidentViewModel extends ChangeNotifier {
 
   void removeImage() {
     _selectedImage = null;
-    _imageUrl = null;
+    _uploadedImage = null;
     notifyListeners();
   }
 
@@ -109,6 +111,16 @@ class ReportIncidentViewModel extends ChangeNotifier {
       notifyListeners();
       return false;
     }
+    if (_isUploadingImage) {
+      _errorMessage = 'Espera a que termine de subir la imagen';
+      notifyListeners();
+      return false;
+    }
+    if (_uploadedImage == null) {
+      _errorMessage = 'Agrega una imagen como evidencia';
+      notifyListeners();
+      return false;
+    }
 
     _isSubmitting = true;
     _errorMessage = null;
@@ -121,7 +133,11 @@ class ReportIncidentViewModel extends ChangeNotifier {
       latitude: -12.046374,
       longitude: -77.042793,
       categoryId: _selectedCategory!.id,
-      imageUrl: _imageUrl,
+      evidence: IncidentEvidenceCreateRequest(
+        fileUrl: _uploadedImage!.publicUrl,
+        fileName: _fileNameFromKey(_uploadedImage!.fileKey),
+        mimeType: _uploadedImage!.contentType,
+      ),
     );
 
     final result = await _repository.createIncident(request);
@@ -141,5 +157,12 @@ class ReportIncidentViewModel extends ChangeNotifier {
   void _setLoading(bool value) {
     _isLoading = value;
     notifyListeners();
+  }
+
+  String _fileNameFromKey(String fileKey) {
+    final normalized = fileKey.replaceAll('\\', '/');
+    final segments = normalized.split('/');
+    final fileName = segments.isEmpty ? '' : segments.last.trim();
+    return fileName.isEmpty ? 'incident-image' : fileName;
   }
 }
