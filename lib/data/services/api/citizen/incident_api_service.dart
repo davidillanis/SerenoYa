@@ -3,6 +3,7 @@ import 'package:sereno_ya/data/models/auth/api_response_dto.dart';
 import 'package:sereno_ya/data/models/citizen/incident_category.dart';
 import 'package:sereno_ya/data/models/citizen/incident_create_request.dart';
 import 'package:sereno_ya/data/models/citizen/incident.dart';
+import 'package:sereno_ya/data/models/page_response.dart';
 import 'package:sereno_ya/models/auth/auth_failure.dart';
 
 class IncidentApiService {
@@ -10,73 +11,83 @@ class IncidentApiService {
 
   final Dio _dio;
 
-  Future<ApiResponseDto<List<IncidentCategory>>> getCategories() async {
+  Future<ApiResponseDto<PageResponse<IncidentCategory>>> getCategories() async {
     return _request(
-      () => _dio.get<dynamic>('/incidents/categories/list?fields=id,name,description'),
-      (value) {
-        if (value is Map && value.containsKey('content')) {
-          final content = value['content'];
-          if (content is List) {
-            return content.map((e) => IncidentCategory.fromJson(e as Map<String, dynamic>)).toList();
-          }
-        }
-        if (value is List) {
-           return value.map((e) => IncidentCategory.fromJson(e as Map<String, dynamic>)).toList();
-        }
-        return [];
-      },
+      () => _dio.get<dynamic>(
+        '/incidents/categories/list',
+        queryParameters: const {
+          'fields': 'id,name,description',
+          'page': 0,
+          'size': 100,
+          'sortBy': 'name',
+          'direction': 'ASC',
+        },
+      ),
+      (value) => PageResponse<IncidentCategory>.fromJson(
+        value,
+        IncidentCategory.fromJson,
+      ),
     );
   }
 
-  Future<ApiResponseDto<String>> createIncident(IncidentCreateRequest request) async {
+  Future<ApiResponseDto<Incident>> createIncident(
+    IncidentCreateRequest request,
+  ) async {
     return _request(
       () => _dio.post<dynamic>('/incidents/create', data: request.toJson()),
-      (value) => value?.toString() ?? 'Incidente creado',
+      (value) => Incident.fromJson(_asJsonMap(value)),
     );
   }
 
-  Future<ApiResponseDto<List<Incident>>> listIncidents({
-    String? citizenId,
+  Future<ApiResponseDto<PageResponse<Incident>>> listMyIncidents({
     String? status,
-    String? fields = 'id,status,latitude,longitude,description,referenceAddress,createdAt,category.name',
+    int page = 0,
+    int size = 100,
+    String fields =
+        'id,status,latitude,longitude,description,referenceAddress,createdAt,'
+        'acceptedAt,arrivedAt,attendedAt,cancelledAt,category.name',
   }) async {
     return _request(
       () => _dio.get<dynamic>(
-        '/incidents/list',
+        '/incidents/me/list',
         queryParameters: {
-          if (citizenId != null) 'citizenId': citizenId,
           if (status != null) 'status': status,
-          if (fields != null) 'fields': fields,
+          'fields': fields,
+          'page': page,
+          'size': size,
+          'sortBy': 'createdAt',
+          'direction': 'DESC',
         },
       ),
-      (value) {
-        if (value is Map && value.containsKey('content')) {
-          final content = value['content'];
-          if (content is List) {
-            return content.map((e) => Incident.fromJson(e as Map<String, dynamic>)).toList();
-          }
-        }
-        if (value is List) {
-          return value.map((e) => Incident.fromJson(e as Map<String, dynamic>)).toList();
-        }
-        return [];
-      },
+      (value) => PageResponse<Incident>.fromJson(value, Incident.fromJson),
     );
   }
 
-  Future<ApiResponseDto<String>> updateStatus({
+  Future<ApiResponseDto<Incident>> getIncidentById(String incidentId) async {
+    return _request(
+      () => _dio.get<dynamic>(
+        '/incidents/byId/$incidentId',
+        queryParameters: const {
+          'fields':
+              'id,status,latitude,longitude,description,referenceAddress,'
+              'createdAt,acceptedAt,arrivedAt,attendedAt,cancelledAt,'
+              'category.name',
+        },
+      ),
+      (value) => Incident.fromJson(_asJsonMap(value)),
+    );
+  }
+
+  Future<ApiResponseDto<Incident>> updateStatus({
     required String incidentId,
     required String status,
   }) async {
     return _request(
       () => _dio.put<dynamic>(
         '/incidents/update-status',
-        queryParameters: {
-          'incidentId': incidentId,
-          'status': status,
-        },
+        queryParameters: {'incidentId': incidentId, 'status': status},
       ),
-      (value) => value?.toString() ?? 'Estado actualizado',
+      (value) => Incident.fromJson(_asJsonMap(value)),
     );
   }
 
@@ -127,7 +138,7 @@ class IncidentApiService {
     final serverMessage = _extractServerMessage(body);
 
     if (statusCode == 401 || statusCode == 403) {
-       return const AuthFailure(
+      return const AuthFailure(
         AuthFailureCode.unauthorized,
         'No tienes permisos para realizar esta acción.',
       );
@@ -153,5 +164,12 @@ class IncidentApiService {
       return errors.map((error) => error.toString()).join(' ');
     }
     return body['message']?.toString() ?? '';
+  }
+
+  static Map<String, dynamic> _asJsonMap(Object? value) {
+    if (value is! Map) {
+      throw const FormatException('La API devolvió datos inválidos.');
+    }
+    return Map<String, dynamic>.from(value);
   }
 }

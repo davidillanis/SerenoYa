@@ -24,6 +24,8 @@ import 'package:sereno_ya/ui/citizen/citizen_home_screen.dart';
 import 'package:sereno_ya/ui/citizen/report_incident/report_incident_screen.dart';
 import 'package:sereno_ya/ui/citizen/report_incident/view_models/report_incident_view_model.dart';
 import 'package:sereno_ya/ui/citizen/incident_tracking/view_models/incident_tracking_view_model.dart';
+import 'package:sereno_ya/ui/citizen/incident_detail/incident_detail_screen.dart';
+import 'package:sereno_ya/ui/citizen/incident_detail/view_models/incident_detail_view_model.dart';
 import 'package:sereno_ya/ui/auth/view_models/session_view_model.dart';
 
 GoRouter createAppRouter({
@@ -137,6 +139,16 @@ GoRouter createAppRouter({
               create: (_) =>
                   ReportIncidentViewModel(incidentRepository, storageService),
               child: const ReportIncidentScreen(),
+            ),
+          ),
+          GoRoute(
+            path: 'incidents/:incidentId',
+            builder: (_, state) => ChangeNotifierProvider(
+              create: (_) => IncidentDetailViewModel(
+                incidentRepository,
+                state.pathParameters['incidentId']!,
+              ),
+              child: const IncidentDetailScreen(),
             ),
           ),
         ],

@@ -2,15 +2,15 @@ class IncidentEvidenceCreateRequest {
   const IncidentEvidenceCreateRequest({
     required this.fileUrl,
     required this.fileName,
-    required this.mimeType,
+    required this.fileType,
   });
 
   final String fileUrl;
   final String fileName;
-  final String mimeType;
+  final String fileType;
 
   Map<String, dynamic> toJson() {
-    return {'fileUrl': fileUrl, 'fileName': fileName, 'mimeType': mimeType};
+    return {'fileUrl': fileUrl, 'fileName': fileName, 'fileType': fileType};
   }
 }
 
@@ -22,7 +22,7 @@ class IncidentCreateRequest {
   final String categoryId;
   final IncidentEvidenceCreateRequest evidence;
 
-  IncidentCreateRequest({
+  const IncidentCreateRequest({
     required this.description,
     required this.latitude,
     required this.longitude,

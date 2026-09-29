@@ -26,6 +26,26 @@ void main() {
 
       expect(incident.createdAt, isNull);
     });
+
+    test('deserializa la evidencia devuelta por el backend', () {
+      final incident = Incident.fromJson({
+        ..._incidentJson(createdAt: '2026-09-28T10:00:00'),
+        'evidence': {
+          'id': 'evidence-1',
+          'fileUrl': 'https://cdn.example.com/incident.jpg',
+          'fileName': 'incident.jpg',
+          'fileType': 'image/jpeg',
+          'createdAt': '2026-09-28T10:00:01',
+        },
+      });
+
+      expect(incident.evidence?.id, 'evidence-1');
+      expect(
+        incident.evidence?.fileUrl,
+        'https://cdn.example.com/incident.jpg',
+      );
+      expect(incident.evidence?.fileType, 'image/jpeg');
+    });
   });
 }
 

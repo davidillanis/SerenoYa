@@ -12,7 +12,7 @@ void main() {
       evidence: const IncidentEvidenceCreateRequest(
         fileUrl: 'https://storage.example.com/incidents/image.jpg',
         fileName: 'image.jpg',
-        mimeType: 'image/jpeg',
+        fileType: 'image/jpeg',
       ),
     );
 
@@ -25,7 +25,7 @@ void main() {
       'evidence': {
         'fileUrl': 'https://storage.example.com/incidents/image.jpg',
         'fileName': 'image.jpg',
-        'mimeType': 'image/jpeg',
+        'fileType': 'image/jpeg',
       },
     });
   });

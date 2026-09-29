@@ -136,7 +136,7 @@ class ReportIncidentViewModel extends ChangeNotifier {
       evidence: IncidentEvidenceCreateRequest(
         fileUrl: _uploadedImage!.publicUrl,
         fileName: _fileNameFromKey(_uploadedImage!.fileKey),
-        mimeType: _uploadedImage!.contentType,
+        fileType: _uploadedImage!.contentType,
       ),
     );
 

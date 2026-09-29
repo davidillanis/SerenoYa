@@ -7,8 +7,8 @@ class IncidentTrackingViewModel extends ChangeNotifier {
   IncidentTrackingViewModel({
     required IncidentRepository repository,
     required AuthSession? session,
-  })  : _repository = repository,
-        _session = session {
+  }) : _repository = repository,
+       _session = session {
     loadActiveIncidents();
   }
 
@@ -29,27 +29,20 @@ class IncidentTrackingViewModel extends ChangeNotifier {
       notifyListeners();
       return;
     }
-    
+
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
 
-    // El usuario nos indica que usemos el ID del usuario del token
-    final citizenId = _session.user.id;
-    if (citizenId.isEmpty) {
-      _errorMessage = 'No se encontró el ID de usuario en la sesión';
-      _isLoading = false;
-      notifyListeners();
-      return;
-    }
-    
-    final result = await _repository.listIncidents(citizenId: citizenId);
+    final result = await _repository.listMyIncidents();
 
     if (result.isSuccess && result.data != null) {
       // Filtrar incidencias activas en caso de que el backend retorne todas
       final activeStatuses = ['REQUESTED', 'ACCEPTED', 'ON_SITE'];
-      _incidents = result.data!.where((i) => activeStatuses.contains(i.status)).toList();
-      
+      _incidents = result.data!
+          .where((i) => activeStatuses.contains(i.status))
+          .toList();
+
       // Ordenar por las más recientes primero
       _incidents.sort((a, b) {
         if (a.createdAt == null || b.createdAt == null) return 0;
@@ -75,7 +68,8 @@ class IncidentTrackingViewModel extends ChangeNotifier {
       await loadActiveIncidents();
     } else {
       _isLoading = false;
-      _errorMessage = result.failure?.message ?? 'No se pudo cancelar la incidencia';
+      _errorMessage =
+          result.failure?.message ?? 'No se pudo cancelar la incidencia';
       notifyListeners();
     }
   }

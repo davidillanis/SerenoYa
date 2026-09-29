@@ -11,4 +11,7 @@ abstract final class RouteNames {
   static const unauthorized = '/unauthorized';
   static const reportIncident = '/citizen/report';
   static const profile = '/profile';
+
+  static String incidentDetail(String incidentId) =>
+      '/citizen/incidents/$incidentId';
 }

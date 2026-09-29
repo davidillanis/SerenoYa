@@ -61,6 +61,44 @@ void main() {
       },
     );
   });
+
+  test('registra ciudadanos con el endpoint y contrato actuales', () async {
+    late RequestOptions capturedRequest;
+    final dio = Dio(BaseOptions(baseUrl: 'http://localhost/api/v1'));
+    dio.interceptors.add(
+      InterceptorsWrapper(
+        onRequest: (options, handler) {
+          capturedRequest = options;
+          handler.resolve(
+            Response<dynamic>(
+              requestOptions: options,
+              statusCode: 201,
+              data: {
+                'isSuccess': true,
+                'message': 'Successful operation',
+                'errors': null,
+                'data': 'user created successfully',
+              },
+            ),
+          );
+        },
+      ),
+    );
+
+    final response = await AuthApiService(dio).registerCitizen(
+      firstName: 'Ana',
+      lastName: 'Quispe',
+      dni: '12345678',
+      phone: '987654321',
+      address: 'San Jerónimo',
+      email: 'ana@example.com',
+      password: 'secret1',
+    );
+
+    expect(response.isSuccess, isTrue);
+    expect(capturedRequest.path, '/user-role/create-citizen');
+    expect(capturedRequest.data, isNot(contains('roles')));
+  });
 }
 
 AuthApiService _serviceThatRejects({

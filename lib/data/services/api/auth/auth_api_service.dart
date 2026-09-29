@@ -86,7 +86,7 @@ class AuthApiService {
     required String password,
   }) => _request(
     () => _dio.post<dynamic>(
-      '/user-role/create-customer',
+      '/user-role/create-citizen',
       data: {
         'name': firstName,
         'lastName': lastName,
@@ -96,7 +96,6 @@ class AuthApiService {
         'imageUrl': '',
         'email': email,
         'password': password,
-        'roles': ['CLIENTE'],
       },
       options: _publicOptions,
     ),

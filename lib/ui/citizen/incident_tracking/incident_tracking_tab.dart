@@ -4,6 +4,9 @@ import 'package:provider/provider.dart';
 import 'package:sereno_ya/ui/citizen/incident_tracking/view_models/incident_tracking_view_model.dart';
 import 'package:sereno_ya/data/models/citizen/incident.dart';
 import 'package:intl/intl.dart';
+import 'package:go_router/go_router.dart';
+import 'package:sereno_ya/routing/route_names.dart';
+import 'package:sereno_ya/ui/citizen/incident_tracking/widgets/incident_status_badge.dart';
 
 class IncidentTrackingTab extends StatelessWidget {
   const IncidentTrackingTab({super.key});
@@ -30,6 +33,9 @@ class IncidentTrackingTab extends StatelessWidget {
                         final incident = viewModel.incidents[index];
                         return _IncidentCard(
                           incident: incident,
+                          onOpen: () => context.push(
+                            RouteNames.incidentDetail(incident.id),
+                          ),
                           onCancel: () =>
                               _confirmCancel(context, viewModel, incident),
                         );
@@ -138,9 +144,14 @@ class IncidentTrackingTab extends StatelessWidget {
 }
 
 class _IncidentCard extends StatelessWidget {
-  const _IncidentCard({required this.incident, required this.onCancel});
+  const _IncidentCard({
+    required this.incident,
+    required this.onOpen,
+    required this.onCancel,
+  });
 
   final Incident incident;
+  final VoidCallback onOpen;
   final VoidCallback onCancel;
 
   @override
@@ -149,172 +160,124 @@ class _IncidentCard extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 16),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       elevation: 2,
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                _buildStatusChip(context),
-                Text(
-                  incident.createdAt != null
-                      ? DateFormat('dd/MM HH:mm').format(incident.createdAt!)
-                      : '',
-                  style: TextStyle(
-                    color: context.appColors.textTertiary,
-                    fontSize: 12,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: context.appColors.infoLight,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Icon(
-                    Icons.report_problem,
-                    color: context.appColors.info,
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        incident.category?.name ?? 'Incidencia',
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        incident.description.isNotEmpty
-                            ? incident.description
-                            : 'Sin descripción',
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: context.appColors.textSecondary,
-                          fontSize: 14,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                Icon(
-                  Icons.location_on_outlined,
-                  size: 16,
-                  color: context.appColors.textSecondary,
-                ),
-                const SizedBox(width: 4),
-                Expanded(
-                  child: Text(
-                    incident.referenceAddress?.isNotEmpty == true
-                        ? incident.referenceAddress!
-                        : 'Ubicación enviada por GPS',
-                    style: TextStyle(
-                      color: context.appColors.textSecondary,
-                      fontSize: 12,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ],
-            ),
-            const Divider(height: 32),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                if (incident.status == 'REQUESTED' ||
-                    incident.status == 'ACCEPTED')
-                  TextButton.icon(
-                    onPressed: onCancel,
-                    icon: const Icon(Icons.cancel_outlined, size: 18),
-                    label: const Text('Cancelar'),
-                    style: TextButton.styleFrom(
-                      foregroundColor: context.appColors.error,
-                    ),
-                  )
-                else
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onOpen,
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  IncidentStatusBadge(status: incident.status),
                   Text(
-                    'El sereno ya está en el lugar',
+                    incident.createdAt != null
+                        ? DateFormat('dd/MM HH:mm').format(incident.createdAt!)
+                        : '',
                     style: TextStyle(
-                      color: context.appColors.success,
+                      color: context.appColors.textTertiary,
                       fontSize: 12,
-                      fontWeight: FontWeight.bold,
                     ),
                   ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildStatusChip(BuildContext context) {
-    Color color;
-    String label;
-    IconData icon;
-
-    switch (incident.status) {
-      case 'REQUESTED':
-        color = context.appColors.warning;
-        label = 'Solicitada';
-        icon = Icons.access_time;
-        break;
-      case 'ACCEPTED':
-        color = context.appColors.info;
-        label = 'Aceptada (Sereno en camino)';
-        icon = Icons.directions_run;
-        break;
-      case 'ON_SITE':
-        color = context.appColors.success;
-        label = 'Sereno en el lugar';
-        icon = Icons.where_to_vote;
-        break;
-      default:
-        color = context.appColors.textSecondary;
-        label = incident.status;
-        icon = Icons.info_outline;
-    }
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: color.withAlpha(25),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: color.withAlpha(100)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 14, color: color),
-          const SizedBox(width: 6),
-          Text(
-            label,
-            style: TextStyle(
-              color: color,
-              fontSize: 12,
-              fontWeight: FontWeight.bold,
-            ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: context.appColors.infoLight,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(
+                      Icons.report_problem,
+                      color: context.appColors.info,
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          incident.category?.name ?? 'Incidencia',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          incident.description.isNotEmpty
+                              ? incident.description
+                              : 'Sin descripción',
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: context.appColors.textSecondary,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Icon(
+                    Icons.location_on_outlined,
+                    size: 16,
+                    color: context.appColors.textSecondary,
+                  ),
+                  const SizedBox(width: 4),
+                  Expanded(
+                    child: Text(
+                      incident.referenceAddress?.isNotEmpty == true
+                          ? incident.referenceAddress!
+                          : 'Ubicación enviada por GPS',
+                      style: TextStyle(
+                        color: context.appColors.textSecondary,
+                        fontSize: 12,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+              const Divider(height: 32),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  if (incident.status == 'REQUESTED' ||
+                      incident.status == 'ACCEPTED')
+                    TextButton.icon(
+                      onPressed: onCancel,
+                      icon: const Icon(Icons.cancel_outlined, size: 18),
+                      label: const Text('Cancelar'),
+                      style: TextButton.styleFrom(
+                        foregroundColor: context.appColors.error,
+                      ),
+                    )
+                  else
+                    Text(
+                      'El sereno ya está en el lugar',
+                      style: TextStyle(
+                        color: context.appColors.success,
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                ],
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
