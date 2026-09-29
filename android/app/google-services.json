@@ -1,0 +1,54 @@
+{
+  "project_info": {
+    "project_number": "357048757419",
+    "project_id": "sereno-ya",
+    "storage_bucket": "sereno-ya.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:357048757419:android:82d41e9bc581ac5ade1bee",
+        "android_client_info": {
+          "package_name": "com.example.sereno_ya"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "357048757419-uikq8duo22h3ebhdr8fr1j4hn7cn5r27.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.sereno_ya",
+            "certificate_hash": "5e1412d035366d550a6fa7f48d17857d2d229d8f"
+          }
+        },
+        {
+          "client_id": "357048757419-fansuphqjhufru9ugk6937uk3kr3ov7l.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDnm0evY5D2J910hIFo3PyKBEa8G4dBoos"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "357048757419-fansuphqjhufru9ugk6937uk3kr3ov7l.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "357048757419-tjlq0o78h9t29oore77mk3rh9arnd82e.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.serenoYa"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

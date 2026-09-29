@@ -1,0 +1,25 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "SerenoYa Android",
+      "request": "launch",
+      "type": "flutter",
+      "program": "lib/main.dart",
+      "args": [
+        "--dart-define=GOOGLE_SERVER_CLIENT_ID=357048757419-fansuphqjhufru9ugk6937uk3kr3ov7l.apps.googleusercontent.com"
+      ]
+    },
+    {
+      "name": "SerenoYa Web",
+      "request": "launch",
+      "type": "flutter",
+      "program": "lib/main.dart",
+      "args": [
+        "--dart-define=GOOGLE_SERVER_CLIENT_ID=357048757419-fansuphqjhufru9ugk6937uk3kr3ov7l.apps.googleusercontent.com",
+        "-d",
+        "chrome"
+      ]
+    }
+  ]
+}
