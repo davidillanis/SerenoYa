@@ -1,12 +1,10 @@
 import 'package:sereno_ya/ui/core/theme/colors.dart';
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import 'package:sereno_ya/ui/core/widgets/app_drawer.dart';
 
 import 'package:sereno_ya/ui/citizen/home/citizen_home_tab.dart';
 import 'package:sereno_ya/ui/citizen/incident_history/incident_history_tab.dart';
 import 'package:sereno_ya/ui/citizen/incident_tracking/incident_tracking_tab.dart';
-import 'package:sereno_ya/ui/citizen/incident_tracking/view_models/incident_tracking_view_model.dart';
 
 class CitizenHomeScreen extends StatefulWidget {
   const CitizenHomeScreen({super.key});
@@ -43,9 +41,6 @@ class _CitizenHomeScreenState extends State<CitizenHomeScreen> {
           setState(() {
             _currentIndex = index;
           });
-          if (index == 1) {
-            context.read<IncidentTrackingViewModel>().loadActiveIncidents();
-          }
         },
         selectedItemColor: context.appColors.tabIconSelected,
         unselectedItemColor: context.appColors.tabIconDefault,

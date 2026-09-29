@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:dio/dio.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -9,6 +10,8 @@ import 'package:sereno_ya/ui/core/theme/mapped_palette.dart';
 import 'package:sereno_ya/ui/core/theme/theme_controller.dart';
 import 'package:sereno_ya/ui/core/widgets/app_drawer.dart';
 import 'package:sereno_ya/ui/profile/profile_screen.dart';
+import 'package:sereno_ya/data/services/api/profile/profile_api_service.dart';
+import 'package:sereno_ya/ui/profile/view_models/profile_view_model.dart';
 
 import 'auth_view_models_test.dart' show RecordingAuthRepository;
 
@@ -32,7 +35,14 @@ void main() {
           ),
           GoRoute(
             path: RouteNames.profile,
-            builder: (_, _) => const ProfileScreen(),
+            builder: (_, _) => ChangeNotifierProvider(
+              create: (_) => ProfileViewModel(
+                ProfileApiService(_profileDio()),
+                userId: 'user-1',
+                includeCitizenProfile: false,
+              ),
+              child: const ProfileScreen(),
+            ),
           ),
         ],
       );
@@ -66,6 +76,18 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.byType(ProfileScreen), findsOneWidget);
       expect(find.text('Cambiar tema'), findsOneWidget);
+      expect(find.text('Datos personales'), findsOneWidget);
+      await tester.tap(find.text('Editar perfil'));
+      await tester.pumpAndSettle();
+      expect(find.text('Guardar cambios'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+      final sheetTitle = find.descendant(
+        of: find.byType(BottomSheet),
+        matching: find.text('Editar perfil'),
+      );
+      Navigator.of(tester.element(sheetTitle)).pop();
+      await tester.pumpAndSettle();
+      await tester.scrollUntilVisible(find.text('Pink (rosa)'), 200);
       await tester.tap(find.text('Pink (rosa)'));
       await tester.pumpAndSettle();
       expect(controller.variant, ThemeVariant.pink);
@@ -87,4 +109,37 @@ void main() {
       await tester.pumpWidget(const SizedBox.shrink());
     });
   }
+}
+
+Dio _profileDio() {
+  final dio = Dio(BaseOptions(baseUrl: 'http://localhost/api/v1'));
+  dio.interceptors.add(
+    InterceptorsWrapper(
+      onRequest: (options, handler) {
+        handler.resolve(
+          Response<dynamic>(
+            requestOptions: options,
+            statusCode: 200,
+            data: {
+              'isSuccess': true,
+              'message': 'Successful operation',
+              'errors': null,
+              'data': {
+                'id': 'user-1',
+                'name': 'Ana',
+                'lastName': 'Quispe',
+                'email': 'ana@example.com',
+                'dni': '12345678',
+                'phone': '987654321',
+                'address': 'San Jerónimo',
+                'enabled': true,
+                'emailVerified': true,
+              },
+            },
+          ),
+        );
+      },
+    ),
+  );
+  return dio;
 }

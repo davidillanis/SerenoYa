@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:sereno_ya/data/repositories/auth/auth_repository.dart';
 import 'package:sereno_ya/data/services/api/file/image_api_service.dart';
+import 'package:sereno_ya/data/services/api/profile/profile_api_service.dart';
 import 'package:sereno_ya/models/auth/auth_state.dart';
 import 'package:sereno_ya/routing/auth_router_notifier.dart';
 import 'package:sereno_ya/routing/role_route_resolver.dart';
@@ -19,6 +20,7 @@ import 'package:sereno_ya/ui/auth/view_models/reset_password_view_model.dart';
 import 'package:sereno_ya/ui/core/role_home_screen.dart';
 import 'package:sereno_ya/ui/core/unauthorized_screen.dart';
 import 'package:sereno_ya/ui/profile/profile_screen.dart';
+import 'package:sereno_ya/ui/profile/view_models/profile_view_model.dart';
 import 'package:sereno_ya/data/repositories/citizen/incident_repository.dart';
 import 'package:sereno_ya/ui/citizen/citizen_home_screen.dart';
 import 'package:sereno_ya/ui/citizen/report_incident/report_incident_screen.dart';
@@ -27,11 +29,13 @@ import 'package:sereno_ya/ui/citizen/incident_tracking/view_models/incident_trac
 import 'package:sereno_ya/ui/citizen/incident_detail/incident_detail_screen.dart';
 import 'package:sereno_ya/ui/citizen/incident_detail/view_models/incident_detail_view_model.dart';
 import 'package:sereno_ya/ui/auth/view_models/session_view_model.dart';
+import 'package:sereno_ya/models/auth/user_role.dart';
 
 GoRouter createAppRouter({
   required AuthRepository authRepository,
   required IncidentRepository incidentRepository,
   required StorageService storageService,
+  required ProfileApiService profileApiService,
   required AuthRouterNotifier routerNotifier,
 }) {
   const publicRoutes = {
@@ -83,7 +87,23 @@ GoRouter createAppRouter({
     routes: [
       GoRoute(
         path: RouteNames.profile,
-        builder: (_, _) => const ProfileScreen(),
+        builder: (context, _) => ChangeNotifierProvider(
+          create: (_) => ProfileViewModel(
+            profileApiService,
+            userId:
+                context.read<SessionViewModel>().state.session?.user.id ?? '',
+            includeCitizenProfile:
+                context
+                    .read<SessionViewModel>()
+                    .state
+                    .session
+                    ?.user
+                    .roles
+                    .contains(UserRole.citizen) ==
+                true,
+          ),
+          child: const ProfileScreen(),
+        ),
       ),
       GoRoute(
         path: RouteNames.splash,
