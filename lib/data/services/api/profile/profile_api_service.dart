@@ -16,6 +16,14 @@ class ProfileApiService {
   UserProfile? get cachedUserProfile => _cachedUserProfile;
   CitizenProfile? get cachedCitizenProfile => _cachedCitizenProfile;
 
+  void cacheUserProfile(UserProfile profile) {
+    _cachedUserProfile = profile;
+  }
+
+  void cacheCitizenProfile(CitizenProfile profile) {
+    _cachedCitizenProfile = profile;
+  }
+
   void useCacheForUser(String userId) {
     if (_cacheOwnerId == userId) return;
     _cacheOwnerId = userId;

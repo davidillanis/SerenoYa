@@ -40,8 +40,10 @@ class ProfileViewModel extends ChangeNotifier {
 
   String? _successMessage;
   String? get successMessage => _successMessage;
+  bool _disposed = false;
 
   Future<void> load({bool forceRefresh = false}) async {
+    if (_isLoading) return;
     final hasCompleteCache =
         _userProfile != null &&
         (!includeCitizenProfile || _citizenProfile != null);
@@ -50,7 +52,7 @@ class ProfileViewModel extends ChangeNotifier {
     _isLoading = true;
     _errorMessage = null;
     _successMessage = null;
-    notifyListeners();
+    _notifyListeners();
 
     try {
       final responses = await Future.wait<Object>([
@@ -82,7 +84,7 @@ class ProfileViewModel extends ChangeNotifier {
       _errorMessage = 'No se pudo cargar el perfil.';
     } finally {
       _isLoading = false;
-      notifyListeners();
+      _notifyListeners();
     }
   }
 
@@ -90,7 +92,7 @@ class ProfileViewModel extends ChangeNotifier {
     if (_errorMessage == null && _successMessage == null) return;
     _errorMessage = null;
     _successMessage = null;
-    notifyListeners();
+    _notifyListeners();
   }
 
   Future<bool> save({
@@ -117,7 +119,7 @@ class ProfileViewModel extends ChangeNotifier {
     if (validationError != null) {
       _errorMessage = validationError;
       _successMessage = null;
-      notifyListeners();
+      _notifyListeners();
       return false;
     }
 
@@ -128,7 +130,7 @@ class ProfileViewModel extends ChangeNotifier {
       if (coordinateResult.error != null) {
         _errorMessage = coordinateResult.error;
         _successMessage = null;
-        notifyListeners();
+        _notifyListeners();
         return false;
       }
       latitude = coordinateResult.latitude;
@@ -151,45 +153,49 @@ class ProfileViewModel extends ChangeNotifier {
     if (!userChanged && !citizenChanged) {
       _errorMessage = null;
       _successMessage = 'No hay cambios para guardar.';
-      notifyListeners();
+      _notifyListeners();
       return true;
     }
 
     _isSaving = true;
     _errorMessage = null;
     _successMessage = null;
-    notifyListeners();
+    _notifyListeners();
 
     try {
-      final updates = <Future<void>>[];
       if (userChanged) {
-        updates.add(
-          _updateUser(
-            UserProfileUpdateRequest(
-              name: normalizedName,
-              lastName: normalizedLastName,
-              phone: normalizedPhone,
-              address: normalizedAddress,
-            ),
+        await _updateUser(
+          UserProfileUpdateRequest(
+            name: normalizedName,
+            lastName: normalizedLastName,
+            phone: normalizedPhone,
+            address: normalizedAddress,
           ),
         );
+        _userProfile = currentUser.copyWith(
+          name: normalizedName,
+          lastName: normalizedLastName,
+          phone: normalizedPhone,
+          address: normalizedAddress,
+        );
+        _service.cacheUserProfile(_userProfile!);
       }
       if (citizenChanged) {
-        updates.add(
-          _updateCitizen(
-            CitizenProfileUpdateRequest(
-              homeLatitude: latitude,
-              homeLongitude: longitude,
-            ),
+        await _updateCitizen(
+          CitizenProfileUpdateRequest(
+            homeLatitude: latitude,
+            homeLongitude: longitude,
           ),
         );
+        _citizenProfile = currentCitizen!.copyWith(
+          homeLatitude: latitude,
+          homeLongitude: longitude,
+        );
+        _service.cacheCitizenProfile(_citizenProfile!);
       }
 
-      await Future.wait(updates);
-      await load(forceRefresh: true);
-      if (_errorMessage != null) return false;
       _successMessage = 'Perfil actualizado correctamente.';
-      notifyListeners();
+      _notifyListeners();
       return true;
     } on AuthFailure catch (failure) {
       _errorMessage = failure.message;
@@ -199,7 +205,7 @@ class ProfileViewModel extends ChangeNotifier {
       return false;
     } finally {
       _isSaving = false;
-      notifyListeners();
+      _notifyListeners();
     }
   }
 
@@ -215,6 +221,16 @@ class ProfileViewModel extends ChangeNotifier {
     if (!response.isSuccess) {
       throw AuthFailure(AuthFailureCode.validation, response.errorMessage);
     }
+  }
+
+  void _notifyListeners() {
+    if (!_disposed) notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    _disposed = true;
+    super.dispose();
   }
 
   String? _validateUserFields({

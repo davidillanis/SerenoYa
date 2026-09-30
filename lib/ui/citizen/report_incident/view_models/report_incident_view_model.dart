@@ -38,13 +38,15 @@ class ReportIncidentViewModel extends ChangeNotifier {
 
   File? _selectedImage;
   File? get selectedImage => _selectedImage;
+  bool _disposed = false;
 
   void setSelectedCategory(IncidentCategory? category) {
     _selectedCategory = category;
-    notifyListeners();
+    _notifyListeners();
   }
 
   Future<void> pickImage(ImageSource source) async {
+    if (_isSubmitting || _isUploadingImage) return;
     final picker = ImagePicker();
     final pickedFile = await picker.pickImage(
       source: source,
@@ -56,38 +58,15 @@ class ReportIncidentViewModel extends ChangeNotifier {
     if (pickedFile != null) {
       _selectedImage = File(pickedFile.path);
       _uploadedImage = null;
-      notifyListeners();
-      await _uploadImage();
-    }
-  }
-
-  Future<void> _uploadImage() async {
-    if (_selectedImage == null) return;
-
-    _isUploadingImage = true;
-    _errorMessage = null;
-    notifyListeners();
-
-    try {
-      _uploadedImage = await _storageService.uploadImage(
-        file: _selectedImage!,
-        folder: 'INCIDENTS',
-      );
       _errorMessage = null;
-    } catch (e) {
-      _errorMessage = 'Error al subir imagen: ${e.toString()}';
-      _selectedImage = null;
-      _uploadedImage = null;
-    } finally {
-      _isUploadingImage = false;
-      notifyListeners();
+      _notifyListeners();
     }
   }
 
   void removeImage() {
     _selectedImage = null;
     _uploadedImage = null;
-    notifyListeners();
+    _notifyListeners();
   }
 
   Future<void> _loadCategories() async {
@@ -106,57 +85,67 @@ class ReportIncidentViewModel extends ChangeNotifier {
     required String description,
     required String referenceAddress,
   }) async {
+    if (_isSubmitting) return false;
     if (_selectedCategory == null) {
       _errorMessage = 'Por favor selecciona una categoría';
-      notifyListeners();
+      _notifyListeners();
       return false;
     }
-    if (_isUploadingImage) {
-      _errorMessage = 'Espera a que termine de subir la imagen';
-      notifyListeners();
-      return false;
-    }
-    if (_uploadedImage == null) {
+    if (_selectedImage == null && _uploadedImage == null) {
       _errorMessage = 'Agrega una imagen como evidencia';
-      notifyListeners();
+      _notifyListeners();
       return false;
     }
 
     _isSubmitting = true;
     _errorMessage = null;
-    notifyListeners();
+    _notifyListeners();
 
-    // Usando coordenadas mockeadas para el ejemplo (centro de Lima)
-    final request = IncidentCreateRequest(
-      description: description,
-      referenceAddress: referenceAddress,
-      latitude: -12.046374,
-      longitude: -77.042793,
-      categoryId: _selectedCategory!.id,
-      evidence: IncidentEvidenceCreateRequest(
-        fileUrl: _uploadedImage!.publicUrl,
-        fileName: _fileNameFromKey(_uploadedImage!.fileKey),
-        fileType: _uploadedImage!.contentType,
-      ),
-    );
+    try {
+      if (_uploadedImage == null) {
+        _isUploadingImage = true;
+        _notifyListeners();
+        _uploadedImage = await _storageService.uploadImage(
+          file: _selectedImage!,
+          folder: 'INCIDENTS',
+        );
+        _isUploadingImage = false;
+        _notifyListeners();
+      }
 
-    final result = await _repository.createIncident(request);
+      // Coordenadas temporales hasta implementar la ubicación del dispositivo.
+      final request = IncidentCreateRequest(
+        description: description,
+        referenceAddress: referenceAddress,
+        latitude: -12.046374,
+        longitude: -77.042793,
+        categoryId: _selectedCategory!.id,
+        evidence: IncidentEvidenceCreateRequest(
+          fileUrl: _uploadedImage!.publicUrl,
+          fileName: _fileNameFromKey(_uploadedImage!.fileKey),
+          fileType: _uploadedImage!.contentType,
+        ),
+      );
 
-    _isSubmitting = false;
-    if (result.isSuccess) {
-      notifyListeners();
-      return true;
-    } else {
+      final result = await _repository.createIncident(request);
+      if (result.isSuccess) return true;
+
       _errorMessage =
           result.failure?.message ?? 'Error al reportar el incidente';
-      notifyListeners();
       return false;
+    } catch (error) {
+      _errorMessage = 'Error al subir imagen: $error';
+      return false;
+    } finally {
+      _isUploadingImage = false;
+      _isSubmitting = false;
+      _notifyListeners();
     }
   }
 
   void _setLoading(bool value) {
     _isLoading = value;
-    notifyListeners();
+    _notifyListeners();
   }
 
   String _fileNameFromKey(String fileKey) {
@@ -164,5 +153,15 @@ class ReportIncidentViewModel extends ChangeNotifier {
     final segments = normalized.split('/');
     final fileName = segments.isEmpty ? '' : segments.last.trim();
     return fileName.isEmpty ? 'incident-image' : fileName;
+  }
+
+  void _notifyListeners() {
+    if (!_disposed) notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    _disposed = true;
+    super.dispose();
   }
 }

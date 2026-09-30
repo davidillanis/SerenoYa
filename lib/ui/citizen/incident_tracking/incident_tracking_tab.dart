@@ -20,7 +20,8 @@ class IncidentTrackingTab extends StatelessWidget {
       body: viewModel.isLoading && viewModel.incidents.isEmpty
           ? const Center(child: CircularProgressIndicator())
           : RefreshIndicator(
-              onRefresh: viewModel.loadActiveIncidents,
+              onRefresh: () =>
+                  viewModel.loadActiveIncidents(forceRefresh: true),
               child:
                   viewModel.errorMessage != null && viewModel.incidents.isEmpty
                   ? _buildErrorState(context, viewModel.errorMessage!)
@@ -92,7 +93,7 @@ class IncidentTrackingTab extends StatelessWidget {
             ElevatedButton(
               onPressed: () => context
                   .read<IncidentTrackingViewModel>()
-                  .loadActiveIncidents(),
+                  .loadActiveIncidents(forceRefresh: true),
               child: const Text('Reintentar'),
             ),
           ],

@@ -9,7 +9,16 @@ class IncidentTrackingViewModel extends ChangeNotifier {
     required AuthSession? session,
   }) : _repository = repository,
        _session = session {
-    loadActiveIncidents();
+    final userId = session?.user.id;
+    if (userId != null) {
+      _repository.useCacheForUser(userId);
+    }
+    final cachedIncidents = _repository.getCachedRequestedIncidents();
+    if (cachedIncidents == null) {
+      loadActiveIncidents();
+    } else {
+      _incidents = cachedIncidents;
+    }
   }
 
   final IncidentRepository _repository;
@@ -22,55 +31,72 @@ class IncidentTrackingViewModel extends ChangeNotifier {
   List<Incident> get incidents => _incidents;
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
+  bool _disposed = false;
 
-  Future<void> loadActiveIncidents() async {
+  Future<void> loadActiveIncidents({bool forceRefresh = false}) async {
+    if (_isLoading) return;
     if (_session == null) {
       _errorMessage = 'No hay sesión activa';
-      notifyListeners();
+      _notifyListeners();
       return;
     }
 
     _isLoading = true;
     _errorMessage = null;
-    notifyListeners();
+    _notifyListeners();
 
-    final result = await _repository.listMyIncidents();
+    final result = await _repository.listMyIncidents(
+      status: 'REQUESTED',
+      forceRefresh: forceRefresh,
+    );
 
     if (result.isSuccess && result.data != null) {
-      // Filtrar incidencias activas en caso de que el backend retorne todas
-      final activeStatuses = ['REQUESTED', 'ACCEPTED', 'ON_SITE'];
-      _incidents = result.data!
-          .where((i) => activeStatuses.contains(i.status))
-          .toList();
-
-      // Ordenar por las más recientes primero
-      _incidents.sort((a, b) {
-        if (a.createdAt == null || b.createdAt == null) return 0;
-        return b.createdAt!.compareTo(a.createdAt!);
-      });
+      _incidents = result.data!;
     } else {
       _errorMessage = result.failure?.message ?? 'Error al cargar incidencias';
     }
 
     _isLoading = false;
-    notifyListeners();
+    _notifyListeners();
+  }
+
+  void syncFromCache() {
+    final cachedIncidents = _repository.getCachedRequestedIncidents();
+    if (cachedIncidents == null) return;
+    _incidents = cachedIncidents;
+    _errorMessage = null;
+    _notifyListeners();
   }
 
   Future<void> cancelIncident(String incidentId) async {
+    if (_isLoading) return;
     _isLoading = true;
     _errorMessage = null;
-    notifyListeners();
+    _notifyListeners();
 
     final result = await _repository.cancelIncident(incidentId);
 
     if (result.isSuccess) {
-      // Recargar lista después de cancelar
-      await loadActiveIncidents();
+      _incidents = _incidents
+          .where((incident) => incident.id != incidentId)
+          .toList(growable: false);
+      _isLoading = false;
+      _notifyListeners();
     } else {
       _isLoading = false;
       _errorMessage =
           result.failure?.message ?? 'No se pudo cancelar la incidencia';
-      notifyListeners();
+      _notifyListeners();
     }
+  }
+
+  void _notifyListeners() {
+    if (!_disposed) notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    _disposed = true;
+    super.dispose();
   }
 }

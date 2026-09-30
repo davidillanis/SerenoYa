@@ -18,35 +18,62 @@ class IncidentRepository {
   final IncidentLocalDataSource _localDataSource;
 
   List<IncidentCategory>? _cachedCategories;
+  Future<Result<List<IncidentCategory>>>? _categoriesRequest;
+  String? _cacheOwnerId;
+  List<Incident>? _cachedRequestedIncidents;
   final Map<String, Incident> _incidentDetailCache = {};
+  final Map<String, Future<Result<Incident>>> _incidentDetailRequests = {};
+  Future<Result<List<Incident>>>? _requestedIncidentsRequest;
+
+  void useCacheForUser(String userId) {
+    if (_cacheOwnerId == userId) return;
+    _cacheOwnerId = userId;
+    _cachedRequestedIncidents = null;
+    _incidentDetailCache.clear();
+    _incidentDetailRequests.clear();
+    _requestedIncidentsRequest = null;
+  }
+
+  List<Incident>? getCachedRequestedIncidents() {
+    final incidents = _cachedRequestedIncidents;
+    return incidents == null ? null : List<Incident>.unmodifiable(incidents);
+  }
 
   Incident? getCachedIncidentById(String incidentId) {
     return _incidentDetailCache[incidentId];
   }
 
   Future<Result<List<IncidentCategory>>> getCategories() async {
-    // 1. Memory Cache
     if (_cachedCategories != null) {
       return Result.success(_cachedCategories!);
     }
 
-    // 2. Local Storage Cache (SharedPreferences)
+    final pendingRequest = _categoriesRequest;
+    if (pendingRequest != null) return pendingRequest;
+
+    final request = _loadCategories();
+    _categoriesRequest = request;
+    try {
+      return await request;
+    } finally {
+      if (identical(_categoriesRequest, request)) {
+        _categoriesRequest = null;
+      }
+    }
+  }
+
+  Future<Result<List<IncidentCategory>>> _loadCategories() async {
     final localData = await _localDataSource.getCachedCategories();
     if (localData != null && localData.isNotEmpty) {
       _cachedCategories = localData;
-
-      // Opcional: Refrescar silenciosamente en background si lo deseas
       _refreshCategoriesFromApiQuietly();
-
       return Result.success(localData);
     }
 
-    // 3. Remote Data Source (API)
     try {
       final response = await _apiService.getCategories();
       if (response.isSuccess && response.data != null) {
         _cachedCategories = response.data!.content;
-        // Guardamos en la caché local
         await _localDataSource.cacheCategories(response.data!.content);
         return Result.success(_cachedCategories!);
       }
@@ -73,10 +100,20 @@ class IncidentRepository {
   }
 
   Future<Result<Incident>> createIncident(IncidentCreateRequest request) async {
+    final cacheOwnerId = _cacheOwnerId;
     try {
       final response = await _apiService.createIncident(request);
       if (response.isSuccess && response.data != null) {
-        return Result.success(response.data!);
+        final incident = response.data!;
+        if (_cacheOwnerId == cacheOwnerId) {
+          _incidentDetailCache[incident.id] = incident;
+          final requestedIncidents = _cachedRequestedIncidents;
+          if (incident.status == 'REQUESTED' && requestedIncidents != null) {
+            requestedIncidents.removeWhere((item) => item.id == incident.id);
+            requestedIncidents.insert(0, incident);
+          }
+        }
+        return Result.success(incident);
       }
       return Result.failure(
         AuthFailure(AuthFailureCode.server, response.errorMessage),
@@ -88,7 +125,45 @@ class IncidentRepository {
     }
   }
 
-  Future<Result<List<Incident>>> listMyIncidents({String? status}) async {
+  Future<Result<List<Incident>>> listMyIncidents({
+    String? status,
+    bool forceRefresh = false,
+  }) async {
+    if (status == 'REQUESTED') {
+      final cachedIncidents = _cachedRequestedIncidents;
+      if (!forceRefresh && cachedIncidents != null) {
+        return Result.success(List<Incident>.unmodifiable(cachedIncidents));
+      }
+
+      final pendingRequest = _requestedIncidentsRequest;
+      if (pendingRequest != null) return pendingRequest;
+
+      final cacheOwnerId = _cacheOwnerId;
+      final request = _fetchMyIncidents(status: status).then((result) {
+        if (_cacheOwnerId == cacheOwnerId &&
+            result.isSuccess &&
+            result.data != null) {
+          _cachedRequestedIncidents = List<Incident>.of(result.data!);
+          return Result.success(
+            List<Incident>.unmodifiable(_cachedRequestedIncidents!),
+          );
+        }
+        return result;
+      });
+      _requestedIncidentsRequest = request;
+      try {
+        return await request;
+      } finally {
+        if (identical(_requestedIncidentsRequest, request)) {
+          _requestedIncidentsRequest = null;
+        }
+      }
+    }
+
+    return _fetchMyIncidents(status: status);
+  }
+
+  Future<Result<List<Incident>>> _fetchMyIncidents({String? status}) async {
     try {
       const pageSize = 100;
       final incidents = <Incident>[];
@@ -129,11 +204,32 @@ class IncidentRepository {
       return Result.success(cachedIncident);
     }
 
+    final pendingRequest = _incidentDetailRequests[incidentId];
+    if (pendingRequest != null) return pendingRequest;
+
+    final cacheOwnerId = _cacheOwnerId;
+    final request = _fetchIncidentById(incidentId, cacheOwnerId);
+    _incidentDetailRequests[incidentId] = request;
+    try {
+      return await request;
+    } finally {
+      if (identical(_incidentDetailRequests[incidentId], request)) {
+        _incidentDetailRequests.remove(incidentId);
+      }
+    }
+  }
+
+  Future<Result<Incident>> _fetchIncidentById(
+    String incidentId,
+    String? cacheOwnerId,
+  ) async {
     try {
       final response = await _apiService.getIncidentById(incidentId);
       if (response.isSuccess && response.data != null) {
         final incident = response.data!;
-        _incidentDetailCache[incidentId] = incident;
+        if (_cacheOwnerId == cacheOwnerId) {
+          _incidentDetailCache[incidentId] = incident;
+        }
         return Result.success(incident);
       }
       return Result.failure(
@@ -149,13 +245,19 @@ class IncidentRepository {
   }
 
   Future<Result<Incident>> cancelIncident(String incidentId) async {
+    final cacheOwnerId = _cacheOwnerId;
     try {
       final response = await _apiService.updateStatus(
         incidentId: incidentId,
         status: 'CANCELLED_BY_CITIZEN',
       );
       if (response.isSuccess && response.data != null) {
-        _incidentDetailCache.remove(incidentId);
+        if (_cacheOwnerId == cacheOwnerId) {
+          _incidentDetailCache.remove(incidentId);
+          _cachedRequestedIncidents?.removeWhere(
+            (incident) => incident.id == incidentId,
+          );
+        }
         return Result.success(response.data!);
       }
       return Result.failure(

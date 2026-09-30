@@ -24,6 +24,15 @@ class CitizenProfile {
   final double? homeLongitude;
   final DateTime? createdAt;
 
+  CitizenProfile copyWith({double? homeLatitude, double? homeLongitude}) {
+    return CitizenProfile(
+      id: id,
+      homeLatitude: homeLatitude ?? this.homeLatitude,
+      homeLongitude: homeLongitude ?? this.homeLongitude,
+      createdAt: createdAt,
+    );
+  }
+
   static double? _readDouble(Object? value) {
     if (value is num) return value.toDouble();
     return double.tryParse(value?.toString() ?? '');

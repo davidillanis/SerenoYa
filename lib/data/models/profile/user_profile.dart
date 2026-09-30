@@ -52,6 +52,27 @@ class UserProfile {
     return value.isEmpty ? email : value;
   }
 
+  UserProfile copyWith({
+    String? name,
+    String? lastName,
+    String? phone,
+    String? address,
+  }) {
+    return UserProfile(
+      id: id,
+      name: name ?? this.name,
+      lastName: lastName ?? this.lastName,
+      email: email,
+      dni: dni,
+      phone: phone ?? this.phone,
+      address: address ?? this.address,
+      enabled: enabled,
+      emailVerified: emailVerified,
+      birthDate: birthDate,
+      imageUrl: imageUrl,
+    );
+  }
+
   static DateTime? _parseDate(Object? value) {
     if (value is! String) return null;
     return DateTime.tryParse(value);

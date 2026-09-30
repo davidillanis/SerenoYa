@@ -21,11 +21,13 @@ class IncidentDetailViewModel extends ChangeNotifier {
 
   String? _errorMessage;
   String? get errorMessage => _errorMessage;
+  bool _disposed = false;
 
   Future<void> load({bool forceRefresh = false}) async {
+    if (_isLoading) return;
     _isLoading = true;
     _errorMessage = null;
-    notifyListeners();
+    _notifyListeners();
 
     final result = await _repository.getIncidentById(
       _incidentId,
@@ -39,6 +41,16 @@ class IncidentDetailViewModel extends ChangeNotifier {
     }
 
     _isLoading = false;
-    notifyListeners();
+    _notifyListeners();
+  }
+
+  void _notifyListeners() {
+    if (!_disposed) notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    _disposed = true;
+    super.dispose();
   }
 }
