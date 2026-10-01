@@ -36,20 +36,18 @@ class DefaultFirebaseOptions {
   );
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyDnm0evY5D2J910hIFo3PyKBEa8G4dBoos',
-    appId: '1:357048757419:android:82d41e9bc581ac5ade1bee',
-    messagingSenderId: '357048757419',
-    projectId: 'sereno-ya',
-    storageBucket: 'sereno-ya.firebasestorage.app',
+    apiKey: 'AIzaSyClxmOOpTSCsklH0wRrb14yOOOmY-hxHkw',
+    appId: '1:725931497267:android:83e38def069542211a9046',
+    messagingSenderId: '725931497267',
+    projectId: 'serenoya-e3583',
+    storageBucket: 'serenoya-e3583.firebasestorage.app',
   );
   static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'AIzaSyDD1WXmN7u0WkhU-HN4RAwhKa-uQ9dz72k',
-    appId: '1:357048757419:ios:b75f4f65d127452fde1bee',
-    messagingSenderId: '357048757419',
-    projectId: 'sereno-ya',
-    storageBucket: 'sereno-ya.firebasestorage.app',
-    androidClientId: '357048757419-uikq8duo22h3ebhdr8fr1j4hn7cn5r27.apps.googleusercontent.com',
-    iosClientId: '357048757419-tjlq0o78h9t29oore77mk3rh9arnd82e.apps.googleusercontent.com',
+    apiKey: 'AIzaSyDLe58PepGqVqcq-W46OI0YNpV2eU-qxOU',
+    appId: '1:725931497267:ios:aa553015bbc3f1b01a9046',
+    messagingSenderId: '725931497267',
+    projectId: 'serenoya-e3583',
+    storageBucket: 'serenoya-e3583.firebasestorage.app',
     iosBundleId: 'com.example.serenoYa',
   );
   static const FirebaseOptions macos = FirebaseOptions(
