@@ -1,6 +1,8 @@
 import 'package:sereno_ya/data/models/citizen/incident_category.dart';
 import 'package:sereno_ya/data/models/citizen/incident_create_request.dart';
 import 'package:sereno_ya/data/models/citizen/incident.dart';
+import 'package:sereno_ya/data/models/page_response.dart';
+import 'package:sereno_ya/data/models/officer/incident_acceptance.dart';
 import 'package:sereno_ya/data/services/api/citizen/incident_api_service.dart';
 import 'package:sereno_ya/models/auth/auth_failure.dart';
 import 'package:sereno_ya/models/auth/result.dart';
@@ -24,6 +26,12 @@ class IncidentRepository {
   final Map<String, Incident> _incidentDetailCache = {};
   final Map<String, Future<Result<Incident>>> _incidentDetailRequests = {};
   Future<Result<List<Incident>>>? _requestedIncidentsRequest;
+  List<Incident>? _cachedAvailableIncidents;
+  int _availableIncidentsNextPage = 0;
+  int _availableIncidentsTotalPages = 1;
+  int _historyRevision = 0;
+
+  int get historyRevision => _historyRevision;
 
   void useCacheForUser(String userId) {
     if (_cacheOwnerId == userId) return;
@@ -32,6 +40,9 @@ class IncidentRepository {
     _incidentDetailCache.clear();
     _incidentDetailRequests.clear();
     _requestedIncidentsRequest = null;
+    _cachedAvailableIncidents = null;
+    _availableIncidentsNextPage = 0;
+    _availableIncidentsTotalPages = 1;
   }
 
   List<Incident>? getCachedRequestedIncidents() {
@@ -42,6 +53,15 @@ class IncidentRepository {
   Incident? getCachedIncidentById(String incidentId) {
     return _incidentDetailCache[incidentId];
   }
+
+  List<Incident>? getCachedAvailableIncidents() {
+    final incidents = _cachedAvailableIncidents;
+    return incidents == null ? null : List<Incident>.unmodifiable(incidents);
+  }
+
+  int get availableIncidentsNextPage => _availableIncidentsNextPage;
+  bool get hasMoreAvailableIncidents =>
+      _availableIncidentsNextPage < _availableIncidentsTotalPages;
 
   Future<Result<List<IncidentCategory>>> getCategories() async {
     if (_cachedCategories != null) {
@@ -195,6 +215,111 @@ class IncidentRepository {
     }
   }
 
+  Future<Result<PageResponse<Incident>>> listMyIncidentsPage({
+    String? status,
+    List<String>? statuses,
+    required int page,
+    int size = 15,
+  }) async {
+    assert(
+      status == null || statuses == null || statuses.isEmpty,
+      'Use status o statuses, pero no ambos.',
+    );
+    try {
+      final response = await _apiService.listMyIncidents(
+        status: status,
+        statuses: statuses,
+        page: page,
+        size: size,
+      );
+      if (response.isSuccess && response.data != null) {
+        return Result.success(response.data!);
+      }
+      return Result.failure(
+        AuthFailure(AuthFailureCode.server, response.errorMessage),
+      );
+    } on AuthFailure catch (failure) {
+      return Result.failure(failure);
+    } catch (error) {
+      return Result.failure(
+        AuthFailure(AuthFailureCode.unknown, error.toString()),
+      );
+    }
+  }
+
+  Future<Result<PageResponse<Incident>>> listAvailableIncidentsPage({
+    required int page,
+    int size = 15,
+  }) async {
+    final cacheOwnerId = _cacheOwnerId;
+    try {
+      final response = await _apiService.listAvailableIncidents(
+        page: page,
+        size: size,
+      );
+      if (response.isSuccess && response.data != null) {
+        final pageResponse = response.data!;
+        if (_cacheOwnerId == cacheOwnerId) {
+          if (pageResponse.page == 0) {
+            _cachedAvailableIncidents = List.of(pageResponse.content);
+          } else {
+            final incidents = _cachedAvailableIncidents ?? <Incident>[];
+            final knownIds = incidents.map((incident) => incident.id).toSet();
+            incidents.addAll(
+              pageResponse.content.where(
+                (incident) => knownIds.add(incident.id),
+              ),
+            );
+            _cachedAvailableIncidents = incidents;
+          }
+          _availableIncidentsNextPage = pageResponse.page + 1;
+          _availableIncidentsTotalPages = pageResponse.totalPages;
+        }
+        return Result.success(pageResponse);
+      }
+      return Result.failure(
+        AuthFailure(AuthFailureCode.server, response.errorMessage),
+      );
+    } on AuthFailure catch (failure) {
+      return Result.failure(failure);
+    } catch (error) {
+      return Result.failure(
+        AuthFailure(AuthFailureCode.unknown, error.toString()),
+      );
+    }
+  }
+
+  Future<Result<IncidentAcceptance>> acceptIncident({
+    required String incidentId,
+    required int etaMinutes,
+  }) async {
+    final cacheOwnerId = _cacheOwnerId;
+    try {
+      final response = await _apiService.acceptIncident(
+        incidentId: incidentId,
+        etaMinutes: etaMinutes,
+      );
+      if (response.isSuccess && response.data != null) {
+        if (_cacheOwnerId == cacheOwnerId) {
+          _cachedAvailableIncidents?.removeWhere(
+            (incident) => incident.id == incidentId,
+          );
+          _incidentDetailCache.remove(incidentId);
+        }
+        return Result.success(response.data!);
+      }
+      return Result.failure(
+        AuthFailure(AuthFailureCode.server, response.errorMessage),
+      );
+    } on AuthFailure catch (failure) {
+      return Result.failure(failure);
+    } catch (error) {
+      return Result.failure(
+        AuthFailure(AuthFailureCode.unknown, error.toString()),
+      );
+    }
+  }
+
   Future<Result<Incident>> getIncidentById(
     String incidentId, {
     bool forceRefresh = false,
@@ -253,6 +378,7 @@ class IncidentRepository {
       );
       if (response.isSuccess && response.data != null) {
         if (_cacheOwnerId == cacheOwnerId) {
+          _historyRevision++;
           _incidentDetailCache.remove(incidentId);
           _cachedRequestedIncidents?.removeWhere(
             (incident) => incident.id == incidentId,

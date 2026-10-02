@@ -5,6 +5,7 @@ import 'package:sereno_ya/ui/core/widgets/app_drawer.dart';
 
 import 'package:sereno_ya/ui/citizen/home/citizen_home_tab.dart';
 import 'package:sereno_ya/ui/citizen/incident_history/incident_history_tab.dart';
+import 'package:sereno_ya/ui/citizen/incident_history/view_models/incident_history_view_model.dart';
 import 'package:sereno_ya/ui/citizen/incident_tracking/incident_tracking_tab.dart';
 import 'package:sereno_ya/ui/citizen/incident_tracking/view_models/incident_tracking_view_model.dart';
 
@@ -17,6 +18,7 @@ class CitizenHomeScreen extends StatefulWidget {
 
 class _CitizenHomeScreenState extends State<CitizenHomeScreen> {
   int _currentIndex = 0;
+  final List<bool> _visitedTabs = [true, false, false];
 
   final List<Widget> _tabs = const [
     CitizenHomeTab(),
@@ -34,17 +36,47 @@ class _CitizenHomeScreenState extends State<CitizenHomeScreen> {
         ),
         backgroundColor: context.appColors.primary,
         foregroundColor: context.appColors.textInverse,
+        actions: [
+          if (_currentIndex == 1)
+            Consumer<IncidentTrackingViewModel>(
+              builder: (context, viewModel, child) {
+                return _RefreshIconButton(
+                  isLoading: viewModel.isLoading,
+                  onRefresh: () =>
+                      viewModel.loadActiveIncidents(forceRefresh: true),
+                );
+              },
+            ),
+          if (_currentIndex == 2)
+            Consumer<IncidentHistoryViewModel>(
+              builder: (context, viewModel, child) {
+                return _RefreshIconButton(
+                  isLoading: viewModel.isBusy,
+                  onRefresh: () => viewModel.loadInitial(forceRefresh: true),
+                );
+              },
+            ),
+        ],
       ),
       drawer: const AppDrawer(),
-      body: IndexedStack(index: _currentIndex, children: _tabs),
+      body: IndexedStack(
+        index: _currentIndex,
+        children: List.generate(
+          _tabs.length,
+          (index) => _visitedTabs[index] ? _tabs[index] : const SizedBox(),
+        ),
+      ),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
         onTap: (index) {
           setState(() {
             _currentIndex = index;
+            _visitedTabs[index] = true;
           });
           if (index == 1) {
             context.read<IncidentTrackingViewModel>().syncFromCache();
+          } else if (index == 2) {
+            context.read<IncidentHistoryViewModel>().loadInitial();
           }
         },
         selectedItemColor: context.appColors.tabIconSelected,
@@ -67,6 +99,32 @@ class _CitizenHomeScreenState extends State<CitizenHomeScreen> {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _RefreshIconButton extends StatelessWidget {
+  const _RefreshIconButton({required this.isLoading, required this.onRefresh});
+
+  final bool isLoading;
+  final VoidCallback onRefresh;
+
+  @override
+  Widget build(BuildContext context) {
+    return IconButton(
+      tooltip: isLoading
+          ? 'Actualizando incidencias'
+          : 'Actualizar incidencias',
+      onPressed: isLoading ? null : onRefresh,
+      icon: isLoading
+          ? SizedBox.square(
+              dimension: 20,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: context.appColors.textInverse,
+              ),
+            )
+          : const Icon(Icons.refresh),
     );
   }
 }

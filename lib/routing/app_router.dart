@@ -26,10 +26,13 @@ import 'package:sereno_ya/ui/citizen/citizen_home_screen.dart';
 import 'package:sereno_ya/ui/citizen/report_incident/report_incident_screen.dart';
 import 'package:sereno_ya/ui/citizen/report_incident/view_models/report_incident_view_model.dart';
 import 'package:sereno_ya/ui/citizen/incident_tracking/view_models/incident_tracking_view_model.dart';
+import 'package:sereno_ya/ui/citizen/incident_history/view_models/incident_history_view_model.dart';
 import 'package:sereno_ya/ui/citizen/incident_detail/incident_detail_screen.dart';
 import 'package:sereno_ya/ui/citizen/incident_detail/view_models/incident_detail_view_model.dart';
 import 'package:sereno_ya/ui/auth/view_models/session_view_model.dart';
 import 'package:sereno_ya/models/auth/user_role.dart';
+import 'package:sereno_ya/ui/officer/officer_home_screen.dart';
+import 'package:sereno_ya/ui/officer/view_models/officer_incidents_view_model.dart';
 
 GoRouter createAppRouter({
   required AuthRepository authRepository,
@@ -144,11 +147,21 @@ GoRouter createAppRouter({
         builder: (context, _) {
           // Pre-cargar las categorías en segundo plano para que el botón SOS sea instantáneo
           incidentRepository.getCategories();
-          return ChangeNotifierProvider(
-            create: (ctx) => IncidentTrackingViewModel(
-              repository: incidentRepository,
-              session: ctx.read<SessionViewModel>().state.session,
-            ),
+          return MultiProvider(
+            providers: [
+              ChangeNotifierProvider(
+                create: (ctx) => IncidentTrackingViewModel(
+                  repository: incidentRepository,
+                  session: ctx.read<SessionViewModel>().state.session,
+                ),
+              ),
+              ChangeNotifierProvider(
+                create: (ctx) => IncidentHistoryViewModel(
+                  incidentRepository,
+                  ctx.read<SessionViewModel>().state.session,
+                ),
+              ),
+            ],
             child: const CitizenHomeScreen(),
           );
         },
@@ -175,11 +188,12 @@ GoRouter createAppRouter({
       ),
       GoRoute(
         path: RouteNames.officer,
-        builder: (_, _) => const RoleHomeScreen(
-          title: 'Serenazgo',
-          description:
-              'Desde aquí recibirás y atenderás incidentes de tu zona.',
-          icon: Icons.local_police_outlined,
+        builder: (context, _) => ChangeNotifierProvider(
+          create: (ctx) => OfficerIncidentsViewModel(
+            incidentRepository,
+            ctx.read<SessionViewModel>().state.session,
+          ),
+          child: const OfficerHomeScreen(),
         ),
       ),
       GoRoute(

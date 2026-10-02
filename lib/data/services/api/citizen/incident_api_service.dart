@@ -4,6 +4,7 @@ import 'package:sereno_ya/data/models/citizen/incident_category.dart';
 import 'package:sereno_ya/data/models/citizen/incident_create_request.dart';
 import 'package:sereno_ya/data/models/citizen/incident.dart';
 import 'package:sereno_ya/data/models/page_response.dart';
+import 'package:sereno_ya/data/models/officer/incident_acceptance.dart';
 import 'package:sereno_ya/models/auth/auth_failure.dart';
 
 class IncidentApiService {
@@ -41,6 +42,7 @@ class IncidentApiService {
 
   Future<ApiResponseDto<PageResponse<Incident>>> listMyIncidents({
     String? status,
+    List<String>? statuses,
     int page = 0,
     int size = 100,
     String fields =
@@ -51,7 +53,9 @@ class IncidentApiService {
       () => _dio.get<dynamic>(
         '/incidents/me/list',
         queryParameters: {
-          if (status != null) 'status': status,
+          'status': ?status,
+          if (statuses != null && statuses.isNotEmpty)
+            'statuses': statuses.join(','),
           'fields': fields,
           'page': page,
           'size': size,
@@ -60,6 +64,41 @@ class IncidentApiService {
         },
       ),
       (value) => PageResponse<Incident>.fromJson(value, Incident.fromJson),
+    );
+  }
+
+  Future<ApiResponseDto<PageResponse<Incident>>> listAvailableIncidents({
+    int page = 0,
+    int size = 15,
+  }) async {
+    return _request(
+      () => _dio.get<dynamic>(
+        '/incidents/list',
+        queryParameters: {
+          'status': 'REQUESTED',
+          'fields':
+              'id,status,latitude,longitude,description,referenceAddress,'
+              'createdAt,category.name',
+          'page': page,
+          'size': size,
+          'sortBy': 'createdAt',
+          'direction': 'ASC',
+        },
+      ),
+      (value) => PageResponse<Incident>.fromJson(value, Incident.fromJson),
+    );
+  }
+
+  Future<ApiResponseDto<IncidentAcceptance>> acceptIncident({
+    required String incidentId,
+    required int etaMinutes,
+  }) async {
+    return _request(
+      () => _dio.put<dynamic>(
+        '/incidents/$incidentId/accept',
+        data: {'etaMinutes': etaMinutes},
+      ),
+      (value) => IncidentAcceptance.fromJson(_asJsonMap(value)),
     );
   }
 
@@ -148,6 +187,15 @@ class IncidentApiService {
       return AuthFailure(
         AuthFailureCode.validation,
         serverMessage.isEmpty ? 'Revisa los datos ingresados.' : serverMessage,
+      );
+    }
+
+    if (statusCode == 409) {
+      return AuthFailure(
+        AuthFailureCode.validation,
+        serverMessage.isEmpty
+            ? 'La incidencia ya no está disponible.'
+            : serverMessage,
       );
     }
 
