@@ -1,3 +1,4 @@
+import 'package:sereno_ya/data/services/api/notification_service.dart';
 import 'package:sereno_ya/ui/core/theme/theme_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -30,6 +31,8 @@ class _SerenoYaAppState extends State<SerenoYaApp> {
 
   @override
   void dispose() {
+    NotificationService.instance.dispose();
+    widget.dependencies.deviceTokenService.dispose();
     _sessionViewModel.dispose();
     widget.themeController.dispose();
     widget.dependencies.routerNotifier.dispose();

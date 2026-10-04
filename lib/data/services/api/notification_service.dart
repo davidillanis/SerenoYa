@@ -1,18 +1,19 @@
+import 'dart:async';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 import '../../../firebase_options.dart';
+import 'device_token_service.dart';
 
 @pragma('vm:entry-point')
 Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
-  print('Mensaje recibido en background');
-  print('ID: ${message.messageId}');
-  print('Data: ${message.data}');
+  debugPrint('Mensaje recibido en background');
 }
 
 class NotificationService {
@@ -23,11 +24,15 @@ class NotificationService {
   final FlutterLocalNotificationsPlugin _localNotifications =
       FlutterLocalNotificationsPlugin();
 
-  Future<void> initialize() async {
+  DeviceTokenService? _deviceTokens;
+  final List<StreamSubscription<dynamic>> _subscriptions = [];
+
+  Future<void> initialize(DeviceTokenService deviceTokens) async {
+    _deviceTokens = deviceTokens;
     await _requestPermission();
     await _initializeLocalNotifications();
     await _configureFirebaseListeners();
-    await _printToken();
+    await _synchronizeToken();
   }
 
   Future<void> _requestPermission() async {
@@ -37,7 +42,7 @@ class NotificationService {
       sound: true,
       provisional: false,
     );
-    print(
+    debugPrint(
       'Permiso notificaciones: '
       '${settings.authorizationStatus}',
     );
@@ -56,9 +61,9 @@ class NotificationService {
     await _localNotifications.initialize(
       settings: settings,
       onDidReceiveNotificationResponse: (response) {
-        print(
+        debugPrint(
           'Notificación local presionada: '
-          '${response.payload}',
+          'por el usuario.',
         );
       },
     );
@@ -80,38 +85,35 @@ class NotificationService {
   }
 
   Future<void> _configureFirebaseListeners() async {
-    FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-      print('Notificación recibida en foreground');
+    _subscriptions.add(
+      FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+        debugPrint('Notificación recibida en foreground');
 
-      print('Título: ${message.notification?.title}');
+        _showForegroundNotification(message);
+      }),
+    );
 
-      print('Body: ${message.notification?.body}');
+    _subscriptions.add(
+      FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
+        debugPrint('Notificación abierta desde background');
 
-      print('Data: ${message.data}');
-
-      _showForegroundNotification(message);
-    });
-
-    FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
-      print('Notificación abierta desde background');
-
-      _handleNotificationClick(message);
-    });
+        _handleNotificationClick(message);
+      }),
+    );
 
     final initialMessage = await _messaging.getInitialMessage();
 
     if (initialMessage != null) {
-      print('App abierta desde una notificación');
+      debugPrint('App abierta desde una notificación');
 
       _handleNotificationClick(initialMessage);
     }
 
-    _messaging.onTokenRefresh.listen((String newToken) {
-      print('Nuevo FCM token: $newToken');
-
-      // Aquí debes enviarlo nuevamente
-      // a tu backend.
-    });
+    _subscriptions.add(
+      _messaging.onTokenRefresh.listen((String newToken) {
+        unawaited(_deviceTokens?.synchronizeToken(newToken));
+      }),
+    );
   }
 
   Future<void> _showForegroundNotification(RemoteMessage message) async {
@@ -144,26 +146,29 @@ class NotificationService {
   }
 
   void _handleNotificationClick(RemoteMessage message) {
-    print('Datos de la notificación: ${message.data}');
+    debugPrint('Notificación seleccionada.');
 
     final type = message.data['type'];
 
     if (type == 'order') {
-      final orderId = message.data['order_id'];
-
-      print('Abrir detalle del pedido: $orderId');
+      debugPrint('Abrir detalle del pedido.');
     }
   }
 
-  Future<void> _printToken() async {
-    final token = await _messaging.getToken();
+  Future<void> _synchronizeToken() async {
+    try {
+      final token = await _messaging.getToken();
+      await _deviceTokens?.synchronizeToken(token);
+    } on Object {
+      debugPrint('No se pudo obtener el token de notificaciones.');
+    }
+  }
 
-    print('==============================');
-    print('FCM TOKEN');
-    print(token);
-    print('==============================');
-
-    // Aquí debes enviar token
-    // a tu backend.
+  void dispose() {
+    for (final subscription in _subscriptions) {
+      unawaited(subscription.cancel());
+    }
+    _subscriptions.clear();
+    _deviceTokens = null;
   }
 }

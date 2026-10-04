@@ -12,12 +12,14 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
-  await NotificationService.instance.initialize();
 
   final themeController = ThemeController(
     preferences: await SharedPreferences.getInstance(),
   );
   final dependencies = AppDependencies.create();
+  await NotificationService.instance.initialize(
+    dependencies.deviceTokenService,
+  );
   runApp(
     SerenoYaApp(dependencies: dependencies, themeController: themeController),
   );

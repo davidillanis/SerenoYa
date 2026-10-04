@@ -1,3 +1,8 @@
+import 'dart:io';
+
+import 'package:android_id/android_id.dart';
+import 'package:sereno_ya/data/services/api/device_api_service.dart';
+import 'package:sereno_ya/data/services/api/device_token_service.dart';
 import 'package:go_router/go_router.dart';
 import 'package:sereno_ya/data/repositories/auth/auth_repository.dart';
 import 'package:sereno_ya/data/repositories/auth/auth_repository_impl.dart';
@@ -18,6 +23,7 @@ class AppDependencies {
     required this.authRepository,
     required this.incidentRepository,
     required this.storageService,
+    required this.deviceTokenService,
   });
 
   factory AppDependencies.create() {
@@ -47,6 +53,13 @@ class AppDependencies {
       authRepository: authRepository,
       incidentRepository: incidentRepository,
       storageService: imageApiService,
+      deviceTokenService: DeviceTokenService(
+        authRepository: authRepository,
+        apiService: DeviceApiService(apiClient.dio),
+        readDeviceId: () async =>
+            Platform.isAndroid ? await const AndroidId().getId() : null,
+        osType: Platform.isAndroid ? 'ANDROID' : 'IOS',
+      ),
     );
     dependencies.routerNotifier = AuthRouterNotifier(authRepository);
     dependencies.router = createAppRouter(
@@ -59,6 +72,7 @@ class AppDependencies {
     return dependencies;
   }
 
+  final DeviceTokenService deviceTokenService;
   final AuthRepository authRepository;
   final IncidentRepository incidentRepository;
   final StorageService storageService;
