@@ -1,5 +1,7 @@
 import 'dart:io';
 
+import 'package:sereno_ya/data/services/auth/google_identity_service.dart';
+
 import 'package:android_id/android_id.dart';
 import 'package:sereno_ya/data/services/api/device_api_service.dart';
 import 'package:sereno_ya/data/services/api/device_token_service.dart';
@@ -30,7 +32,12 @@ class AppDependencies {
     final storageService = SessionStorageService();
     final apiClient = ApiClient();
     final authApiService = AuthApiService(apiClient.dio);
-    final authRepository = AuthRepositoryImpl(authApiService, storageService);
+    final googleIdentityService = GoogleIdentityServiceImpl();
+    final authRepository = AuthRepositoryImpl(
+      authApiService,
+      storageService,
+      googleIdentityService: googleIdentityService,
+    );
 
     final incidentApiService = IncidentApiService(apiClient.dio);
     final profileApiService = ProfileApiService(apiClient.dio);
@@ -63,6 +70,7 @@ class AppDependencies {
     );
     dependencies.routerNotifier = AuthRouterNotifier(authRepository);
     dependencies.router = createAppRouter(
+      googleIdentityService: googleIdentityService,
       authRepository: authRepository,
       incidentRepository: incidentRepository,
       storageService: imageApiService,

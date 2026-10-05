@@ -12,11 +12,12 @@ class GoogleIdentityServiceImpl implements GoogleIdentityService {
     : _googleSignIn = googleSignIn ?? GoogleSignIn.instance;
 
   final GoogleSignIn _googleSignIn;
-  bool _initialized = false;
+  Future<void>? _initialization;
 
   @override
-  Future<void> initialize() async {
-    if (_initialized) return;
+  Future<void> initialize() => _initialization ??= _initialize();
+
+  Future<void> _initialize() async {
     final serverClientId = ApiConfig.googleServerClientId;
     if (serverClientId.trim().isEmpty) {
       throw const GoogleIdentityException(
@@ -25,36 +26,39 @@ class GoogleIdentityServiceImpl implements GoogleIdentityService {
     }
 
     await _googleSignIn.initialize(serverClientId: serverClientId);
-    _initialized = true;
   }
 
   @override
   Future<String?> authenticateForIdToken() async {
     try {
       await initialize();
+      if (!_googleSignIn.supportsAuthenticate()) {
+        throw const GoogleIdentityException(
+          'El acceso con Google no está disponible en esta plataforma.',
+        );
+      }
       final account = await _googleSignIn.authenticate();
       final idToken = account.authentication.idToken;
 
-      print('GOOGLE_ACCOUNT_EMAIL: ${account.email}');
-      print('GOOGLE_ID_TOKEN_IS_NULL: ${idToken == null}');
-      print(
-        'GOOGLE_ID_TOKEN_PREFIX: ${idToken != null ? idToken.substring(0, 20) : 'null'}',
-      );
-
       if (idToken == null || idToken.trim().isEmpty) {
-        return null;
+        throw const GoogleIdentityException(
+          'Google no devolvió un token válido.',
+        );
       }
       return idToken.trim();
-    } on GoogleSignInException catch (_) {
-      rethrow;
-    } on Exception {
-      rethrow;
+    } on GoogleSignInException catch (error) {
+      if (error.code == GoogleSignInExceptionCode.canceled) return null;
+      throw const GoogleIdentityException(
+        'No se pudo iniciar sesión con Google. Inténtalo nuevamente.',
+      );
     }
   }
 
   @override
   Future<void> signOut() async {
     try {
+      if (_initialization == null) return;
+      await _initialization;
       await _googleSignIn.signOut();
     } catch (_) {
       // Mantener la sesión local de SerenoYa aunque Google falle.

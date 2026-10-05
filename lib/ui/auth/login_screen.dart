@@ -75,13 +75,30 @@ class _LoginScreenState extends State<LoginScreen> {
             const SizedBox(height: 20),
             FilledButton(
               onPressed: viewModel.isLoading ? null : _submit,
-              child: viewModel.isLoading
+              child: viewModel.isLoading && !viewModel.isGoogleLoading
                   ? const SizedBox.square(
                       dimension: 22,
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
                   : const Text('Iniciar sesión'),
             ),
+            if (viewModel.canLoginWithGoogle) ...[
+              const SizedBox(height: 12),
+              OutlinedButton(
+                onPressed: viewModel.isLoading
+                    ? null
+                    : viewModel.loginWithGoogle,
+                child: viewModel.isGoogleLoading
+                    ? const SizedBox.square(
+                        dimension: 22,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          semanticsLabel: 'Iniciando sesión con Google',
+                        ),
+                      )
+                    : const Text('Continuar con Google'),
+              ),
+            ],
             TextButton(
               onPressed: viewModel.isLoading
                   ? null

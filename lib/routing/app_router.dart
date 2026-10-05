@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:sereno_ya/data/services/auth/google_identity_service.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:sereno_ya/data/repositories/auth/auth_repository.dart';
@@ -35,6 +36,7 @@ import 'package:sereno_ya/ui/officer/officer_home_screen.dart';
 import 'package:sereno_ya/ui/officer/view_models/officer_incidents_view_model.dart';
 
 GoRouter createAppRouter({
+  GoogleIdentityService? googleIdentityService,
   required AuthRepository authRepository,
   required IncidentRepository incidentRepository,
   required StorageService storageService,
@@ -115,7 +117,10 @@ GoRouter createAppRouter({
       GoRoute(
         path: RouteNames.login,
         builder: (_, _) => ChangeNotifierProvider(
-          create: (_) => LoginViewModel(authRepository),
+          create: (_) => LoginViewModel(
+            authRepository,
+            googleIdentityService: googleIdentityService,
+          ),
           child: const LoginScreen(),
         ),
       ),

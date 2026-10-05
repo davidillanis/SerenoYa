@@ -1,8 +1,67 @@
 import 'package:flutter/foundation.dart';
+import 'package:sereno_ya/data/services/auth/google_identity_service.dart';
 import 'package:sereno_ya/data/repositories/auth/auth_repository.dart';
 
 class LoginViewModel extends ChangeNotifier {
-  LoginViewModel(this._repository);
+  LoginViewModel(this._repository, {this._googleIdentityService});
+
+  final GoogleIdentityService? _googleIdentityService;
+  bool _disposed = false;
+  bool isGoogleLoading = false;
+  bool get canLoginWithGoogle =>
+      _googleIdentityService != null &&
+      !kIsWeb &&
+      (defaultTargetPlatform == TargetPlatform.android ||
+          defaultTargetPlatform == TargetPlatform.iOS ||
+          defaultTargetPlatform == TargetPlatform.macOS);
+
+  Future<bool> loginWithGoogle() async {
+    if (isLoading || _disposed) return false;
+    isLoading = true;
+    isGoogleLoading = true;
+    errorMessage = null;
+    notifyListeners();
+    try {
+      final service = _googleIdentityService;
+      if (service == null) {
+        throw const GoogleIdentityException(
+          'El acceso con Google no está disponible.',
+        );
+      }
+      final token = await service.authenticateForIdToken();
+      if (_disposed || token == null) return false;
+      if (token.trim().isEmpty) {
+        throw const GoogleIdentityException(
+          'Google no devolvió un token válido.',
+        );
+      }
+      final result = await _repository.loginWithGoogleIdToken(token.trim());
+      errorMessage = result.failure?.message;
+      return result.isSuccess;
+    } on GoogleIdentityException catch (error) {
+      errorMessage = error.message;
+      return false;
+    } catch (_) {
+      errorMessage =
+          'No se pudo iniciar sesión con Google. Inténtalo nuevamente.';
+      return false;
+    } finally {
+      isLoading = false;
+      isGoogleLoading = false;
+      notifyListeners();
+    }
+  }
+
+  @override
+  void notifyListeners() {
+    if (!_disposed) super.notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    _disposed = true;
+    super.dispose();
+  }
 
   final AuthRepository _repository;
 
@@ -16,6 +75,7 @@ class LoginViewModel extends ChangeNotifier {
   }
 
   Future<bool> login({required String email, required String password}) async {
+    if (isLoading || _disposed) return false;
     errorMessage = _validate(email, password);
     if (errorMessage != null) {
       notifyListeners();
@@ -36,6 +96,7 @@ class LoginViewModel extends ChangeNotifier {
   }
 
   Future<bool> loginWithGoogleIdToken(String idToken) async {
+    if (isLoading || _disposed) return false;
     if (idToken.trim().isEmpty) {
       errorMessage = 'Google no devolvió un token válido.';
       notifyListeners();

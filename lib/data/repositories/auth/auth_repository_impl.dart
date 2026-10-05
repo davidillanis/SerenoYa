@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'package:sereno_ya/data/services/auth/google_identity_service.dart';
+
 import 'package:sereno_ya/data/models/auth/auth_response_dto.dart';
 import 'package:sereno_ya/data/models/auth/jwt_claims.dart';
 import 'package:sereno_ya/data/repositories/auth/auth_repository.dart';
@@ -13,7 +15,13 @@ import 'package:sereno_ya/models/auth/result.dart';
 import 'package:sereno_ya/models/auth/user_role.dart';
 
 class AuthRepositoryImpl implements AuthRepository {
-  AuthRepositoryImpl(this._apiService, this._storageService);
+  AuthRepositoryImpl(
+    this._apiService,
+    this._storageService, {
+    this._googleIdentityService,
+  });
+
+  final GoogleIdentityService? _googleIdentityService;
 
   final AuthApiService _apiService;
   final SessionStorageService _storageService;
@@ -276,7 +284,14 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
-  Future<void> logout() => _clearSession();
+  Future<void> logout() async {
+    await _clearSession();
+    try {
+      await _googleIdentityService?.signOut();
+    } catch (_) {
+      // El cierre local debe completarse aunque Google no esté disponible.
+    }
+  }
 
   AuthSession _sessionFromResponse(AuthResponseDto dto) {
     final claims = JwtClaims.decode(dto.accessToken);
