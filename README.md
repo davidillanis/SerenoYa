@@ -20,11 +20,39 @@ GOOGLE_SERVER_CLIENT_ID=TU_CLIENT_ID_WEB.apps.googleusercontent.com
 
 `.env` está excluido de Git. VS Code carga ese archivo al iniciar las
 configuraciones del proyecto. Reinicia la ejecución después de editarlo.
-Para compilar un APK con las mismas variables:
+
+## Generar APK y AAB
+
+Ejecuta los comandos desde la raíz del proyecto. Ambos formatos incorporan
+`API_BASE_URL` y `GOOGLE_SERVER_CLIENT_ID` desde `.env`; revisa sus valores antes
+de compilar. Si los cambias, genera nuevamente el archivo.
+
+### APK: instalación directa en Android
 
 ```powershell
-flutter build apk --dart-define-from-file=.env
+flutter build apk --release --dart-define-from-file=.env
 ```
+
+Archivo generado: `build/app/outputs/flutter-apk/app-release.apk`.
+
+### AAB: publicación en Google Play
+
+```powershell
+flutter build appbundle --release --dart-define-from-file=.env
+```
+
+Archivo generado: `build/app/outputs/bundle/release/app-release.aab`.
+
+El AAB se sube a Google Play Console; para instalar directamente en un teléfono,
+utiliza el APK.
+
+### Antes de publicar
+
+Configura la firma de producción en `android/app/build.gradle.kts`: la
+configuración revisada utiliza la firma debug también para `release`. Registra
+en Google OAuth la SHA-1 del certificado que firma la aplicación distribuida.
+Si utilizas Play App Signing, registra la huella del certificado de firma de
+aplicaciones de Google Play, no solamente la de la clave de subida.
 
 ## Acceso con Google
 
