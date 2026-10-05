@@ -1,3 +1,5 @@
+import 'package:sereno_ya/data/repositories/officer/officer_repository.dart';
+
 import 'dart:io';
 
 import 'package:sereno_ya/data/services/auth/google_identity_service.dart';
@@ -70,6 +72,7 @@ class AppDependencies {
     );
     dependencies.routerNotifier = AuthRouterNotifier(authRepository);
     dependencies.router = createAppRouter(
+      officerRepository: OfficerRepository(incidentApiService),
       googleIdentityService: googleIdentityService,
       authRepository: authRepository,
       incidentRepository: incidentRepository,

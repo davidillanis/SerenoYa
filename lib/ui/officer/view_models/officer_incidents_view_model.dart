@@ -1,148 +1,180 @@
 import 'package:flutter/foundation.dart';
-import 'package:sereno_ya/data/models/citizen/incident.dart';
-import 'package:sereno_ya/data/repositories/citizen/incident_repository.dart';
+import 'package:sereno_ya/data/models/officer/officer_incident.dart';
+import 'package:sereno_ya/data/repositories/officer/officer_repository.dart';
 import 'package:sereno_ya/models/auth/auth_session.dart';
 
 class OfficerIncidentsViewModel extends ChangeNotifier {
-  OfficerIncidentsViewModel(this._repository, this._session) {
-    final userId = _session?.user.id;
-    if (userId != null) {
-      _repository.useCacheForUser(userId);
+  OfficerIncidentsViewModel(this.repository, this._session) {
+    loadInitial();
+  }
+  final OfficerRepository repository;
+  final Set<String> _accepting = {};
+  bool isAccepting(String id) => _accepting.contains(id);
+
+  Future<String?> acceptIncident(String id, int minutes) async {
+    if (_disposed || _session == null) return 'No hay sesión activa';
+    if (!_accepting.add(id)) return 'La aceptación está en curso.';
+    if (minutes < 1 || minutes > 180) {
+      _accepting.remove(id);
+      return 'Ingresa entre 1 y 180 minutos.';
     }
-    final cachedIncidents = _repository.getCachedAvailableIncidents();
-    if (cachedIncidents == null) {
-      loadInitial();
-    } else {
-      _incidents = cachedIncidents;
-      _nextPage = _repository.availableIncidentsNextPage;
-      _hasMore = _repository.hasMoreAvailableIncidents;
-      _hasLoaded = true;
+    _notify();
+    final result = await repository.accept(id, minutes);
+    String? error = result.failure?.message;
+    if (result.isSuccess) {
+      _acceptedIds.add(id);
+      final detail = await repository.detail(id);
+      await synchronize(detail.data, acceptedHere: true);
+      if (!detail.isSuccess) {
+        error = 'Incidente aceptado, pero no se pudo cargar el detalle. Actualiza los reportes.';
+      }
     }
+    _accepting.remove(id);
+    _notify();
+    return error;
   }
 
-  static const pageSize = 15;
-
-  final IncidentRepository _repository;
   final AuthSession? _session;
-  final Set<String> _acceptingIds = {};
-
-  List<Incident> _incidents = [];
+  List<OfficerIncident> _incidents = [];
+  List<OfficerIncident> get incidents => List.unmodifiable(_incidents);
+  final Map<OfficerIncidentStatus, int> totals = {};
+  // Ownership is confirmed only by a successful acceptance in this session.
+  final Map<String, OfficerIncident> _accepted = {};
+  final Set<String> _acceptedIds = {};
+  List<OfficerIncident> get accepted => List.unmodifiable(_accepted.values);
+  OfficerIncidentStatus? filter = OfficerIncidentStatus.pending;
+  bool isBusy = false;
+  bool hasMore = false;
+  String? errorMessage;
+  String? metricsError;
   int _nextPage = 0;
-  bool _hasMore = true;
-  bool _hasLoaded = false;
-  bool _isLoadingInitial = false;
-  bool _isLoadingMore = false;
   bool _disposed = false;
-  String? _errorMessage;
-  String? _loadMoreError;
+  int _generation = 0;
+  int _metricsGeneration = 0;
 
-  List<Incident> get incidents => List.unmodifiable(_incidents);
-  bool get isLoadingInitial => _isLoadingInitial;
-  bool get isLoadingMore => _isLoadingMore;
-  bool get isBusy => _isLoadingInitial || _isLoadingMore;
-  bool get hasMore => _hasMore;
-  String? get errorMessage => _errorMessage;
-  String? get loadMoreError => _loadMoreError;
-  bool isAccepting(String incidentId) => _acceptingIds.contains(incidentId);
+  Future<void> selectFilter(OfficerIncidentStatus? value) async {
+    if (_disposed) return;
+    if (filter == value) return;
+    filter = value;
+    _generation++;
+    isBusy = false;
+    _incidents = [];
+    await loadInitial();
+  }
 
   Future<void> loadInitial({bool forceRefresh = false}) async {
-    if (_isLoadingInitial || _isLoadingMore) return;
-    if (_hasLoaded && !forceRefresh) return;
+    if (isBusy || _disposed) return;
+    await _load(reset: true);
+    final ids = _acceptedIds.toList();
+    if (ids.isEmpty || _disposed) return;
+    final results = await Future.wait(ids.map(repository.detail));
+    if (_disposed) return;
+    for (var i = 0; i < results.length; i++) {
+      final item = results[i].data;
+      if (item != null) {
+        _rememberAccepted(item);
+      } else {
+        errorMessage = 'No se pudo actualizar uno de tus incidentes aceptados.';
+      }
+    }
+    _notify();
+  }
+
+  void _rememberAccepted(OfficerIncident item) {
+    if (item.status == OfficerIncidentStatus.attended ||
+        item.status == OfficerIncidentStatus.cancelled ||
+        item.status == OfficerIncidentStatus.expired) {
+      _accepted.remove(item.id);
+      _acceptedIds.remove(item.id);
+    } else {
+      _acceptedIds.add(item.id);
+      _accepted[item.id] = item;
+    }
+  }
+
+  Future<void> loadMore() => _load(reset: false);
+  Future<void> _load({required bool reset}) async {
+    if (_disposed || isBusy || (!reset && !hasMore)) return;
     if (_session == null) {
-      _errorMessage = 'No hay sesión activa';
-      _notifyListeners();
+      errorMessage = 'No hay sesión activa';
+      _notify();
       return;
     }
-
-    _isLoadingInitial = true;
-    _errorMessage = null;
-    _loadMoreError = null;
-    _notifyListeners();
-
-    final result = await _repository.listAvailableIncidentsPage(
-      page: 0,
-      size: pageSize,
+    final generation = ++_generation;
+    isBusy = true;
+    errorMessage = null;
+    _notify();
+    final result = await repository.list(
+      status: filter,
+      page: reset ? 0 : _nextPage,
     );
-    if (result.isSuccess && result.data != null) {
-      final page = result.data!;
-      _incidents = _repository.getCachedAvailableIncidents() ?? page.content;
-      _nextPage = page.page + 1;
-      _hasMore = _nextPage < page.totalPages;
-      _hasLoaded = true;
-    } else {
-      _errorMessage =
-          result.failure?.message ?? 'No se pudieron cargar las incidencias';
-    }
-
-    _isLoadingInitial = false;
-    _notifyListeners();
-  }
-
-  Future<void> loadMore() async {
-    if (!_hasLoaded ||
-        !_hasMore ||
-        _isLoadingInitial ||
-        _isLoadingMore ||
-        _loadMoreError != null) {
-      return;
-    }
-
-    _isLoadingMore = true;
-    _notifyListeners();
-    final result = await _repository.listAvailableIncidentsPage(
-      page: _nextPage,
-      size: pageSize,
-    );
-    if (result.isSuccess && result.data != null) {
-      final page = result.data!;
-      _incidents = _repository.getCachedAvailableIncidents() ?? _incidents;
-      _nextPage = page.page + 1;
-      _hasMore = _nextPage < page.totalPages;
-      _loadMoreError = null;
-    } else {
-      _loadMoreError =
-          result.failure?.message ?? 'No se pudieron cargar más incidencias';
-    }
-    _isLoadingMore = false;
-    _notifyListeners();
-  }
-
-  Future<void> retryLoadMore() async {
-    _loadMoreError = null;
-    await loadMore();
-  }
-
-  Future<String?> acceptIncident(String incidentId, int etaMinutes) async {
-    if (_acceptingIds.contains(incidentId)) return null;
-    _acceptingIds.add(incidentId);
-    _notifyListeners();
-
-    final result = await _repository.acceptIncident(
-      incidentId: incidentId,
-      etaMinutes: etaMinutes,
-    );
-    _acceptingIds.remove(incidentId);
+    if (_disposed || generation != _generation) return;
     if (result.isSuccess) {
-      _incidents =
-          _repository.getCachedAvailableIncidents() ??
-          _incidents
-              .where((incident) => incident.id != incidentId)
-              .toList(growable: false);
-      _notifyListeners();
-      return null;
+      final page = result.data!;
+      final items = reset
+          ? <String, OfficerIncident>{}
+          : {for (final item in _incidents) item.id: item};
+      for (final item in page.content) {
+        items[item.id] = item;
+      }
+      _incidents = items.values.toList();
+      _nextPage = page.page + 1;
+      hasMore = _nextPage < page.totalPages;
+    } else {
+      errorMessage = result.failure!.message;
     }
-
-    _notifyListeners();
-    return result.failure?.message ?? 'No se pudo aceptar la incidencia';
+    isBusy = false;
+    _notify();
   }
 
-  void _notifyListeners() {
+  Future<void> loadMetrics() async {
+    if (_disposed || _session == null) return;
+    final generation = ++_metricsGeneration;
+    metricsError = null;
+    final results = await Future.wait([
+      for (final status in operationalStatuses) repository.list(status: status),
+    ]);
+    if (_disposed || generation != _metricsGeneration) return;
+    for (var i = 0; i < results.length; i++) {
+      final result = results[i];
+      if (result.isSuccess) {
+        totals[operationalStatuses[i]] = result.data!.totalElements;
+      } else {
+        metricsError = 'No se pudo actualizar el resumen.';
+      }
+    }
+    _notify();
+  }
+
+  Future<void> synchronize(
+    OfficerIncident? item, {
+    bool acceptedHere = false,
+    String? acceptedId,
+  }) async {
+    if (_disposed) return;
+    if (acceptedHere && acceptedId != null) _acceptedIds.add(acceptedId);
+    if (item != null && (acceptedHere || _accepted.containsKey(item.id))) {
+      _rememberAccepted(item);
+    }
+    await loadInitial(forceRefresh: true);
+    await loadMetrics();
+  }
+
+  void _notify() {
     if (!_disposed) notifyListeners();
   }
 
   @override
   void dispose() {
     _disposed = true;
+    _generation++;
     super.dispose();
   }
 }
+
+const operationalStatuses = [
+  OfficerIncidentStatus.pending,
+  OfficerIncidentStatus.enRoute,
+  OfficerIncidentStatus.attending,
+  OfficerIncidentStatus.attended,
+];

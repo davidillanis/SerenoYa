@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:sereno_ya/data/models/officer/officer_incident.dart';
 import 'package:sereno_ya/data/models/auth/api_response_dto.dart';
 import 'package:sereno_ya/data/models/citizen/incident_category.dart';
 import 'package:sereno_ya/data/models/citizen/incident_create_request.dart';
@@ -11,6 +12,40 @@ class IncidentApiService {
   IncidentApiService(this._dio);
 
   final Dio _dio;
+
+  // Only fields exposed by IncidentEntity; priority is not yet in that contract.
+  static const officerFields =
+      'id,status,latitude,longitude,description,referenceAddress,createdAt,'
+      'acceptedAt,arrivedAt,attendedAt,cancelledAt,category.name,'
+      'citizen.id,citizen.userEntity.phone';
+
+  Future<ApiResponseDto<PageResponse<OfficerIncident>>> listOfficerIncidents({
+    String? status,
+    required int page,
+    int size = 15,
+  }) => _request(
+    () => _dio.get<dynamic>(
+      '/incidents/list',
+      queryParameters: {
+        'status': ?status,
+        'fields': officerFields,
+        'page': page,
+        'size': size,
+        'sortBy': 'createdAt',
+        'direction': 'DESC',
+      },
+    ),
+    (value) => PageResponse.fromJson(value, OfficerIncident.fromJson),
+  );
+
+  Future<ApiResponseDto<OfficerIncident>> getOfficerIncident(String id) =>
+      _request(
+        () => _dio.get<dynamic>(
+          '/incidents/byId/$id',
+          queryParameters: const {'fields': officerFields},
+        ),
+        (value) => OfficerIncident.fromJson(_asJsonMap(value)),
+      );
 
   Future<ApiResponseDto<PageResponse<IncidentCategory>>> getCategories() async {
     return _request(

@@ -1,3 +1,4 @@
+import 'package:sereno_ya/data/repositories/officer/officer_repository.dart';
 import 'package:flutter/material.dart';
 import 'package:sereno_ya/data/services/auth/google_identity_service.dart';
 import 'package:go_router/go_router.dart';
@@ -39,6 +40,7 @@ GoRouter createAppRouter({
   GoogleIdentityService? googleIdentityService,
   required AuthRepository authRepository,
   required IncidentRepository incidentRepository,
+  required OfficerRepository officerRepository,
   required StorageService storageService,
   required ProfileApiService profileApiService,
   required AuthRouterNotifier routerNotifier,
@@ -195,7 +197,7 @@ GoRouter createAppRouter({
         path: RouteNames.officer,
         builder: (context, _) => ChangeNotifierProvider(
           create: (ctx) => OfficerIncidentsViewModel(
-            incidentRepository,
+            officerRepository,
             ctx.read<SessionViewModel>().state.session,
           ),
           child: const OfficerHomeScreen(),
