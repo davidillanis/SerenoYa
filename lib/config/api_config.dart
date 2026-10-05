@@ -2,8 +2,8 @@ abstract final class ApiConfig {
   // Carga .env al compilar con --dart-define-from-file=.env.
   static const baseUrl = String.fromEnvironment(
     'API_BASE_URL',
-    //defaultValue: 'http://187.33.158.70:8082/api/v1',
-    defaultValue: 'http://192.168.1.107:8080/api/v1',
+    defaultValue: 'http://187.33.158.70:8082/api/v1',
+    //defaultValue: 'http://192.168.1.107:8080/api/v1',
   );
 
   // Client ID OAuth de tipo web, compartido con la audiencia del backend.

@@ -11,6 +11,9 @@ class AuthTextField extends StatelessWidget {
     this.prefixIcon,
     this.suffixIcon,
     this.onSubmitted,
+    this.hintText,
+    this.autofillHints,
+    this.enabled = true,
   });
 
   final TextEditingController controller;
@@ -21,19 +24,28 @@ class AuthTextField extends StatelessWidget {
   final IconData? prefixIcon;
   final Widget? suffixIcon;
   final ValueChanged<String>? onSubmitted;
+  final String? hintText;
+  final Iterable<String>? autofillHints;
+  final bool enabled;
 
   @override
   Widget build(BuildContext context) {
     return TextField(
       controller: controller,
+      enabled: enabled,
       keyboardType: keyboardType,
       obscureText: obscureText,
       textInputAction: textInputAction,
-      autofillHints: keyboardType == TextInputType.emailAddress
-          ? const [AutofillHints.email]
-          : null,
+      autofillHints:
+          autofillHints ??
+          (keyboardType == TextInputType.emailAddress
+              ? const [AutofillHints.email]
+              : null),
+      autocorrect: keyboardType != TextInputType.emailAddress && !obscureText,
+      enableSuggestions: !obscureText,
       decoration: InputDecoration(
         labelText: label,
+        hintText: hintText,
         prefixIcon: prefixIcon == null ? null : Icon(prefixIcon),
         suffixIcon: suffixIcon,
       ),
