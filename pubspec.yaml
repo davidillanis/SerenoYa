@@ -47,6 +47,8 @@ dependencies:
   flutter_local_notifications: ^22.3.1
   android_id: ^0.6.0
   url_launcher: ^6.3.3
+  google_maps_flutter: ^2.18.2
+  google_maps_flutter_ios_sdk9: ^2.19.0
 
 dev_dependencies:
   flutter_test:

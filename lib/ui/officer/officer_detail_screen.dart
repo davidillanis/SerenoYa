@@ -80,10 +80,10 @@ class OfficerDetailScreen extends StatelessWidget {
                       ),
                       OutlinedButton.icon(
                         onPressed: item.hasCoordinates
-                            ? () => openIncidentRoute(context, item)
+                            ? () => openIncidentMap(context, item)
                             : null,
                         icon: const Icon(Icons.near_me_outlined),
-                        label: const Text('Ver ruta GPS'),
+                        label: const Text('Ver en el mapa'),
                       ),
                       const SizedBox(height: 16),
                       _section(

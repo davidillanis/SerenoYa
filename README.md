@@ -83,6 +83,37 @@ Referencias: [Android](https://pub.dev/packages/google_sign_in_android),
 [iOS/macOS](https://pub.dev/packages/google_sign_in_ios) y
 [SDK](https://pub.dev/packages/google_sign_in).
 
+## Google Maps dentro de Serenazgo
+
+En Inicio y Reportes, «Ver en el mapa» abre Google Maps dentro de la app,
+centrado en las coordenadas del incidente. También está disponible desde su
+detalle. Muestra la ubicación reportada; no calcula rutas ni obtiene la
+ubicación actual del sereno.
+
+Agrega a tu `.env` local:
+
+```text
+GOOGLE_MAPS_API_KEY=TU_CLAVE_DE_GOOGLE_MAPS
+```
+
+Ejecuta con `flutter run --dart-define-from-file=.env` o compila con esa misma
+opción. Reinicia completamente la aplicación tras cambiar la clave. Android,
+iOS y web reciben la clave de esa variable; no hay que escribirla en el código.
+Sin clave, la pantalla informa que el mapa no está disponible.
+
+En Google Cloud habilita facturación y la API de la plataforma: **Maps SDK for
+Android**, **Maps SDK for iOS** o **Maps JavaScript API**. Usa una clave distinta
+para cada plataforma y restringe su uso al paquete y SHA-1 de Android, al bundle
+ID de iOS o a los dominios web autorizados. Elige la clave correspondiente en el
+archivo de variables utilizado para cada compilación. Estas claves de cliente
+se incluyen en el artefacto compilado; sus restricciones son necesarias.
+
+La integración requiere Android API 24 o superior e iOS 15 o superior. iOS usa
+`google_maps_flutter_ios_sdk9`, compatible con Swift Package Manager. En Linux,
+Windows y macOS nativos se muestra un aviso de plataforma no compatible.
+
+Referencia: [configuración oficial de Google Maps para Flutter](https://developers.google.com/maps/flutter-package/config).
+
 ## Verificación del proyecto
 
 ```powershell

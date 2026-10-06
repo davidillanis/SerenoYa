@@ -7,12 +7,12 @@ import 'package:sereno_ya/ui/core/theme/colors.dart';
 import 'package:sereno_ya/ui/core/widgets/app_drawer.dart';
 import 'package:sereno_ya/ui/core/widgets/responsive_body.dart';
 import 'package:sereno_ya/ui/officer/officer_detail_screen.dart';
+import 'package:sereno_ya/ui/officer/officer_reports_tab.dart';
+import 'package:sereno_ya/ui/officer/officer_start_tab.dart';
 import 'package:sereno_ya/ui/officer/view_models/officer_detail_view_model.dart';
 import 'package:sereno_ya/ui/officer/view_models/officer_incidents_view_model.dart';
 import 'package:sereno_ya/ui/officer/widgets/officer_incident_card.dart';
 
-// Patrol workspace: pending interventions lead; reports place server totals
-// above filters. Existing Material typography, semantic palette, 16px insets.
 class OfficerHomeScreen extends StatefulWidget {
   const OfficerHomeScreen({super.key});
   @override
@@ -56,155 +56,15 @@ class _OfficerHomeScreenState extends State<OfficerHomeScreen> {
         maxWidth: 720,
         child: RefreshIndicator(
           onRefresh: () => _refresh(model),
-          child: ListView(
-            key: ValueKey(_tab),
-            physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.all(16),
-            children: [
-              if (_tab == 0) ...[
-                Text(
-                  'Tu atención hace la diferencia',
-                  style: Theme.of(context).textTheme.headlineSmall,
+          child: _tab == 0
+              ? OfficerStartTab(
+                  model: model,
+                  cardBuilder: (item) => _card(model, item),
+                )
+              : OfficerReportsTab(
+                  model: model,
+                  cardBuilder: (item) => _card(model, item),
                 ),
-                const SizedBox(height: 8),
-                Text(
-                  'San Jerónimo · Atención ciudadana',
-                  style: TextStyle(color: context.appColors.textSecondary),
-                ),
-                const SizedBox(height: 24),
-                Text(
-                  'Aceptados en esta sesión',
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
-                const SizedBox(height: 8),
-                const Text(
-                  'Las asignaciones anteriores no están disponibles en el servicio actual.',
-                ),
-                const SizedBox(height: 16),
-                if (model.accepted.isEmpty)
-                  const Text('Aún no has aceptado incidentes en esta sesión.'),
-                for (final item in model.accepted) _card(model, item),
-                const SizedBox(height: 24),
-                Text(
-                  'Incidentes pendientes',
-                  style: Theme.of(context).textTheme.titleLarge,
-                ),
-                const SizedBox(height: 16),
-              ] else ...[
-                Text(
-                  'Resumen de atención',
-                  style: Theme.of(context).textTheme.headlineSmall,
-                ),
-                const SizedBox(height: 8),
-                const Text('Totales generales de Serenazgo'),
-                const SizedBox(height: 16),
-                LayoutBuilder(
-                  builder: (context, constraints) => Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
-                      for (final status in operationalStatuses)
-                        SizedBox(
-                          width: (constraints.maxWidth - 8) / 2,
-                          child: Card(
-                            margin: EdgeInsets.zero,
-                            child: Padding(
-                              padding: const EdgeInsets.all(16),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    '${model.totals[status] ?? '—'}',
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .headlineMedium
-                                        ?.copyWith(
-                                          color: context.appColors.primary,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                  ),
-                                  Text(status.label),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-                if (model.metricsError != null)
-                  TextButton.icon(
-                    onPressed: model.loadMetrics,
-                    icon: const Icon(Icons.refresh),
-                    label: Text(model.metricsError!),
-                  ),
-                const SizedBox(height: 24),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    ChoiceChip(
-                      label: const Text('Todos'),
-                      selected: model.filter == null,
-                      onSelected: (_) => model.selectFilter(null),
-                    ),
-                    for (final status in operationalStatuses)
-                      ChoiceChip(
-                        label: Text(status.label),
-                        selected: model.filter == status,
-                        onSelected: (_) => model.selectFilter(status),
-                      ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-              ],
-              if (model.errorMessage != null)
-                Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      children: [
-                        Text(model.errorMessage!),
-                        TextButton(
-                          onPressed: () =>
-                              model.loadInitial(forceRefresh: true),
-                          child: const Text('Reintentar'),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              if (model.isBusy)
-                const Padding(
-                  padding: EdgeInsets.all(24),
-                  child: Center(child: CircularProgressIndicator()),
-                ),
-              if (!model.isBusy &&
-                  model.errorMessage == null &&
-                  model.incidents.isEmpty)
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 32),
-                  child: Column(
-                    children: [
-                      Icon(
-                        Icons.verified_outlined,
-                        size: 48,
-                        color: context.appColors.textTertiary,
-                      ),
-                      const SizedBox(height: 16),
-                      const Text('No hay incidentes para mostrar.'),
-                      const Text('Desliza hacia abajo para actualizar.'),
-                    ],
-                  ),
-                ),
-              for (final item in model.incidents) _card(model, item),
-              if (model.hasMore)
-                TextButton(
-                  onPressed: model.isBusy ? null : model.loadMore,
-                  child: const Text('Cargar más reportes'),
-                ),
-            ],
-          ),
         ),
       ),
       bottomNavigationBar: BottomNavigationBar(

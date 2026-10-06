@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:sereno_ya/data/models/officer/officer_incident.dart';
-import 'package:sereno_ya/data/services/officer/route_service.dart';
 import 'package:sereno_ya/ui/core/theme/colors.dart';
+import 'package:sereno_ya/ui/officer/officer_map_screen.dart';
 
 // Operational cards: action first, 16px inset, 8px rhythm, theme surfaces and
 // semantic status colors. Location and elapsed time remain visible at a glance.
@@ -96,10 +96,10 @@ class OfficerIncidentCard extends StatelessWidget {
               width: double.infinity,
               child: OutlinedButton.icon(
                 onPressed: item.hasCoordinates
-                    ? () => openIncidentRoute(context, item)
+                    ? () => openIncidentMap(context, item)
                     : null,
                 icon: const Icon(Icons.near_me_outlined),
-                label: const Text('Ver ruta GPS'),
+                label: const Text('Ver en el mapa'),
               ),
             ),
           ],
@@ -160,15 +160,10 @@ String elapsedLabel(DateTime? date, {DateTime? now}) {
   return 'Hace ${duration.inDays} días';
 }
 
-Future<void> openIncidentRoute(
-  BuildContext context,
-  OfficerIncident item,
-) async {
-  final opened = await RouteService().open(item);
-  if (!context.mounted || opened) return;
-  ScaffoldMessenger.of(context).showSnackBar(
-    const SnackBar(content: Text('No se pudo abrir la aplicación de mapas.')),
-  );
+Future<void> openIncidentMap(BuildContext context, OfficerIncident item) async {
+  await Navigator.of(
+    context,
+  ).push<void>(MaterialPageRoute(builder: (_) => OfficerMapScreen(item: item)));
 }
 
 Future<int?> requestArrivalTime(BuildContext context) =>
