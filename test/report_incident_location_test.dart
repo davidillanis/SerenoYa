@@ -1,6 +1,11 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:sereno_ya/ui/citizen/report_incident/report_incident_screen.dart';
+import 'package:sereno_ya/ui/core/theme/theme.dart';
+import 'package:sereno_ya/ui/core/theme/mapped_palette.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:image_picker/image_picker.dart';
@@ -17,6 +22,49 @@ import 'package:sereno_ya/ui/citizen/report_incident/view_models/report_incident
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+  for (final brightness in Brightness.values) {
+    testWidgets('prepara ubicación y permite reintentar en $brightness', (
+      tester,
+    ) async {
+      final service = _LocationService();
+      final model = ReportIncidentViewModel(
+        _Repository(),
+        _Storage(),
+        locationService: service,
+      );
+      addTearDown(model.dispose);
+      await tester.pumpWidget(
+        ChangeNotifierProvider.value(
+          value: model,
+          child: MaterialApp(
+            theme: buildAppTheme(brightness, ThemeVariant.normal),
+            home: const ReportIncidentScreen(),
+          ),
+        ),
+      );
+      expect(service.calls, 1);
+      await tester.pump();
+      expect(
+        find.text('Obteniendo tu ubicación mientras completas el reporte...'),
+        findsOneWidget,
+      );
+      service.result.completeError(const LocationFailure('Activa el GPS'));
+      await tester.pumpAndSettle();
+      final retry = find.text('Reintentar ubicación');
+      await tester.ensureVisible(retry);
+      service.result = Completer<LatLng>();
+      await tester.tap(retry);
+      await tester.pump();
+      expect(service.calls, 2);
+      service.result.complete(const LatLng(-13.65, -73.36));
+      await tester.pumpAndSettle();
+      expect(find.text('Ajustar ubicación en el mapa'), findsOneWidget);
+      await tester.pump();
+      expect(service.calls, 2);
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox.shrink());
+    });
+  }
   test('envía el punto elegido en lugar del GPS inicial', () async {
     const channel = MethodChannel('plugins.flutter.io/image_picker');
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger

@@ -20,6 +20,47 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
   final _descriptionController = TextEditingController();
   final _referenceController = TextEditingController();
   bool _isChoosingLocation = false;
+  LatLng? _location;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _locateCitizen();
+    });
+  }
+
+  Future<void> _locateCitizen() async {
+    final location = await context
+        .read<ReportIncidentViewModel>()
+        .locateCitizen();
+    if (mounted && location != null) setState(() => _location = location);
+  }
+
+  Future<void> _chooseLocation(ReportIncidentViewModel viewModel) async {
+    if (_isChoosingLocation || viewModel.isSubmitting || _location == null) {
+      return;
+    }
+    if (!MapsConfig.isSupported || MapsConfig.apiKey.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('El mapa no está disponible en este momento.'),
+        ),
+      );
+      return;
+    }
+    setState(() => _isChoosingLocation = true);
+    try {
+      final location = await Navigator.of(context).push<LatLng>(
+        MaterialPageRoute(
+          builder: (_) => IncidentLocationPicker(initialLocation: _location!),
+        ),
+      );
+      if (mounted && location != null) setState(() => _location = location);
+    } finally {
+      if (mounted) setState(() => _isChoosingLocation = false);
+    }
+  }
 
   @override
   void dispose() {
@@ -51,30 +92,15 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
       );
       return;
     }
-    if (!MapsConfig.isSupported || MapsConfig.apiKey.isEmpty) {
+    final location = _location;
+    if (location == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('El mapa no está disponible en este momento.'),
+          content: Text('Obtén tu ubicación antes de enviar la alerta.'),
         ),
       );
       return;
     }
-    setState(() => _isChoosingLocation = true);
-    LatLng? location;
-    try {
-      final currentLocation = await viewModel.locateCitizen();
-      if (!context.mounted || currentLocation == null) return;
-      location = await Navigator.of(context).push<LatLng>(
-        MaterialPageRoute(
-          builder: (_) =>
-              IncidentLocationPicker(initialLocation: currentLocation),
-        ),
-      );
-    } finally {
-      if (mounted) setState(() => _isChoosingLocation = false);
-    }
-    if (!context.mounted || location == null) return;
-
     final success = await viewModel.submitIncident(
       location: location,
       description: description,
@@ -556,8 +582,28 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
                       style: Theme.of(context).textTheme.titleMedium,
                     ),
                     const SizedBox(height: 8),
-                    const Text(
-                      'Al enviar la alerta, obtendremos tu ubicación para que elijas el lugar en Google Maps.',
+                    Text(
+                      viewModel.isLocating
+                          ? 'Obteniendo tu ubicación mientras completas el reporte...'
+                          : _location == null
+                          ? 'No se pudo obtener tu ubicación. Revisa el GPS y los permisos e inténtalo de nuevo.'
+                          : 'Ubicación lista. Se enviará este punto con la alerta; puedes ajustarlo en el mapa.',
+                    ),
+                    TextButton.icon(
+                      onPressed:
+                          viewModel.isLocating ||
+                              viewModel.isSubmitting ||
+                              _isChoosingLocation
+                          ? null
+                          : _location == null
+                          ? _locateCitizen
+                          : () => _chooseLocation(viewModel),
+                      icon: const Icon(Icons.location_on_outlined),
+                      label: Text(
+                        _location == null
+                            ? 'Reintentar ubicación'
+                            : 'Ajustar ubicación en el mapa',
+                      ),
                     ),
                     const SizedBox(height: 12),
 
@@ -612,6 +658,7 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
                             child: ElevatedButton.icon(
                               onPressed:
                                   _isChoosingLocation ||
+                                      _location == null ||
                                       viewModel.isSubmitting ||
                                       viewModel.isUploadingImage
                                   ? null

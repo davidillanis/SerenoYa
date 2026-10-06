@@ -11,13 +11,13 @@ class DeviceApiService {
 
   Future<ApiResponseDto<String>> sendNotification(NotificationRequest request) {
     return _request(
-      () => _dio.post<dynamic>('/device/send', data: request.toJson()),
+      () => _dio.post<dynamic>('/device/notification/send', data: request.toJson()),
       _decodeString,);
   }
 
   Future<ApiResponseDto<NotificationAnyResponse>> sendNotificationAll(NotificationAnyRequest request,) {
     return _request(
-      () => _dio.post<dynamic>('/device/send-any', data: request.toJson()),
+      () => _dio.post<dynamic>('/device/notification/send-any', data: request.toJson()),
       NotificationAnyResponse.fromJson,
     );
   }
