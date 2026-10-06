@@ -1,6 +1,6 @@
 import 'package:sereno_ya/data/repositories/officer/officer_repository.dart';
 
-import 'dart:io';
+import 'package:flutter/foundation.dart';
 
 import 'package:sereno_ya/data/services/auth/google_identity_service.dart';
 
@@ -31,6 +31,8 @@ class AppDependencies {
   });
 
   factory AppDependencies.create() {
+    final isAndroid =
+        !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
     final storageService = SessionStorageService();
     final apiClient = ApiClient();
     final authApiService = AuthApiService(apiClient.dio);
@@ -66,8 +68,8 @@ class AppDependencies {
         authRepository: authRepository,
         apiService: DeviceApiService(apiClient.dio),
         readDeviceId: () async =>
-            Platform.isAndroid ? await const AndroidId().getId() : null,
-        osType: Platform.isAndroid ? 'ANDROID' : 'IOS',
+            isAndroid ? await const AndroidId().getId() : null,
+        osType: kIsWeb ? 'WEB' : (isAndroid ? 'ANDROID' : 'IOS'),
       ),
     );
     dependencies.routerNotifier = AuthRouterNotifier(authRepository);

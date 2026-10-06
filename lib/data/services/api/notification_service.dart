@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -20,7 +19,7 @@ class NotificationService {
   NotificationService._();
 
   static final NotificationService instance = NotificationService._();
-  final FirebaseMessaging _messaging = FirebaseMessaging.instance;
+  FirebaseMessaging get _messaging => FirebaseMessaging.instance;
   final FlutterLocalNotificationsPlugin _localNotifications =
       FlutterLocalNotificationsPlugin();
 
@@ -28,6 +27,12 @@ class NotificationService {
   final List<StreamSubscription<dynamic>> _subscriptions = [];
 
   Future<void> initialize(DeviceTokenService deviceTokens) async {
+    // Las notificaciones actuales usan plugins y configuración de Android/iOS.
+    if (kIsWeb ||
+        (defaultTargetPlatform != TargetPlatform.android &&
+            defaultTargetPlatform != TargetPlatform.iOS)) {
+      return;
+    }
     _deviceTokens = deviceTokens;
     await _requestPermission();
     await _initializeLocalNotifications();
@@ -68,7 +73,7 @@ class NotificationService {
       },
     );
 
-    if (Platform.isAndroid) {
+    if (defaultTargetPlatform == TargetPlatform.android) {
       const channel = AndroidNotificationChannel(
         'high_importance_channel',
         'Notificaciones importantes',
