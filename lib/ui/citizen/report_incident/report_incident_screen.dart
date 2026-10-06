@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:sereno_ya/config/maps_config.dart';
+import 'package:sereno_ya/ui/citizen/report_incident/incident_location_picker.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import 'package:sereno_ya/ui/core/theme/colors.dart';
@@ -15,9 +18,8 @@ class ReportIncidentScreen extends StatefulWidget {
 class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
   final _formKey = GlobalKey<FormState>();
   final _descriptionController = TextEditingController();
-  final _referenceController = TextEditingController(
-    text: 'Av. Jose Maria Arguedas',
-  ); // Valor por defecto visual
+  final _referenceController = TextEditingController();
+  bool _isChoosingLocation = false;
 
   @override
   void dispose() {
@@ -27,9 +29,7 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
   }
 
   void _submit(BuildContext context, ReportIncidentViewModel viewModel) async {
-    // Si no ha ingresado descripción, le ponemos un valor por defecto o mostramos error.
-    // Para simplificar la demo visual y que coincida con la imagen (donde no hay campo de descripción visible explícito),
-    // usaremos un texto si está vacío.
+    if (_isChoosingLocation || viewModel.isSubmitting) return;
     final description = _descriptionController.text.trim().isEmpty
         ? 'Reporte desde la app ciudadana'
         : _descriptionController.text.trim();
@@ -45,7 +45,38 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
 
     FocusScope.of(context).unfocus();
 
+    if (viewModel.selectedImage == null && viewModel.imageUrl == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Agrega una imagen como evidencia')),
+      );
+      return;
+    }
+    if (!MapsConfig.isSupported || MapsConfig.apiKey.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('El mapa no está disponible en este momento.'),
+        ),
+      );
+      return;
+    }
+    setState(() => _isChoosingLocation = true);
+    LatLng? location;
+    try {
+      final currentLocation = await viewModel.locateCitizen();
+      if (!context.mounted || currentLocation == null) return;
+      location = await Navigator.of(context).push<LatLng>(
+        MaterialPageRoute(
+          builder: (_) =>
+              IncidentLocationPicker(initialLocation: currentLocation),
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _isChoosingLocation = false);
+    }
+    if (!context.mounted || location == null) return;
+
     final success = await viewModel.submitIncident(
+      location: location,
       description: description,
       referenceAddress: _referenceController.text.trim(),
     );
@@ -520,61 +551,15 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
 
                     const SizedBox(height: 24),
 
-                    // Ubicación
-                    Row(
-                      children: [
-                        Icon(
-                          Icons.location_on,
-                          color: context.appColors.error,
-                          size: 20,
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            'Ubicación detectada',
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: context.appColors.text,
-                              fontSize: 14,
-                            ),
-                          ),
-                        ),
-
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 4,
-                          ),
-                          decoration: BoxDecoration(
-                            color: context.appColors.infoLight,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Container(
-                                width: 6,
-                                height: 6,
-                                decoration: BoxDecoration(
-                                  color: context.appColors.info,
-                                  shape: BoxShape.circle,
-                                ),
-                              ),
-                              const SizedBox(width: 6),
-                              Text(
-                                'GPS ACTIVO',
-                                style: TextStyle(
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.bold,
-                                  color: context.appColors.info,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
+                    Text(
+                      'Lugar del incidente',
+                      style: Theme.of(context).textTheme.titleMedium,
                     ),
                     const SizedBox(height: 8),
+                    const Text(
+                      'Al enviar la alerta, obtendremos tu ubicación para que elijas el lugar en Google Maps.',
+                    ),
+                    const SizedBox(height: 12),
 
                     // Text field para la dirección (camuflado como texto)
                     Row(
@@ -595,6 +580,7 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
                               color: context.appColors.text,
                             ),
                             decoration: const InputDecoration(
+                              hintText: 'Dirección o referencia del incidente',
                               border: InputBorder.none,
                               isDense: true,
                               contentPadding: EdgeInsets.zero,
@@ -625,17 +611,22 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
                             width: double.infinity,
                             child: ElevatedButton.icon(
                               onPressed:
-                                  viewModel.isSubmitting ||
+                                  _isChoosingLocation ||
+                                      viewModel.isSubmitting ||
                                       viewModel.isUploadingImage
                                   ? null
                                   : () => _submit(context, viewModel),
-                              icon: viewModel.isSubmitting
+                              icon:
+                                  (_isChoosingLocation ||
+                                      viewModel.isSubmitting)
                                   ? const SizedBox()
                                   : Icon(
                                       Icons.report_problem,
                                       color: context.appColors.textInverse,
                                     ),
-                              label: viewModel.isSubmitting
+                              label:
+                                  (_isChoosingLocation ||
+                                      viewModel.isSubmitting)
                                   ? SizedBox(
                                       width: 24,
                                       height: 24,

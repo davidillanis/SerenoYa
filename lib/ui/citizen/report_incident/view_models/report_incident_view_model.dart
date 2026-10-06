@@ -1,6 +1,8 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:sereno_ya/data/services/maps/citizen_location_service.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:sereno_ya/data/models/citizen/incident_category.dart';
 import 'package:sereno_ya/data/models/citizen/incident_create_request.dart';
@@ -8,12 +10,38 @@ import 'package:sereno_ya/data/repositories/citizen/incident_repository.dart';
 import 'package:sereno_ya/data/services/api/file/image_api_service.dart';
 
 class ReportIncidentViewModel extends ChangeNotifier {
-  ReportIncidentViewModel(this._repository, this._storageService) {
+  ReportIncidentViewModel(
+    this._repository,
+    this._storageService, {
+    CitizenLocationService? locationService,
+  }) : _locationService = locationService ?? CitizenLocationService() {
     _loadCategories();
   }
 
   final IncidentRepository _repository;
   final StorageService _storageService;
+  final CitizenLocationService _locationService;
+  bool _isLocating = false;
+  bool get isLocating => _isLocating;
+
+  Future<LatLng?> locateCitizen() async {
+    if (_isLocating || _isSubmitting) return null;
+    _isLocating = true;
+    _errorMessage = null;
+    _notifyListeners();
+    try {
+      return await _locationService.currentLocation();
+    } on LocationFailure catch (error) {
+      _errorMessage = error.message;
+      return null;
+    } catch (_) {
+      _errorMessage = 'No se pudo obtener tu ubicación. Revisa los permisos y vuelve a intentar.';
+      return null;
+    } finally {
+      _isLocating = false;
+      _notifyListeners();
+    }
+  }
 
   bool _isLoading = false;
   bool get isLoading => _isLoading;
@@ -84,6 +112,7 @@ class ReportIncidentViewModel extends ChangeNotifier {
   Future<bool> submitIncident({
     required String description,
     required String referenceAddress,
+    required LatLng location,
   }) async {
     if (_isSubmitting) return false;
     if (_selectedCategory == null) {
@@ -113,12 +142,11 @@ class ReportIncidentViewModel extends ChangeNotifier {
         _notifyListeners();
       }
 
-      // Coordenadas temporales hasta implementar la ubicación del dispositivo.
       final request = IncidentCreateRequest(
         description: description,
         referenceAddress: referenceAddress,
-        latitude: -12.046374,
-        longitude: -77.042793,
+        latitude: location.latitude,
+        longitude: location.longitude,
         categoryId: _selectedCategory!.id,
         evidence: IncidentEvidenceCreateRequest(
           fileUrl: _uploadedImage!.publicUrl,

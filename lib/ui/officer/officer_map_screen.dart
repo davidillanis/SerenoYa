@@ -1,11 +1,9 @@
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:sereno_ya/config/maps_config.dart';
 import 'package:sereno_ya/data/models/officer/officer_incident.dart';
 import 'package:sereno_ya/data/services/maps/maps_loader.dart';
-import 'package:sereno_ya/ui/core/theme/colors.dart';
+import 'package:sereno_ya/ui/core/widgets/map_style.dart';
 
 class OfficerMapScreen extends StatefulWidget {
   const OfficerMapScreen({super.key, required this.item});
@@ -86,7 +84,7 @@ class _OfficerMapScreenState extends State<OfficerMapScreen> {
         return GoogleMap(
           initialCameraPosition: CameraPosition(target: position, zoom: 16),
           style: Theme.of(context).brightness == Brightness.dark
-              ? _darkMapStyle(context)
+              ? darkMapStyle(context)
               : null,
           mapToolbarEnabled: false,
           myLocationButtonEnabled: false,
@@ -104,46 +102,6 @@ class _OfficerMapScreenState extends State<OfficerMapScreen> {
         );
       },
     );
-  }
-
-  String _darkMapStyle(BuildContext context) {
-    String hex(Color color) =>
-        '#${(color.toARGB32() & 0xffffff).toRadixString(16).padLeft(6, '0')}';
-    final colors = context.appColors;
-    return jsonEncode([
-      {
-        'elementType': 'geometry',
-        'stylers': [
-          {'color': hex(colors.background)},
-        ],
-      },
-      {
-        'elementType': 'labels.text.fill',
-        'stylers': [
-          {'color': hex(Theme.of(context).colorScheme.onSurface)},
-        ],
-      },
-      {
-        'elementType': 'labels.text.stroke',
-        'stylers': [
-          {'color': hex(colors.background)},
-        ],
-      },
-      {
-        'featureType': 'road',
-        'elementType': 'geometry',
-        'stylers': [
-          {'color': hex(colors.borderVariant)},
-        ],
-      },
-      {
-        'featureType': 'water',
-        'elementType': 'geometry',
-        'stylers': [
-          {'color': hex(Theme.of(context).colorScheme.primaryContainer)},
-        ],
-      },
-    ]);
   }
 
   Widget _message(String text, {bool retry = false}) => Center(

@@ -2,6 +2,8 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+    <key>NSLocationWhenInUseUsageDescription</key>
+    <string>Usamos tu ubicación para que elijas en el mapa el lugar del incidente.</string>
 	<key>FlutterDartDefines</key>
 	<string>$(DART_DEFINES)</string>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
