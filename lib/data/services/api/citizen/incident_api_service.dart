@@ -19,6 +19,39 @@ class IncidentApiService {
       'acceptedAt,arrivedAt,attendedAt,cancelledAt,category.name,'
       'citizen.id,citizen.userEntity.phone';
 
+  static const adminIncidentFields =
+      'id,status,latitude,longitude,description,referenceAddress,createdAt,'
+      'acceptedAt,arrivedAt,attendedAt,cancelledAt,category.name';
+
+  Future<ApiResponseDto<PageResponse<Incident>>> listIncidents({
+    required int page,
+    int size = 15,
+    String? status,
+    String? categoryId,
+    String? citizenUserId,
+    String? serenoUserId,
+    DateTime? fromDate,
+    DateTime? toDate,
+  }) => _request(
+    () => _dio.get<dynamic>(
+      '/incidents/admin/list',
+      queryParameters: {
+        'status': ?status,
+        'categoryId': ?categoryId,
+        'citizenUserId': ?citizenUserId,
+        'serenoUserId': ?serenoUserId,
+        if (fromDate != null) 'fromDate': _dateOnly(fromDate),
+        if (toDate != null) 'toDate': _dateOnly(toDate),
+        'fields': adminIncidentFields,
+        'page': page,
+        'size': size,
+        'sortBy': 'createdAt',
+        'direction': 'DESC',
+      },
+    ),
+    (value) => PageResponse.fromJson(value, Incident.fromJson),
+  );
+
   Future<ApiResponseDto<PageResponse<OfficerIncident>>> listOfficerIncidents({
     String? status,
     required int page,
@@ -254,5 +287,12 @@ class IncidentApiService {
       throw const FormatException('La API devolvió datos inválidos.');
     }
     return Map<String, dynamic>.from(value);
+  }
+
+  static String _dateOnly(DateTime value) {
+    final local = value.toLocal();
+    final month = local.month.toString().padLeft(2, '0');
+    final day = local.day.toString().padLeft(2, '0');
+    return '${local.year}-$month-$day';
   }
 }

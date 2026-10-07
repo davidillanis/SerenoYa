@@ -247,6 +247,42 @@ class IncidentRepository {
     }
   }
 
+  Future<Result<PageResponse<Incident>>> listAllIncidentsPage({
+    required int page,
+    int size = 15,
+    String? status,
+    String? categoryId,
+    String? citizenUserId,
+    String? serenoUserId,
+    DateTime? fromDate,
+    DateTime? toDate,
+  }) async {
+    try {
+      final response = await _apiService.listIncidents(
+        page: page,
+        size: size,
+        status: status,
+        categoryId: categoryId,
+        citizenUserId: citizenUserId,
+        serenoUserId: serenoUserId,
+        fromDate: fromDate,
+        toDate: toDate,
+      );
+      if (response.isSuccess && response.data != null) {
+        return Result.success(response.data!);
+      }
+      return Result.failure(
+        AuthFailure(AuthFailureCode.server, response.errorMessage),
+      );
+    } on AuthFailure catch (failure) {
+      return Result.failure(failure);
+    } catch (error) {
+      return Result.failure(
+        AuthFailure(AuthFailureCode.unknown, error.toString()),
+      );
+    }
+  }
+
   Future<Result<PageResponse<Incident>>> listAvailableIncidentsPage({
     required int page,
     int size = 15,

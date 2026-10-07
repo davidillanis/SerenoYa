@@ -1,0 +1,450 @@
+import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
+import 'package:sereno_ya/data/models/citizen/incident.dart';
+import 'package:sereno_ya/ui/citizen/incident_detail/view_models/incident_detail_view_model.dart';
+import 'package:sereno_ya/ui/citizen/incident_tracking/widgets/incident_status_badge.dart';
+import 'package:sereno_ya/ui/core/theme/colors.dart';
+import 'package:sereno_ya/ui/core/widgets/responsive_body.dart';
+
+class AdminIncidentDetailScreen extends StatelessWidget {
+  const AdminIncidentDetailScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final viewModel = context.watch<IncidentDetailViewModel>();
+    return Scaffold(
+      backgroundColor: context.appColors.background,
+      appBar: AppBar(
+        title: const Text('Detalle de incidencia'),
+        actions: [
+          IconButton(
+            tooltip: 'Actualizar incidencia',
+            onPressed: viewModel.isLoading
+                ? null
+                : () => viewModel.load(forceRefresh: true),
+            icon: viewModel.isLoading
+                ? const SizedBox.square(
+                    dimension: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.refresh),
+          ),
+        ],
+      ),
+      body: ResponsiveBody(
+        maxWidth: 1180,
+        child: _buildBody(context, viewModel),
+      ),
+    );
+  }
+
+  Widget _buildBody(BuildContext context, IncidentDetailViewModel viewModel) {
+    if (viewModel.isLoading && viewModel.incident == null) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (viewModel.errorMessage != null && viewModel.incident == null) {
+      return _ErrorState(
+        message: viewModel.errorMessage!,
+        onRetry: () => viewModel.load(forceRefresh: true),
+      );
+    }
+    final incident = viewModel.incident;
+    if (incident == null) {
+      return const Center(child: Text('No se encontró la incidencia'));
+    }
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final wide = constraints.maxWidth >= 880;
+        return SingleChildScrollView(
+          padding: EdgeInsets.all(wide ? 24 : 16),
+          child: wide
+              ? _WideDetail(incident: incident)
+              : _CompactDetail(incident: incident),
+        );
+      },
+    );
+  }
+}
+
+class _WideDetail extends StatelessWidget {
+  const _WideDetail({required this.incident});
+
+  final Incident incident;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _IncidentHeading(incident: incident),
+        const SizedBox(height: 24),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(flex: 5, child: _EvidencePanel(incident: incident)),
+            const SizedBox(width: 24),
+            Expanded(
+              flex: 7,
+              child: Column(
+                children: [
+                  _ReportInformation(incident: incident),
+                  const SizedBox(height: 16),
+                  _TimelinePanel(incident: incident),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+class _CompactDetail extends StatelessWidget {
+  const _CompactDetail({required this.incident});
+
+  final Incident incident;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _IncidentHeading(incident: incident),
+        const SizedBox(height: 20),
+        _EvidencePanel(incident: incident),
+        const SizedBox(height: 16),
+        _ReportInformation(incident: incident),
+        const SizedBox(height: 16),
+        _TimelinePanel(incident: incident),
+      ],
+    );
+  }
+}
+
+class _IncidentHeading extends StatelessWidget {
+  const _IncidentHeading({required this.incident});
+
+  final Incident incident;
+
+  @override
+  Widget build(BuildContext context) {
+    return Wrap(
+      spacing: 16,
+      runSpacing: 12,
+      alignment: WrapAlignment.spaceBetween,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      children: [
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              incident.category?.name ?? 'Incidencia reportada',
+              style: Theme.of(context).textTheme.headlineSmall
+                  ?.copyWith(fontWeight: FontWeight.w700, letterSpacing: -0.3),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'Registro ${_shortId(incident.id)}',
+              style: TextStyle(color: context.appColors.textSecondary),
+            ),
+          ],
+        ),
+        IncidentStatusBadge(status: incident.status),
+      ],
+    );
+  }
+}
+
+class _EvidencePanel extends StatelessWidget {
+  const _EvidencePanel({required this.incident});
+
+  final Incident incident;
+
+  @override
+  Widget build(BuildContext context) {
+    final evidence = incident.evidence;
+    return _SectionCard(
+      title: 'Evidencia',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: AspectRatio(
+              aspectRatio: 4 / 3,
+              child: ColoredBox(
+                color: context.appColors.surfaceVariant,
+                child: evidence?.fileUrl.isNotEmpty == true
+                    ? Image.network(
+                        evidence!.fileUrl,
+                        fit: BoxFit.cover,
+                        loadingBuilder: (_, child, progress) => progress == null
+                            ? child
+                            : const Center(child: CircularProgressIndicator()),
+                        errorBuilder: (_, _, _) => const _EvidenceUnavailable(),
+                      )
+                    : const _EvidenceUnavailable(),
+              ),
+            ),
+          ),
+          if (evidence != null && evidence.fileName.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Text(
+              evidence.fileName,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(color: context.appColors.textSecondary),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _ReportInformation extends StatelessWidget {
+  const _ReportInformation({required this.incident});
+
+  final Incident incident;
+
+  @override
+  Widget build(BuildContext context) {
+    return _SectionCard(
+      title: 'Información del reporte',
+      child: Column(
+        children: [
+          _DetailField(
+            icon: Icons.subject_outlined,
+            label: 'Descripción',
+            value: incident.description.isEmpty
+                ? 'Sin descripción registrada'
+                : incident.description,
+          ),
+          const SizedBox(height: 18),
+          _DetailField(
+            icon: Icons.location_on_outlined,
+            label: 'Ubicación',
+            value: incident.referenceAddress?.trim().isNotEmpty == true
+                ? incident.referenceAddress!.trim()
+                : 'Ubicación enviada por GPS',
+          ),
+          const SizedBox(height: 18),
+          _DetailField(
+            icon: Icons.my_location_outlined,
+            label: 'Coordenadas',
+            value:
+                '${incident.latitude.toStringAsFixed(6)}, '
+                '${incident.longitude.toStringAsFixed(6)}',
+          ),
+          const SizedBox(height: 18),
+          _DetailField(
+            icon: Icons.confirmation_number_outlined,
+            label: 'Código',
+            value: incident.id,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TimelinePanel extends StatelessWidget {
+  const _TimelinePanel({required this.incident});
+
+  final Incident incident;
+
+  @override
+  Widget build(BuildContext context) {
+    final entries = <(String, DateTime?)>[
+      ('Reporte creado', incident.createdAt),
+      ('Incidencia aceptada', incident.acceptedAt),
+      ('Sereno en el lugar', incident.arrivedAt),
+      ('Incidencia atendida', incident.attendedAt),
+      ('Incidencia cancelada', incident.cancelledAt),
+    ].where((entry) => entry.$2 != null).toList(growable: false);
+
+    return _SectionCard(
+      title: 'Cronología',
+      child: Column(
+        children: [
+          for (var index = 0; index < entries.length; index++) ...[
+            _TimelineEntry(label: entries[index].$1, date: entries[index].$2!),
+            if (index != entries.length - 1) const SizedBox(height: 14),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _SectionCard extends StatelessWidget {
+  const _SectionCard({required this.title, required this.child});
+
+  final String title;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: context.appColors.card,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: context.appColors.borderVariant),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            title,
+            style: Theme.of(context).textTheme.titleMedium
+                ?.copyWith(fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: 16),
+          child,
+        ],
+      ),
+    );
+  }
+}
+
+class _DetailField extends StatelessWidget {
+  const _DetailField({
+    required this.icon,
+    required this.label,
+    required this.value,
+  });
+
+  final IconData icon;
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, size: 20, color: context.appColors.primary),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: TextStyle(
+                  color: context.appColors.textTertiary,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 4),
+              SelectableText(
+                value,
+                style: TextStyle(
+                  color: context.appColors.text,
+                  fontWeight: FontWeight.w600,
+                  height: 1.4,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _TimelineEntry extends StatelessWidget {
+  const _TimelineEntry({required this.label, required this.date});
+
+  final String label;
+  final DateTime date;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(top: 2),
+          child: Icon(
+            Icons.check_circle_outline,
+            size: 18,
+            color: context.appColors.success,
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Text(
+            label,
+            style: const TextStyle(fontWeight: FontWeight.w600),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Text(
+          DateFormat('dd/MM/yyyy HH:mm').format(date),
+          style: TextStyle(color: context.appColors.textTertiary, fontSize: 12),
+        ),
+      ],
+    );
+  }
+}
+
+class _EvidenceUnavailable extends StatelessWidget {
+  const _EvidenceUnavailable();
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Icon(
+          Icons.image_not_supported_outlined,
+          size: 48,
+          color: context.appColors.textTertiary,
+        ),
+        const SizedBox(height: 8),
+        Text(
+          'Evidencia no disponible',
+          style: TextStyle(color: context.appColors.textSecondary),
+        ),
+      ],
+    );
+  }
+}
+
+class _ErrorState extends StatelessWidget {
+  const _ErrorState({required this.message, required this.onRetry});
+
+  final String message;
+  final Future<void> Function() onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.error_outline, size: 56, color: context.appColors.error),
+            const SizedBox(height: 16),
+            Text(message, textAlign: TextAlign.center),
+            const SizedBox(height: 24),
+            FilledButton.icon(
+              onPressed: onRetry,
+              icon: const Icon(Icons.refresh),
+              label: const Text('Reintentar'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+String _shortId(String id) => id.length <= 12 ? id : '${id.substring(0, 8)}…';

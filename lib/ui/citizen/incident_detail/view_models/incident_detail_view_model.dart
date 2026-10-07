@@ -3,8 +3,15 @@ import 'package:sereno_ya/data/models/citizen/incident.dart';
 import 'package:sereno_ya/data/repositories/citizen/incident_repository.dart';
 
 class IncidentDetailViewModel extends ChangeNotifier {
-  IncidentDetailViewModel(this._repository, this._incidentId)
-    : _incident = _repository.getCachedIncidentById(_incidentId) {
+  IncidentDetailViewModel(
+    this._repository,
+    this._incidentId, {
+    String? cacheOwnerId,
+  }) {
+    if (cacheOwnerId != null) {
+      _repository.useCacheForUser(cacheOwnerId);
+    }
+    _incident = _repository.getCachedIncidentById(_incidentId);
     if (_incident == null) {
       load();
     }

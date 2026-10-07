@@ -35,6 +35,9 @@ import 'package:sereno_ya/ui/auth/view_models/session_view_model.dart';
 import 'package:sereno_ya/models/auth/user_role.dart';
 import 'package:sereno_ya/ui/officer/officer_home_screen.dart';
 import 'package:sereno_ya/ui/officer/view_models/officer_incidents_view_model.dart';
+import 'package:sereno_ya/ui/admin/incidents/admin_incident_detail_screen.dart';
+import 'package:sereno_ya/ui/admin/incidents/admin_incidents_screen.dart';
+import 'package:sereno_ya/ui/admin/incidents/view_models/admin_incidents_view_model.dart';
 
 GoRouter createAppRouter({
   Future<void> Function()? onLoginSuccess,
@@ -207,10 +210,33 @@ GoRouter createAppRouter({
       ),
       GoRoute(
         path: RouteNames.admin,
-        builder: (_, _) => const RoleHomeScreen(
-          title: 'Administración',
-          description: 'Gestión de usuarios, zonas e incidentes.',
-          icon: Icons.admin_panel_settings_outlined,
+        builder: (_, _) => ChangeNotifierProvider(
+          create: (context) => AdminIncidentsViewModel(
+            incidentRepository,
+            cacheOwnerId: context
+                .read<SessionViewModel>()
+                .state
+                .session
+                ?.user
+                .id,
+          ),
+          child: const AdminIncidentsScreen(),
+        ),
+      ),
+      GoRoute(
+        path: '${RouteNames.admin}/incidents/:incidentId',
+        builder: (_, state) => ChangeNotifierProvider(
+          create: (context) => IncidentDetailViewModel(
+            incidentRepository,
+            state.pathParameters['incidentId']!,
+            cacheOwnerId: context
+                .read<SessionViewModel>()
+                .state
+                .session
+                ?.user
+                .id,
+          ),
+          child: const AdminIncidentDetailScreen(),
         ),
       ),
       GoRoute(

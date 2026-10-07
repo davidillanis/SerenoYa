@@ -14,4 +14,7 @@ abstract final class RouteNames {
 
   static String incidentDetail(String incidentId) =>
       '/citizen/incidents/$incidentId';
+
+  static String adminIncidentDetail(String incidentId) =>
+      '/admin/incidents/$incidentId';
 }
