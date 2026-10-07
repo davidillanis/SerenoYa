@@ -43,7 +43,7 @@ class ProfileViewModel extends ChangeNotifier {
   bool _disposed = false;
 
   Future<void> load({bool forceRefresh = false}) async {
-    if (_isLoading) return;
+    if (_isLoading || _isSaving || _disposed) return;
     final hasCompleteCache =
         _userProfile != null &&
         (!includeCitizenProfile || _citizenProfile != null);
@@ -104,7 +104,9 @@ class ProfileViewModel extends ChangeNotifier {
     String? homeLongitude,
   }) async {
     final currentUser = _userProfile;
-    if (currentUser == null || _isSaving) return false;
+    if (currentUser == null || _isSaving || _isLoading || _disposed) {
+      return false;
+    }
 
     final normalizedName = name.trim();
     final normalizedLastName = lastName.trim();
@@ -170,6 +172,7 @@ class ProfileViewModel extends ChangeNotifier {
             lastName: normalizedLastName,
             phone: normalizedPhone,
             address: normalizedAddress,
+            notificationsEnabled: currentUser.notificationsEnabled,
           ),
         );
         _userProfile = currentUser.copyWith(
@@ -202,6 +205,38 @@ class ProfileViewModel extends ChangeNotifier {
       return false;
     } on Object {
       _errorMessage = 'No se pudo actualizar el perfil.';
+      return false;
+    } finally {
+      _isSaving = false;
+      _notifyListeners();
+    }
+  }
+
+  Future<bool> setNotificationsEnabled(bool enabled) async {
+    final currentUser = _userProfile;
+    if (currentUser == null || _isSaving || _isLoading || _disposed) {
+      return false;
+    }
+    if (currentUser.notificationsEnabled == enabled) return true;
+    _isSaving = true;
+    _errorMessage = null;
+    _successMessage = null;
+    _notifyListeners();
+    try {
+      await _updateUser(
+        UserProfileUpdateRequest(notificationsEnabled: enabled),
+      );
+      _userProfile = currentUser.copyWith(notificationsEnabled: enabled);
+      if (!_disposed) _service.cacheUserProfile(_userProfile!);
+      _successMessage = enabled
+          ? 'Notificaciones activadas.'
+          : 'Notificaciones desactivadas.';
+      return true;
+    } on AuthFailure catch (failure) {
+      _errorMessage = failure.message;
+      return false;
+    } on Object {
+      _errorMessage = 'No se pudo guardar la preferencia de notificaciones.';
       return false;
     } finally {
       _isSaving = false;

@@ -1,9 +1,38 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sereno_ya/data/models/profile/profile_update_request.dart';
+import 'package:sereno_ya/data/models/profile/user_profile.dart';
 import 'package:sereno_ya/data/services/api/profile/profile_api_service.dart';
 
 void main() {
+  test('interpreta y conserva la preferencia de notificaciones', () {
+    expect(UserProfile.fromJson({}).notificationsEnabled, isTrue);
+    for (final enabled in [true, false]) {
+      final user = UserProfile.fromJson({'notificationsEnabled': enabled});
+      expect(user.notificationsEnabled, enabled);
+      expect(user.copyWith(name: 'Ana').notificationsEnabled, enabled);
+      expect(
+        user.copyWith(notificationsEnabled: !enabled).notificationsEnabled,
+        !enabled,
+      );
+    }
+  });
+
+  test(
+    'envía solo la preferencia al activar o desactivar notificaciones',
+    () async {
+      final requests = <RequestOptions>[];
+      final service = ProfileApiService(_profileDio(requests.add));
+      for (final enabled in [false, true]) {
+        await service.updateUserProfile(
+          UserProfileUpdateRequest(notificationsEnabled: enabled),
+        );
+        expect(requests.last.method, 'PUT');
+        expect(requests.last.path, '/user-role/update-me');
+        expect(requests.last.data, {'notificationsEnabled': enabled});
+      }
+    },
+  );
   test('consume los perfiles del usuario y ciudadano', () async {
     final requestedPaths = <String>[];
     final service = ProfileApiService(

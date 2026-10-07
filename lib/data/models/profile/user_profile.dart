@@ -9,6 +9,7 @@ class UserProfile {
     required this.address,
     required this.enabled,
     required this.emailVerified,
+    this.notificationsEnabled = true,
     this.birthDate,
     this.imageUrl,
   });
@@ -29,6 +30,7 @@ class UserProfile {
       phone: localPhone.isNotEmpty ? localPhone : remotePhone,
       address: json['address']?.toString() ?? '',
       enabled: json['enabled'] == true,
+      notificationsEnabled: json['notificationsEnabled'] as bool? ?? true,
       emailVerified: json['emailVerified'] == true,
       birthDate: _parseDate(json['birthDate']),
       imageUrl: _optionalText(json['imageUrl']),
@@ -43,6 +45,7 @@ class UserProfile {
   final String phone;
   final String address;
   final bool enabled;
+  final bool notificationsEnabled;
   final bool emailVerified;
   final DateTime? birthDate;
   final String? imageUrl;
@@ -53,6 +56,7 @@ class UserProfile {
   }
 
   UserProfile copyWith({
+    bool? notificationsEnabled,
     String? name,
     String? lastName,
     String? phone,
@@ -67,6 +71,7 @@ class UserProfile {
       phone: phone ?? this.phone,
       address: address ?? this.address,
       enabled: enabled,
+      notificationsEnabled: notificationsEnabled ?? this.notificationsEnabled,
       emailVerified: emailVerified,
       birthDate: birthDate,
       imageUrl: imageUrl,

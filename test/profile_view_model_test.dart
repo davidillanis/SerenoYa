@@ -7,6 +7,9 @@ void main() {
   test('carga y actualiza el perfil sin una capa de repositorio', () async {
     final requestedPaths = <String>[];
     var name = 'Ana';
+    var notificationsEnabled = true;
+    var rejectUpdate = false;
+    final updates = <Map<String, dynamic>>[];
     var address = 'San Jerónimo';
     var latitude = -13.6519;
     var longitude = -73.365;
@@ -17,8 +20,13 @@ void main() {
           requestedPaths.add(options.path);
           if (options.path == '/user-role/update-me') {
             final data = Map<String, dynamic>.from(options.data as Map);
-            name = data['name'] as String;
-            address = data['address'] as String;
+            updates.add(data);
+            if (!rejectUpdate) {
+              name = data['name'] as String? ?? name;
+              address = data['address'] as String? ?? address;
+              notificationsEnabled =
+                  data['notificationsEnabled'] as bool? ?? notificationsEnabled;
+            }
           }
           if (options.path == '/citizens/update') {
             final data = Map<String, dynamic>.from(options.data as Map);
@@ -36,6 +44,7 @@ void main() {
               'phone': '987654321',
               'address': address,
               'enabled': true,
+              'notificationsEnabled': notificationsEnabled,
               'emailVerified': true,
             },
             '/citizens/me' => {
@@ -50,7 +59,7 @@ void main() {
               requestOptions: options,
               statusCode: 200,
               data: {
-                'isSuccess': true,
+                'isSuccess': !rejectUpdate,
                 'message': 'Successful operation',
                 'errors': null,
                 'data': responseData,
@@ -84,6 +93,19 @@ void main() {
     expect(cachedViewModel.userProfile?.displayName, 'Ana Quispe');
     expect(requestedPaths.length, requestCountAfterFirstLoad);
 
+    expect(await viewModel.setNotificationsEnabled(false), isTrue);
+    expect(updates.last, {'notificationsEnabled': false});
+    expect(viewModel.userProfile!.notificationsEnabled, isFalse);
+    expect(service.cachedUserProfile!.notificationsEnabled, isFalse);
+    await viewModel.load(forceRefresh: true);
+    expect(viewModel.userProfile!.notificationsEnabled, isFalse);
+
+    rejectUpdate = true;
+    expect(await viewModel.setNotificationsEnabled(true), isFalse);
+    expect(viewModel.userProfile!.notificationsEnabled, isFalse);
+    expect(viewModel.isSaving, isFalse);
+    rejectUpdate = false;
+
     final updated = await viewModel.save(
       name: 'Ana María',
       lastName: 'Quispe',
@@ -94,6 +116,8 @@ void main() {
     );
 
     expect(updated, isTrue);
+    expect(updates.last['notificationsEnabled'], isFalse);
+    expect(viewModel.userProfile!.notificationsEnabled, isFalse);
     expect(requestedPaths, contains('/user-role/update-me'));
     expect(requestedPaths, contains('/citizens/update'));
     expect(viewModel.userProfile?.name, 'Ana María');
@@ -112,6 +136,9 @@ void main() {
     expect(invalid, isFalse);
     expect(viewModel.errorMessage, 'Ingresa un celular peruano válido.');
     expect(requestedPaths.length, requestCount);
+    expect(await viewModel.setNotificationsEnabled(true), isTrue);
+    expect(updates.last, {'notificationsEnabled': true});
+    expect(service.cachedUserProfile!.notificationsEnabled, isTrue);
   });
 }
 

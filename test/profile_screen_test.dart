@@ -75,7 +75,6 @@ void main() {
       await tester.tap(find.text('Mi perfil'));
       await tester.pumpAndSettle();
       expect(find.byType(ProfileScreen), findsOneWidget);
-      expect(find.text('Cambiar tema'), findsOneWidget);
       expect(find.text('Datos personales'), findsOneWidget);
       await tester.tap(find.text('Editar perfil'));
       await tester.pumpAndSettle();
@@ -87,7 +86,26 @@ void main() {
       );
       Navigator.of(tester.element(sheetTitle)).pop();
       await tester.pumpAndSettle();
+      await tester.scrollUntilVisible(find.text('Recibir notificaciones'), 100);
+      expect(
+        tester.widget<SwitchListTile>(find.byType(SwitchListTile)).value,
+        isTrue,
+      );
+      await tester.tap(find.byType(SwitchListTile));
+      await tester.pumpAndSettle();
+      expect(
+        tester.widget<SwitchListTile>(find.byType(SwitchListTile)).value,
+        isFalse,
+      );
+      expect(find.text('Notificaciones desactivadas.'), findsOneWidget);
+      await tester.tap(find.byType(SwitchListTile));
+      await tester.pumpAndSettle();
+      expect(
+        tester.widget<SwitchListTile>(find.byType(SwitchListTile)).value,
+        isTrue,
+      );
       await tester.scrollUntilVisible(find.text('Pink (rosa)'), 200);
+      expect(find.text('Cambiar tema'), findsOneWidget);
       await tester.tap(find.text('Pink (rosa)'));
       await tester.pumpAndSettle();
       expect(controller.variant, ThemeVariant.pink);
@@ -124,17 +142,19 @@ Dio _profileDio() {
               'isSuccess': true,
               'message': 'Successful operation',
               'errors': null,
-              'data': {
-                'id': 'user-1',
-                'name': 'Ana',
-                'lastName': 'Quispe',
-                'email': 'ana@example.com',
-                'dni': '12345678',
-                'phone': '987654321',
-                'address': 'San Jerónimo',
-                'enabled': true,
-                'emailVerified': true,
-              },
+              'data': options.method == 'PUT'
+                  ? 'Perfil actualizado'
+                  : {
+                      'id': 'user-1',
+                      'name': 'Ana',
+                      'lastName': 'Quispe',
+                      'email': 'ana@example.com',
+                      'dni': '12345678',
+                      'phone': '987654321',
+                      'address': 'San Jerónimo',
+                      'enabled': true,
+                      'emailVerified': true,
+                    },
             },
           ),
         );

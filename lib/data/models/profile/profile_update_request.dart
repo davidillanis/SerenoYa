@@ -1,22 +1,26 @@
 class UserProfileUpdateRequest {
   const UserProfileUpdateRequest({
-    required this.name,
-    required this.lastName,
-    required this.phone,
-    required this.address,
+    this.name,
+    this.lastName,
+    this.phone,
+    this.address,
+    this.notificationsEnabled,
   });
 
-  final String name;
-  final String lastName;
-  final String phone;
-  final String address;
+  final String? name;
+  final String? lastName;
+  final String? phone;
+  final String? address;
+  final bool? notificationsEnabled;
 
   Map<String, dynamic> toJson() {
     return {
-      'name': name,
-      'lastName': lastName,
-      'phone': phone,
-      'address': address,
+      if (name != null) 'name': name,
+      if (lastName != null) 'lastName': lastName,
+      if (phone != null) 'phone': phone,
+      if (address != null) 'address': address,
+      if (notificationsEnabled != null)
+        'notificationsEnabled': notificationsEnabled,
     };
   }
 }

@@ -88,7 +88,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         title: const Text('Mi perfil'),
         actions: [
           IconButton(
-            onPressed: viewModel.isLoading
+            onPressed: viewModel.isLoading || viewModel.isSaving
                 ? null
                 : () => viewModel.load(forceRefresh: true),
             tooltip: 'Actualizar perfil',
@@ -135,11 +135,43 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ],
               const SizedBox(height: 16),
               FilledButton.icon(
-                onPressed: viewModel.isSaving
+                onPressed: viewModel.isSaving || viewModel.isLoading
                     ? null
                     : () => _openEditor(viewModel),
                 icon: const Icon(Icons.edit_outlined),
                 label: const Text('Editar perfil'),
+              ),
+              const SizedBox(height: 24),
+              Card(
+                margin: EdgeInsets.zero,
+                elevation: 0,
+                clipBehavior: Clip.antiAlias,
+                child: SwitchListTile(
+                  title: const Text('Recibir notificaciones'),
+                  subtitle: Text(
+                    viewModel.isSaving
+                        ? 'Guardando…'
+                        : 'Avisos de SerenoYa en tus dispositivos.',
+                  ),
+                  value: viewModel.userProfile!.notificationsEnabled,
+                  onChanged: viewModel.isSaving || viewModel.isLoading
+                      ? null
+                      : (enabled) async {
+                          final success = await viewModel
+                              .setNotificationsEnabled(enabled);
+                          if (!context.mounted) return;
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                success
+                                    ? viewModel.successMessage!
+                                    : viewModel.errorMessage ??
+                                          'No se pudo guardar la preferencia.',
+                              ),
+                            ),
+                          );
+                        },
+                ),
               ),
             ],
             const SizedBox(height: 32),
