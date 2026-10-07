@@ -8,6 +8,7 @@ import 'package:sereno_ya/data/services/auth/google_identity_service.dart';
 import 'package:android_id/android_id.dart';
 import 'package:sereno_ya/data/services/api/device_api_service.dart';
 import 'package:sereno_ya/data/services/api/device_token_service.dart';
+import 'package:sereno_ya/data/services/local/device_sync_storage.dart';
 import 'package:go_router/go_router.dart';
 import 'package:sereno_ya/data/repositories/auth/auth_repository.dart';
 import 'package:sereno_ya/data/repositories/auth/auth_repository_impl.dart';
@@ -71,6 +72,7 @@ class AppDependencies {
         readDeviceId: () async =>
             isAndroid ? await const AndroidId().getId() : null,
         osType: kIsWeb ? 'WEB' : (isAndroid ? 'ANDROID' : 'IOS'),
+        syncStorage: SharedPreferencesDeviceSyncStorage(),
       ),
     );
     dependencies.routerNotifier = AuthRouterNotifier(authRepository);

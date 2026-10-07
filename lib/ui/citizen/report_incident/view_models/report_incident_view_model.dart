@@ -147,7 +147,7 @@ class ReportIncidentViewModel extends ChangeNotifier {
         referenceAddress: referenceAddress,
         latitude: location.latitude,
         longitude: location.longitude,
-        categoryId: _selectedCategory!.id,
+        categoryName: _selectedCategory!.name,
         evidence: IncidentEvidenceCreateRequest(
           fileUrl: _uploadedImage!.publicUrl,
           fileName: _fileNameFromKey(_uploadedImage!.fileKey),

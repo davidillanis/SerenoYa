@@ -19,7 +19,7 @@ class IncidentCreateRequest {
   final double latitude;
   final double longitude;
   final String referenceAddress;
-  final String categoryId;
+  final String categoryName;
   final IncidentEvidenceCreateRequest evidence;
 
   const IncidentCreateRequest({
@@ -27,7 +27,7 @@ class IncidentCreateRequest {
     required this.latitude,
     required this.longitude,
     required this.referenceAddress,
-    required this.categoryId,
+    required this.categoryName,
     required this.evidence,
   });
 
@@ -37,7 +37,7 @@ class IncidentCreateRequest {
       'latitude': latitude,
       'longitude': longitude,
       'referenceAddress': referenceAddress,
-      'categoryId': categoryId,
+      'categoryName': categoryName,
       'evidence': evidence.toJson(),
     };
   }

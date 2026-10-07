@@ -85,6 +85,7 @@ void main() {
       referenceAddress: 'Plaza',
       location: const LatLng(-13.64, -73.35),
     );
+    expect(repository.request?.categoryName, 'Incendio');
     expect(repository.request?.latitude, -13.64);
     expect(repository.request?.longitude, -73.35);
   });

@@ -8,7 +8,7 @@ void main() {
       latitude: -13.6519,
       longitude: -73.365,
       referenceAddress: 'Av. Principal',
-      categoryId: 'category-1',
+      categoryName: 'Incendio',
       evidence: const IncidentEvidenceCreateRequest(
         fileUrl: 'https://storage.example.com/incidents/image.jpg',
         fileName: 'image.jpg',
@@ -21,7 +21,7 @@ void main() {
       'latitude': -13.6519,
       'longitude': -73.365,
       'referenceAddress': 'Av. Principal',
-      'categoryId': 'category-1',
+      'categoryName': 'Incendio',
       'evidence': {
         'fileUrl': 'https://storage.example.com/incidents/image.jpg',
         'fileName': 'image.jpg',

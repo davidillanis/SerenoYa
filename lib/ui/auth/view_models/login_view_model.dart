@@ -18,15 +18,6 @@ class LoginViewModel extends ChangeNotifier {
       await _onLoginSuccess?.call();
     } on Object {
       debugPrint('No se pudo registrar el dispositivo tras iniciar sesión.');
-      debugPrint('No se pudo registrar el dispositivo tras iniciar sesión.');
-      debugPrint('No se pudo registrar el dispositivo tras iniciar sesión.');
-      debugPrint('No se pudo registrar el dispositivo tras iniciar sesión.');
-      debugPrint('No se pudo registrar el dispositivo tras iniciar sesión.');
-      debugPrint('No se pudo registrar el dispositivo tras iniciar sesión.');
-      debugPrint('No se pudo registrar el dispositivo tras iniciar sesión.');
-      debugPrint('No se pudo registrar el dispositivo tras iniciar sesión.');
-      debugPrint('No se pudo registrar el dispositivo tras iniciar sesión.');
-      debugPrint('No se pudo registrar el dispositivo tras iniciar sesión.');
     }
   }
 

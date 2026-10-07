@@ -5,7 +5,7 @@ import 'package:sereno_ya/data/services/api/citizen/incident_api_service.dart';
 
 void main() {
   test(
-    'crea una incidencia usando fileType y deserializa su evidencia',
+    'crea una incidencia con categoryName y deserializa su evidencia',
     () async {
       late RequestOptions capturedRequest;
       final service = _serviceThatResponds(
@@ -31,7 +31,7 @@ void main() {
           latitude: -13.6519,
           longitude: -73.365,
           referenceAddress: 'Av. Principal',
-          categoryId: 'category-1',
+          categoryName: 'Incendio',
           evidence: IncidentEvidenceCreateRequest(
             fileUrl: 'https://cdn.example.com/incident.jpg',
             fileName: 'incident.jpg',
@@ -46,6 +46,10 @@ void main() {
       final evidence = Map<String, dynamic>.from(
         requestData['evidence'] as Map,
       );
+      expect(capturedRequest.method, 'POST');
+      expect(capturedRequest.path, '/incidents/create');
+      expect(requestData['categoryName'], 'Incendio');
+      expect(requestData, isNot(contains('categoryId')));
       expect(evidence['fileType'], 'image/jpeg');
       expect(evidence, isNot(contains('mimeType')));
       expect(response.data?.id, 'incident-1');
