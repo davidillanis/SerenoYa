@@ -1,9 +1,34 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:sereno_ya/data/services/auth/google_identity_service.dart';
 import 'package:sereno_ya/data/repositories/auth/auth_repository.dart';
 
 class LoginViewModel extends ChangeNotifier {
-  LoginViewModel(this._repository, {this._googleIdentityService});
+  LoginViewModel(
+    this._repository, {
+    this._googleIdentityService,
+    this._onLoginSuccess,
+  });
+
+  final Future<void> Function()? _onLoginSuccess;
+
+  Future<void> _registerDevice() async {
+    try {
+      await _onLoginSuccess?.call();
+    } on Object {
+      debugPrint('No se pudo registrar el dispositivo tras iniciar sesión.');
+      debugPrint('No se pudo registrar el dispositivo tras iniciar sesión.');
+      debugPrint('No se pudo registrar el dispositivo tras iniciar sesión.');
+      debugPrint('No se pudo registrar el dispositivo tras iniciar sesión.');
+      debugPrint('No se pudo registrar el dispositivo tras iniciar sesión.');
+      debugPrint('No se pudo registrar el dispositivo tras iniciar sesión.');
+      debugPrint('No se pudo registrar el dispositivo tras iniciar sesión.');
+      debugPrint('No se pudo registrar el dispositivo tras iniciar sesión.');
+      debugPrint('No se pudo registrar el dispositivo tras iniciar sesión.');
+      debugPrint('No se pudo registrar el dispositivo tras iniciar sesión.');
+    }
+  }
 
   final GoogleIdentityService? _googleIdentityService;
   bool _disposed = false;
@@ -36,6 +61,7 @@ class LoginViewModel extends ChangeNotifier {
         );
       }
       final result = await _repository.loginWithGoogleIdToken(token.trim());
+      if (result.isSuccess) unawaited(_registerDevice());
       errorMessage = result.failure?.message;
       return result.isSuccess;
     } on GoogleIdentityException catch (error) {
@@ -89,6 +115,7 @@ class LoginViewModel extends ChangeNotifier {
       email: email.trim(),
       password: password,
     );
+    if (result.isSuccess) unawaited(_registerDevice());
     isLoading = false;
     errorMessage = result.failure?.message;
     notifyListeners();
@@ -106,6 +133,7 @@ class LoginViewModel extends ChangeNotifier {
     errorMessage = null;
     notifyListeners();
     final result = await _repository.loginWithGoogleIdToken(idToken.trim());
+    if (result.isSuccess) unawaited(_registerDevice());
     isLoading = false;
     errorMessage = result.failure?.message;
     notifyListeners();

@@ -37,7 +37,7 @@ class NotificationService {
     await _requestPermission();
     await _initializeLocalNotifications();
     await _configureFirebaseListeners();
-    await _synchronizeToken();
+    await synchronizeToken();
   }
 
   Future<void> _requestPermission() async {
@@ -160,7 +160,8 @@ class NotificationService {
     }
   }
 
-  Future<void> _synchronizeToken() async {
+  Future<void> synchronizeToken() async {
+    if (_deviceTokens == null) return;
     try {
       final token = await _messaging.getToken();
       await _deviceTokens?.synchronizeToken(token);

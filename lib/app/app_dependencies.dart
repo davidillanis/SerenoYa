@@ -1,4 +1,5 @@
 import 'package:sereno_ya/data/repositories/officer/officer_repository.dart';
+import 'package:sereno_ya/data/services/api/notification_service.dart';
 
 import 'package:flutter/foundation.dart';
 
@@ -74,6 +75,7 @@ class AppDependencies {
     );
     dependencies.routerNotifier = AuthRouterNotifier(authRepository);
     dependencies.router = createAppRouter(
+      onLoginSuccess: NotificationService.instance.synchronizeToken,
       officerRepository: OfficerRepository(incidentApiService),
       googleIdentityService: googleIdentityService,
       authRepository: authRepository,

@@ -37,6 +37,7 @@ import 'package:sereno_ya/ui/officer/officer_home_screen.dart';
 import 'package:sereno_ya/ui/officer/view_models/officer_incidents_view_model.dart';
 
 GoRouter createAppRouter({
+  Future<void> Function()? onLoginSuccess,
   GoogleIdentityService? googleIdentityService,
   required AuthRepository authRepository,
   required IncidentRepository incidentRepository,
@@ -122,6 +123,7 @@ GoRouter createAppRouter({
           create: (_) => LoginViewModel(
             authRepository,
             googleIdentityService: googleIdentityService,
+            onLoginSuccess: onLoginSuccess,
           ),
           child: const LoginScreen(),
         ),

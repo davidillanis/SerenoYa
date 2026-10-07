@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sereno_ya/data/repositories/auth/auth_repository.dart';
 import 'package:sereno_ya/models/auth/auth_session.dart';
@@ -13,6 +15,46 @@ import 'package:sereno_ya/ui/auth/view_models/session_view_model.dart';
 
 void main() {
   group('MVVM authentication delegation', () {
+    test(
+      'registra el dispositivo sin esperar al backend tras el login',
+      () async {
+        final pending = Completer<void>();
+        var calls = 0;
+        final viewModel = LoginViewModel(
+          RecordingAuthRepository(),
+          onLoginSuccess: () {
+            calls++;
+            return pending.future;
+          },
+        );
+        expect(
+          await viewModel.login(email: 'test@example.com', password: 'test'),
+          isTrue,
+        );
+        expect(calls, 1);
+        expect(pending.isCompleted, isFalse);
+        expect(viewModel.isLoading, isFalse);
+        pending.complete();
+        viewModel.dispose();
+      },
+    );
+
+    test(
+      'el fallo del registro no convierte un login exitoso en error',
+      () async {
+        final viewModel = LoginViewModel(
+          RecordingAuthRepository(),
+          onLoginSuccess: () async => throw StateError('Backend no disponible'),
+        );
+        expect(
+          await viewModel.login(email: 'test@example.com', password: 'test'),
+          isTrue,
+        );
+        await Future<void>.delayed(Duration.zero);
+        expect(viewModel.errorMessage, isNull);
+        viewModel.dispose();
+      },
+    );
     test('LoginViewModel normalizes email and calls repository', () async {
       final repository = RecordingAuthRepository();
       final viewModel = LoginViewModel(repository);

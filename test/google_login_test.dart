@@ -48,10 +48,18 @@ void main() {
   late GoogleRepository repository;
   late FakeGoogleIdentity identity;
   late LoginViewModel model;
+  var deviceRegistrations = 0;
   setUp(() {
     repository = GoogleRepository();
     identity = FakeGoogleIdentity();
-    model = LoginViewModel(repository, googleIdentityService: identity);
+    deviceRegistrations = 0;
+    model = LoginViewModel(
+      repository,
+      googleIdentityService: identity,
+      onLoginSuccess: () async {
+        deviceRegistrations++;
+      },
+    );
   });
 
   test(
@@ -68,6 +76,7 @@ void main() {
       expect(await pending, isTrue);
       expect(repository.googleToken, 'google-token');
       expect(identity.calls, 1);
+      expect(deviceRegistrations, 1);
       expect(model.isLoading, isFalse);
       expect(model.errorMessage, isNull);
     },
@@ -77,6 +86,7 @@ void main() {
     identity.completer.complete(null);
     expect(await model.loginWithGoogle(), isFalse);
     expect(repository.googleToken, isNull);
+    expect(deviceRegistrations, 0);
     expect(model.errorMessage, isNull);
     expect(model.isLoading, isFalse);
   });
@@ -103,6 +113,7 @@ void main() {
     identity.completer.complete('google-token');
     expect(await model.loginWithGoogle(), isFalse);
     expect(model.errorMessage, 'Sin conexión');
+    expect(deviceRegistrations, 0);
     expect(model.isLoading, isFalse);
   });
 
