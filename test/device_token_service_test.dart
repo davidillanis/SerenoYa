@@ -88,7 +88,7 @@ void main() {
       expect(requests, isEmpty);
       auth.signIn('user-1');
       await service.synchronizeToken('initial');
-      expect(requests.single.path, '/device/create/user-1');
+      expect(requests.single.path, '/device/create');
       expect(requests.single.data['deviceId'], 'android-id');
       await service.synchronizeToken('renewed');
       expect(requests.last.path, '/device/update/server-uuid');
@@ -105,7 +105,8 @@ void main() {
     expect(requests, hasLength(1));
     auth.signIn('user-2');
     await service.synchronizeToken('renewed');
-    expect(requests.last.path, '/device/create/user-2');
+    expect(requests, hasLength(2));
+    expect(requests.last.path, '/device/create');
   });
   test('reintenta un registro fallido sin perder el token', () async {
     auth.signIn('user-1');

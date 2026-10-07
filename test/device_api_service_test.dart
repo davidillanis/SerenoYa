@@ -12,8 +12,8 @@ void main() {
       _dio((options, handler) {
         requests.add(options);
         final Object data = switch (options.path) {
-          '/device/send' => 'message-1',
-          '/device/send-any' => {
+          '/device/notification/send' => 'message-1',
+          '/device/notification/send-any' => {
             'successCount': 1,
             'failureCount': 1,
             'responses': [
@@ -25,14 +25,14 @@ void main() {
               },
             ],
           },
-          '/device/create/user-1' => 'device-1',
+          '/device/create' => 'device-1',
           '/device/update/device-1' => 1,
           _ => throw StateError('Ruta inesperada'),
         };
         handler.resolve(
           Response<dynamic>(
             requestOptions: options,
-            statusCode: options.path.contains('/create/') ? 201 : 200,
+            statusCode: options.path == '/device/create' ? 201 : 200,
             data: {
               'isSuccess': true,
               'message': 'OK',
@@ -60,10 +60,7 @@ void main() {
       fcmToken: 'test-token',
       osType: 'ANDROID',
     );
-    final created = await service.createDevice(
-      userId: 'user-1',
-      request: device,
-    );
+    final created = await service.createDevice(request: device);
     final updated = await service.updateDevice(
       deviceId: 'device-1',
       request: device,

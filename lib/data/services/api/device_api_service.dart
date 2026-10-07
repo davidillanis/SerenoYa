@@ -11,29 +11,28 @@ class DeviceApiService {
 
   Future<ApiResponseDto<String>> sendNotification(NotificationRequest request) {
     return _request(
-      () => _dio.post<dynamic>('/device/notification/send', data: request.toJson()),
-      _decodeString,);
+      () => _dio.post<dynamic>('/device/notification/send',data: request.toJson()),
+      _decodeString,
+    );
   }
 
   Future<ApiResponseDto<NotificationAnyResponse>> sendNotificationAll(NotificationAnyRequest request,) {
     return _request(
-      () => _dio.post<dynamic>('/device/notification/send-any', data: request.toJson()),
+      () => _dio.post<dynamic>('/device/notification/send-any',data: request.toJson(),),
       NotificationAnyResponse.fromJson,
     );
   }
 
-  Future<ApiResponseDto<String>> createDevice({required String userId,required DeviceRequest request,}) async {
+  Future<ApiResponseDto<String>> createDevice({required DeviceRequest request,}) {
     return _request(
-      () => _dio.post<dynamic>(
-        '/device/create/${Uri.encodeComponent(userId)}',
-        data: request.toJson(),
-      ),
+      () => _dio.post<dynamic>('/device/create', data: request.toJson()),
       _decodeString,
     );
   }
 
   Future<ApiResponseDto<int>> updateDevice({required String deviceId,required DeviceRequest request,}) {
-    return _request(() => _dio.put<dynamic>(
+    return _request(
+      () => _dio.put<dynamic>(
         '/device/update/${Uri.encodeComponent(deviceId)}',
         data: request.toJson(),
       ),
@@ -46,7 +45,6 @@ class DeviceApiService {
     );
   }
 
-
   static String _decodeString(Object? value) {
     if (value is! String) {
       throw const FormatException('La API devolvió datos inválidos.');
@@ -54,7 +52,7 @@ class DeviceApiService {
     return value;
   }
 
-  Future<ApiResponseDto<T>> _request<T>(Future<Response<dynamic>> Function() action,T Function(Object? value) decodeData,) async {
+  Future<ApiResponseDto<T>> _request<T>(Future<Response<dynamic>> Function() action, T Function(Object? value) decodeData,) async {
     try {
       final response = await action();
       final body = response.data;

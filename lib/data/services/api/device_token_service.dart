@@ -59,12 +59,9 @@ class DeviceTokenService {
   Future<void> _synchronize(int generation) async {
     final userId = _userId;
     final token = _token;
+    
     bool isCurrent() => !_disposed && generation == _generation;
-    if (!isCurrent() ||
-        userId == null ||
-        userId.isEmpty ||
-        token == null ||
-        token == _sentToken) {
+    if (!isCurrent() ||userId == null ||userId.isEmpty ||token == null || token == _sentToken) {
       return;
     }
     try {
@@ -77,10 +74,7 @@ class DeviceTokenService {
       );
       final recordId = _recordId;
       if (recordId == null) {
-        final response = await _api.createDevice(
-          userId: userId,
-          request: request,
-        );
+        final response = await _api.createDevice(request: request);
         if (!isCurrent()) return;
         if (!response.isSuccess ||
             response.data == null ||
