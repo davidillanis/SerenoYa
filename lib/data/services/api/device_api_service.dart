@@ -110,6 +110,9 @@ class DeviceApiService {
     final statusCode = error.response?.statusCode;
     final message = _extractServerMessage(error.response?.data);
     if (statusCode == 401 || statusCode == 403) {
+      if (message.isNotEmpty) {
+        return AuthFailure(AuthFailureCode.unauthorized, message);
+      }
       return const AuthFailure(
         AuthFailureCode.unauthorized,
         'No tienes permisos para realizar esta acción.',
@@ -127,6 +130,9 @@ class DeviceApiService {
         'No se encontró el dispositivo solicitado.',
       );
     }
+    if (message.isNotEmpty) {
+      return AuthFailure(AuthFailureCode.server, message);
+    }
     return const AuthFailure(
       AuthFailureCode.server,
       'El servicio de dispositivos no está disponible en este momento.',
@@ -137,7 +143,7 @@ class DeviceApiService {
     if (body is! Map) return '';
     final errors = body['errors'];
     if (errors is List && errors.isNotEmpty) {
-      return errors.map((error) => error.toString()).join(' ');
+      return errors.map((error) => error.toString()).join('\n');
     }
     return body['message']?.toString() ?? '';
   }

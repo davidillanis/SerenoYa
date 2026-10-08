@@ -27,6 +27,6 @@ class ApiResponseDto<T> {
   final List<String> errors;
 
   String get errorMessage => errors.isNotEmpty
-      ? errors.first
+      ? errors.join('\n')
       : message ?? 'La operación no pudo completarse.';
 }

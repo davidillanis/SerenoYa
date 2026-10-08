@@ -32,29 +32,47 @@ class ImageUploadResponse {
 class StorageService {
   static const String baseUrl = 'http://187.33.158.70:8083';
 
-  Future<ImageUploadResponse> uploadImage({required File file,String bucket = 'SERENO_YA',String folder = 'GENERAL',}) async {
+  Future<ImageUploadResponse> uploadImage({
+    required File file,
+    String bucket = 'SERENO_YA',
+    String folder = 'GENERAL',
+  }) async {
     final uri = Uri.parse('$baseUrl/api/v1/image/upload');
-    final request = http.MultipartRequest('POST',uri,);
+    final request = http.MultipartRequest('POST', uri);
 
     request.fields['bucket'] = bucket;
     request.fields['folder'] = folder;
 
-    request.files.add(await http.MultipartFile.fromPath('file',file.path,),);
+    request.files.add(await http.MultipartFile.fromPath('file', file.path));
     final streamedResponse = await request.send();
-    final response = await http.Response.fromStream(streamedResponse,);
+    final response = await http.Response.fromStream(streamedResponse);
 
     final body = jsonDecode(response.body);
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw Exception(body['message'] ??'Error subiendo imagen [${response.statusCode}]',);
+      throw Exception(
+        _serverMessage(body, 'Error subiendo imagen [${response.statusCode}]'),
+      );
     }
     if (body['isSuccess'] != true) {
-      throw Exception(body['message'] ?? 'Error al subir imagen');
+      throw Exception(_serverMessage(body, 'Error al subir imagen'));
     }
     final data = body['data'];
     if (data is! Map<String, dynamic>) {
-      throw Exception('Respuesta inválida del servidor',);
+      throw Exception('Respuesta inválida del servidor');
     }
     return ImageUploadResponse.fromJson(data);
+  }
+
+  static String _serverMessage(dynamic body, String fallback) {
+    if (body is Map) {
+      final errors = body['errors'];
+      if (errors is List && errors.isNotEmpty) {
+        return errors.map((error) => error.toString()).join('\n');
+      }
+      final message = body['message']?.toString();
+      if (message != null && message.isNotEmpty) return message;
+    }
+    return fallback;
   }
 }

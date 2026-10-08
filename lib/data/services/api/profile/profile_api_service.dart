@@ -137,6 +137,9 @@ class ProfileApiService {
     final statusCode = error.response?.statusCode;
     final message = _extractServerMessage(error.response?.data);
     if (statusCode == 401 || statusCode == 403) {
+      if (message.isNotEmpty) {
+        return AuthFailure(AuthFailureCode.unauthorized, message);
+      }
       return const AuthFailure(
         AuthFailureCode.unauthorized,
         'No tienes permisos para realizar esta acción.',
@@ -149,10 +152,16 @@ class ProfileApiService {
       );
     }
     if (statusCode == 404) {
+      if (message.isNotEmpty) {
+        return AuthFailure(AuthFailureCode.server, message);
+      }
       return const AuthFailure(
         AuthFailureCode.server,
         'No se encontró el perfil solicitado.',
       );
+    }
+    if (message.isNotEmpty) {
+      return AuthFailure(AuthFailureCode.server, message);
     }
     return const AuthFailure(
       AuthFailureCode.server,
@@ -164,7 +173,7 @@ class ProfileApiService {
     if (body is! Map) return '';
     final errors = body['errors'];
     if (errors is List && errors.isNotEmpty) {
-      return errors.map((error) => error.toString()).join(' ');
+      return errors.map((error) => error.toString()).join('\n');
     }
     return body['message']?.toString() ?? '';
   }
