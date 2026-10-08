@@ -108,9 +108,12 @@ class IncidentApiService {
     );
   }
 
+  /// GET /incidents/me/list
+  /// Contrato backend: `fields` requerido, `status` opcional único
+  /// (REQUESTED, ACCEPTED, ON_SITE, ATTENDED, CANCELLED_BY_CITIZEN, EXPIRED)
+  /// y paginación `page,size,sortBy,direction` (PageRequestDTO).
   Future<ApiResponseDto<PageResponse<Incident>>> listMyIncidents({
     String? status,
-    List<String>? statuses,
     int page = 0,
     int size = 100,
     String fields =
@@ -122,8 +125,6 @@ class IncidentApiService {
         '/incidents/me/list',
         queryParameters: {
           'status': ?status,
-          if (statuses != null && statuses.isNotEmpty)
-            'statuses': statuses.join(','),
           'fields': fields,
           'page': page,
           'size': size,

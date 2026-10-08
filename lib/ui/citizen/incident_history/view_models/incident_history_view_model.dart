@@ -19,15 +19,6 @@ extension IncidentHistoryFilterPresentation on IncidentHistoryFilter {
     IncidentHistoryFilter.cancelled => 'CANCELLED_BY_CITIZEN',
     IncidentHistoryFilter.expired => 'EXPIRED',
   };
-
-  List<String>? get statuses => switch (this) {
-    IncidentHistoryFilter.all => const [
-      'ATTENDED',
-      'CANCELLED_BY_CITIZEN',
-      'EXPIRED',
-    ],
-    _ => null,
-  };
 }
 
 class IncidentHistoryViewModel extends ChangeNotifier {
@@ -40,6 +31,14 @@ class IncidentHistoryViewModel extends ChangeNotifier {
   }
 
   static const pageSize = 15;
+
+  /// El backend solo filtra por un `status`; "Todas" se pide sin filtro y
+  /// se reduce localmente a estados terminales del historial.
+  static const terminalStatuses = {
+    'ATTENDED',
+    'CANCELLED_BY_CITIZEN',
+    'EXPIRED',
+  };
 
   final IncidentRepository _repository;
   final AuthSession? _session;
@@ -92,14 +91,13 @@ class IncidentHistoryViewModel extends ChangeNotifier {
 
     final result = await _repository.listMyIncidentsPage(
       status: _selectedFilter.status,
-      statuses: _selectedFilter.statuses,
       page: 0,
       size: pageSize,
     );
 
     if (result.isSuccess && result.data != null) {
       final page = result.data!;
-      state.incidents = List.of(page.content);
+      state.incidents = _applyFilter(page.content);
       state.nextPage = page.page + 1;
       state.hasMore = state.nextPage < page.totalPages;
       state.hasLoaded = true;
@@ -130,7 +128,6 @@ class IncidentHistoryViewModel extends ChangeNotifier {
 
     final result = await _repository.listMyIncidentsPage(
       status: _selectedFilter.status,
-      statuses: _selectedFilter.statuses,
       page: state.nextPage,
       size: pageSize,
     );
@@ -140,7 +137,8 @@ class IncidentHistoryViewModel extends ChangeNotifier {
       final knownIds = state.incidents.map((incident) => incident.id).toSet();
       state.incidents = [
         ...state.incidents,
-        ...page.content.where((incident) => knownIds.add(incident.id)),
+        ..._applyFilter(page.content)
+            .where((incident) => knownIds.add(incident.id)),
       ];
       state.nextPage = page.page + 1;
       state.hasMore = state.nextPage < page.totalPages;
@@ -157,6 +155,13 @@ class IncidentHistoryViewModel extends ChangeNotifier {
   Future<void> retryLoadMore() async {
     _currentState.loadMoreError = null;
     await loadMore();
+  }
+
+  List<Incident> _applyFilter(List<Incident> incidents) {
+    if (_selectedFilter != IncidentHistoryFilter.all) return List.of(incidents);
+    return incidents
+        .where((incident) => terminalStatuses.contains(incident.status))
+        .toList(growable: false);
   }
 
   void _synchronizeCacheRevision() {

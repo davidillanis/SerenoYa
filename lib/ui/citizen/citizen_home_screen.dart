@@ -31,7 +31,7 @@ class _CitizenHomeScreenState extends State<CitizenHomeScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text(
-          'SOS San Jerónimo',
+          'SerenoYA',
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
         backgroundColor: context.appColors.primary,

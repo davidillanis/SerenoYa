@@ -224,18 +224,12 @@ class IncidentRepository {
 
   Future<Result<PageResponse<Incident>>> listMyIncidentsPage({
     String? status,
-    List<String>? statuses,
     required int page,
     int size = 15,
   }) async {
-    assert(
-      status == null || statuses == null || statuses.isEmpty,
-      'Use status o statuses, pero no ambos.',
-    );
     try {
       final response = await _apiService.listMyIncidents(
         status: status,
-        statuses: statuses,
         page: page,
         size: size,
       );

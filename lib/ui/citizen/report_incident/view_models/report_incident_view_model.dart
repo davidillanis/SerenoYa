@@ -2,7 +2,9 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:sereno_ya/config/maps_config.dart';
 import 'package:sereno_ya/data/services/maps/citizen_location_service.dart';
+import 'package:sereno_ya/data/services/maps/reverse_geocode_service.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:sereno_ya/data/models/citizen/incident_category.dart';
 import 'package:sereno_ya/data/models/citizen/incident_create_request.dart';
@@ -14,15 +16,42 @@ class ReportIncidentViewModel extends ChangeNotifier {
     this._repository,
     this._storageService, {
     CitizenLocationService? locationService,
-  }) : _locationService = locationService ?? CitizenLocationService() {
+    ReverseGeocodeService? reverseGeocodeService,
+  }) : _locationService = locationService ?? CitizenLocationService(),
+       _reverseGeocodeService =
+           reverseGeocodeService ?? ReverseGeocodeService() {
     _loadCategories();
   }
 
   final IncidentRepository _repository;
   final StorageService _storageService;
   final CitizenLocationService _locationService;
+  final ReverseGeocodeService _reverseGeocodeService;
   bool _isLocating = false;
   bool get isLocating => _isLocating;
+
+  bool _isResolvingAddress = false;
+  bool get isResolvingAddress => _isResolvingAddress;
+
+  /// Resuelve la dirección con Google Geocoding API sin bloquear el reporte.
+  /// Devuelve `null` si no hay clave configurada, no hay resultados o falla
+  /// la red; el usuario siempre puede escribir la referencia manualmente.
+  Future<String?> resolveAddress(LatLng location) async {
+    if (_isResolvingAddress) return null;
+    if (MapsConfig.apiKey.isEmpty) return null;
+    _isResolvingAddress = true;
+    _notifyListeners();
+    try {
+      return await _reverseGeocodeService.formattedAddress(
+        latitude: location.latitude,
+        longitude: location.longitude,
+        apiKey: MapsConfig.apiKey,
+      );
+    } finally {
+      _isResolvingAddress = false;
+      _notifyListeners();
+    }
+  }
 
   Future<LatLng?> locateCitizen() async {
     if (_isLocating || _isSubmitting) return null;

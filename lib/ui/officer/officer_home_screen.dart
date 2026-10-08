@@ -56,6 +56,9 @@ class _OfficerHomeScreenState extends State<OfficerHomeScreen> {
         maxWidth: 720,
         child: RefreshIndicator(
           onRefresh: () => _refresh(model),
+          // El hijo debe ser el ListView de la pestaña activa para que el
+          // gesto de deslizar funcione; por eso se conserva el condicional
+          // en lugar de un IndexedStack.
           child: _tab == 0
               ? OfficerStartTab(
                   model: model,
@@ -71,24 +74,28 @@ class _OfficerHomeScreenState extends State<OfficerHomeScreen> {
         currentIndex: _tab,
         selectedItemColor: context.appColors.tabIconSelected,
         unselectedItemColor: context.appColors.tabIconDefault,
-        onTap: (index) {
-          if (_tab == index) return;
-          setState(() => _tab = index);
-          model.selectFilter(index == 0 ? OfficerIncidentStatus.pending : null);
-          if (index == 1) model.loadMetrics();
-        },
+        onTap: (index) => _onTabSelected(model, index),
         items: const [
           BottomNavigationBarItem(
             icon: Icon(Icons.local_police_outlined),
+            activeIcon: Icon(Icons.local_police),
             label: 'Inicio',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.assignment_outlined),
+            activeIcon: Icon(Icons.assignment),
             label: 'Reportes',
           ),
         ],
       ),
     );
+  }
+
+  void _onTabSelected(OfficerIncidentsViewModel model, int index) {
+    if (_tab == index) return;
+    setState(() => _tab = index);
+    model.selectFilter(index == 0 ? OfficerIncidentStatus.pending : null);
+    if (index == 1) model.loadMetrics();
   }
 
   Widget _card(OfficerIncidentsViewModel model, OfficerIncident item) =>

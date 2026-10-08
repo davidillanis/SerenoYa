@@ -31,10 +31,29 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
   }
 
   Future<void> _locateCitizen() async {
-    final location = await context
-        .read<ReportIncidentViewModel>()
-        .locateCitizen();
-    if (mounted && location != null) setState(() => _location = location);
+    final viewModel = context.read<ReportIncidentViewModel>();
+    final location = await viewModel.locateCitizen();
+    if (!mounted || location == null) return;
+    setState(() => _location = location);
+    await _autoFillAddress(viewModel, location);
+  }
+
+  /// Carga la dirección con Geocoding API solo si el usuario aún no
+  /// escribió una referencia manual, para no sobrescribir su texto.
+  /// Con [force] en `true` se actualiza aunque ya haya texto (botón reintentar).
+  Future<void> _autoFillAddress(
+    ReportIncidentViewModel viewModel,
+    LatLng location, {
+    bool force = false,
+  }) async {
+    if (!force && _referenceController.text.trim().isNotEmpty) return;
+    final address = await viewModel.resolveAddress(location);
+    if (!mounted) return;
+    if (address != null && address.trim().isNotEmpty) {
+      if (force || _referenceController.text.trim().isEmpty) {
+        _referenceController.text = address;
+      }
+    }
   }
 
   Future<void> _chooseLocation(ReportIncidentViewModel viewModel) async {
@@ -56,7 +75,10 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
           builder: (_) => IncidentLocationPicker(initialLocation: _location!),
         ),
       );
-      if (mounted && location != null) setState(() => _location = location);
+      if (!mounted || location == null) return;
+      setState(() => _location = location);
+      // Al mover el pin se refresca la dirección solo si el campo sigue vacío.
+      await _autoFillAddress(context.read<ReportIncidentViewModel>(), location);
     } finally {
       if (mounted) setState(() => _isChoosingLocation = false);
     }
@@ -255,7 +277,7 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
               style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
             ),
             Text(
-              'SOS San Jerónimo',
+              'SerenoYA',
               style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
             ),
           ],
@@ -625,8 +647,10 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
                               fontSize: 16,
                               color: context.appColors.text,
                             ),
-                            decoration: const InputDecoration(
-                              hintText: 'Dirección o referencia del incidente',
+                            decoration: InputDecoration(
+                              hintText: viewModel.isResolvingAddress
+                                  ? 'Buscando dirección...'
+                                  : 'Dirección o referencia del incidente',
                               border: InputBorder.none,
                               isDense: true,
                               contentPadding: EdgeInsets.zero,
@@ -639,6 +663,24 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
                             },
                           ),
                         ),
+                        if (viewModel.isResolvingAddress)
+                          const SizedBox.square(
+                            dimension: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        else if (_location != null)
+                          IconButton(
+                            tooltip: 'Obtener dirección del mapa',
+                            visualDensity: VisualDensity.compact,
+                            onPressed: viewModel.isSubmitting
+                                ? null
+                                : () => _autoFillAddress(
+                                    viewModel,
+                                    _location!,
+                                    force: true,
+                                  ),
+                            icon: const Icon(Icons.refresh_outlined, size: 20),
+                          ),
                       ],
                     ),
 
