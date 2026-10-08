@@ -229,7 +229,7 @@ GoRouter createAppRouter({
           create: (context) => IncidentDetailViewModel(
             incidentRepository,
             state.pathParameters['incidentId']!,
-            requireAssignmentDetails: true,
+            requireAdminDetails: true,
             cacheOwnerId: context
                 .read<SessionViewModel>()
                 .state

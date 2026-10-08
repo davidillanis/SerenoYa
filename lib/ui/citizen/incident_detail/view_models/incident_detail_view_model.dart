@@ -7,14 +7,14 @@ class IncidentDetailViewModel extends ChangeNotifier {
     this._repository,
     this._incidentId, {
     String? cacheOwnerId,
-    this.requireAssignmentDetails = false,
+    this.requireAdminDetails = false,
   }) {
     if (cacheOwnerId != null) {
       _repository.useCacheForUser(cacheOwnerId);
     }
     _incident = _repository.getCachedIncidentById(
       _incidentId,
-      requireAssignmentDetails: requireAssignmentDetails,
+      requireAdminDetails: requireAdminDetails,
     );
     if (_incident == null) {
       load();
@@ -23,7 +23,7 @@ class IncidentDetailViewModel extends ChangeNotifier {
 
   final IncidentRepository _repository;
   final String _incidentId;
-  final bool requireAssignmentDetails;
+  final bool requireAdminDetails;
 
   Incident? _incident;
   Incident? get incident => _incident;
@@ -44,7 +44,7 @@ class IncidentDetailViewModel extends ChangeNotifier {
     final result = await _repository.getIncidentById(
       _incidentId,
       forceRefresh: forceRefresh,
-      requireAssignmentDetails: requireAssignmentDetails,
+      requireAdminDetails: requireAdminDetails,
     );
     if (result.isSuccess && result.data != null) {
       _incident = result.data;

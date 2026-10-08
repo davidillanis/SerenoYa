@@ -1,6 +1,8 @@
 import 'package:sereno_ya/data/models/citizen/incident_category.dart';
 import 'package:sereno_ya/data/models/citizen/incident_evidence.dart';
 import 'package:sereno_ya/data/models/incident_assignment.dart';
+import 'package:sereno_ya/data/models/incident_assignment_attempt.dart';
+import 'package:sereno_ya/data/models/incident_status_history.dart';
 
 class Incident {
   final String id;
@@ -17,7 +19,9 @@ class Incident {
   final IncidentCategory? category;
   final IncidentEvidence? evidence;
   final IncidentAssignment? assignment;
-  final bool assignmentIncluded;
+  final List<IncidentStatusHistory> statusHistory;
+  final List<IncidentAssignmentAttempt> assignmentAttempts;
+  final bool adminDetailsIncluded;
 
   Incident({
     required this.id,
@@ -34,7 +38,9 @@ class Incident {
     this.category,
     this.evidence,
     this.assignment,
-    this.assignmentIncluded = false,
+    this.statusHistory = const [],
+    this.assignmentAttempts = const [],
+    this.adminDetailsIncluded = false,
   });
 
   factory Incident.fromJson(Map<String, dynamic> json) {
@@ -63,7 +69,30 @@ class Incident {
               Map<String, dynamic>.from(json['assignment'] as Map),
             )
           : null,
-      assignmentIncluded: json.containsKey('assignment'),
+      statusHistory: json['statusHistory'] is List
+          ? (json['statusHistory'] as List)
+                .whereType<Map>()
+                .map(
+                  (entry) => IncidentStatusHistory.fromJson(
+                    Map<String, dynamic>.from(entry),
+                  ),
+                )
+                .toList(growable: false)
+          : const [],
+      assignmentAttempts: json['assignmentAttempts'] is List
+          ? (json['assignmentAttempts'] as List)
+                .whereType<Map>()
+                .map(
+                  (entry) => IncidentAssignmentAttempt.fromJson(
+                    Map<String, dynamic>.from(entry),
+                  ),
+                )
+                .toList(growable: false)
+          : const [],
+      adminDetailsIncluded:
+          json.containsKey('assignment') &&
+          json.containsKey('statusHistory') &&
+          json.containsKey('assignmentAttempts'),
     );
   }
 

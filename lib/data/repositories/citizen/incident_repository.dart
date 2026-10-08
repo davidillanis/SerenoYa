@@ -52,10 +52,10 @@ class IncidentRepository {
 
   Incident? getCachedIncidentById(
     String incidentId, {
-    bool requireAssignmentDetails = false,
+    bool requireAdminDetails = false,
   }) {
     final incident = _incidentDetailCache[incidentId];
-    if (requireAssignmentDetails && incident?.assignmentIncluded != true) {
+    if (requireAdminDetails && incident?.adminDetailsIncluded != true) {
       return null;
     }
     return incident;
@@ -366,19 +366,17 @@ class IncidentRepository {
   Future<Result<Incident>> getIncidentById(
     String incidentId, {
     bool forceRefresh = false,
-    bool requireAssignmentDetails = false,
+    bool requireAdminDetails = false,
   }) async {
     final cachedIncident = getCachedIncidentById(
       incidentId,
-      requireAssignmentDetails: requireAssignmentDetails,
+      requireAdminDetails: requireAdminDetails,
     );
     if (!forceRefresh && cachedIncident != null) {
       return Result.success(cachedIncident);
     }
 
-    final requestKey = requireAssignmentDetails
-        ? '$incidentId:assignment'
-        : incidentId;
+    final requestKey = requireAdminDetails ? '$incidentId:admin' : incidentId;
     final pendingRequest = _incidentDetailRequests[requestKey];
     if (pendingRequest != null) return pendingRequest;
 
