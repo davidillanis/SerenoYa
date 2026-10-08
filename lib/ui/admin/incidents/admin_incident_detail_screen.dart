@@ -91,6 +91,8 @@ class _WideDetail extends StatelessWidget {
                 children: [
                   _ReportInformation(incident: incident),
                   const SizedBox(height: 16),
+                  _AssignmentPanel(incident: incident),
+                  const SizedBox(height: 16),
                   _TimelinePanel(incident: incident),
                 ],
               ),
@@ -117,6 +119,8 @@ class _CompactDetail extends StatelessWidget {
         _EvidencePanel(incident: incident),
         const SizedBox(height: 16),
         _ReportInformation(incident: incident),
+        const SizedBox(height: 16),
+        _AssignmentPanel(incident: incident),
         const SizedBox(height: 16),
         _TimelinePanel(incident: incident),
       ],
@@ -273,6 +277,95 @@ class _TimelinePanel extends StatelessWidget {
           for (var index = 0; index < entries.length; index++) ...[
             _TimelineEntry(label: entries[index].$1, date: entries[index].$2!),
             if (index != entries.length - 1) const SizedBox(height: 14),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _AssignmentPanel extends StatelessWidget {
+  const _AssignmentPanel({required this.incident});
+
+  final Incident incident;
+
+  @override
+  Widget build(BuildContext context) {
+    final assignment = incident.assignment;
+    if (assignment == null) {
+      return _SectionCard(
+        title: 'Sereno asignado',
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(
+              Icons.person_search_outlined,
+              color: context.appColors.textTertiary,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Aún no se asignó un sereno',
+                    style: TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'La asignación aparecerá cuando un oficial acepte la incidencia.',
+                    style: TextStyle(
+                      color: context.appColors.textSecondary,
+                      height: 1.4,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return _SectionCard(
+      title: 'Sereno asignado',
+      child: Column(
+        children: [
+          _DetailField(
+            icon: Icons.badge_outlined,
+            label: 'Código de sereno',
+            value: assignment.serenoCode.isEmpty
+                ? 'Código no disponible'
+                : assignment.serenoCode,
+          ),
+          const SizedBox(height: 18),
+          _DetailField(
+            icon: Icons.assignment_turned_in_outlined,
+            label: 'Estado de la asignación',
+            value: _assignmentStatusLabel(assignment.status),
+          ),
+          const SizedBox(height: 18),
+          _DetailField(
+            icon: Icons.shield_outlined,
+            label: 'Disponibilidad actual',
+            value: _serenoStatusLabel(assignment.serenoServiceStatus),
+          ),
+          if (assignment.assignedAt != null) ...[
+            const SizedBox(height: 18),
+            _DetailField(
+              icon: Icons.schedule_outlined,
+              label: 'Fecha de asignación',
+              value: DateFormat('dd/MM/yyyy HH:mm')
+                  .format(assignment.assignedAt!),
+            ),
+          ],
+          if (assignment.etaMinutes != null) ...[
+            const SizedBox(height: 18),
+            _DetailField(
+              icon: Icons.timer_outlined,
+              label: 'Tiempo estimado informado',
+              value: '${assignment.etaMinutes} min',
+            ),
           ],
         ],
       ),
@@ -448,3 +541,17 @@ class _ErrorState extends StatelessWidget {
 }
 
 String _shortId(String id) => id.length <= 12 ? id : '${id.substring(0, 8)}…';
+
+String _assignmentStatusLabel(String status) => switch (status) {
+  'ACTIVE' => 'Activa',
+  'COMPLETED' => 'Completada',
+  'CANCELLED' => 'Cancelada',
+  _ => 'Sin información',
+};
+
+String _serenoStatusLabel(String status) => switch (status) {
+  'AVAILABLE' => 'Disponible',
+  'BUSY' => 'Atendiendo una incidencia',
+  'OFF_DUTY' => 'Fuera de servicio',
+  _ => 'Sin información',
+};

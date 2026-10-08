@@ -1,5 +1,6 @@
 import 'package:sereno_ya/data/models/citizen/incident_category.dart';
 import 'package:sereno_ya/data/models/citizen/incident_evidence.dart';
+import 'package:sereno_ya/data/models/incident_assignment.dart';
 
 class Incident {
   final String id;
@@ -15,6 +16,8 @@ class Incident {
   final DateTime? cancelledAt;
   final IncidentCategory? category;
   final IncidentEvidence? evidence;
+  final IncidentAssignment? assignment;
+  final bool assignmentIncluded;
 
   Incident({
     required this.id,
@@ -30,6 +33,8 @@ class Incident {
     this.cancelledAt,
     this.category,
     this.evidence,
+    this.assignment,
+    this.assignmentIncluded = false,
   });
 
   factory Incident.fromJson(Map<String, dynamic> json) {
@@ -53,6 +58,12 @@ class Incident {
               Map<String, dynamic>.from(json['evidence'] as Map),
             )
           : null,
+      assignment: json['assignment'] is Map
+          ? IncidentAssignment.fromJson(
+              Map<String, dynamic>.from(json['assignment'] as Map),
+            )
+          : null,
+      assignmentIncluded: json.containsKey('assignment'),
     );
   }
 

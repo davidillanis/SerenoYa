@@ -50,8 +50,15 @@ class IncidentRepository {
     return incidents == null ? null : List<Incident>.unmodifiable(incidents);
   }
 
-  Incident? getCachedIncidentById(String incidentId) {
-    return _incidentDetailCache[incidentId];
+  Incident? getCachedIncidentById(
+    String incidentId, {
+    bool requireAssignmentDetails = false,
+  }) {
+    final incident = _incidentDetailCache[incidentId];
+    if (requireAssignmentDetails && incident?.assignmentIncluded != true) {
+      return null;
+    }
+    return incident;
   }
 
   List<Incident>? getCachedAvailableIncidents() {
@@ -359,23 +366,30 @@ class IncidentRepository {
   Future<Result<Incident>> getIncidentById(
     String incidentId, {
     bool forceRefresh = false,
+    bool requireAssignmentDetails = false,
   }) async {
-    final cachedIncident = _incidentDetailCache[incidentId];
+    final cachedIncident = getCachedIncidentById(
+      incidentId,
+      requireAssignmentDetails: requireAssignmentDetails,
+    );
     if (!forceRefresh && cachedIncident != null) {
       return Result.success(cachedIncident);
     }
 
-    final pendingRequest = _incidentDetailRequests[incidentId];
+    final requestKey = requireAssignmentDetails
+        ? '$incidentId:assignment'
+        : incidentId;
+    final pendingRequest = _incidentDetailRequests[requestKey];
     if (pendingRequest != null) return pendingRequest;
 
     final cacheOwnerId = _cacheOwnerId;
     final request = _fetchIncidentById(incidentId, cacheOwnerId);
-    _incidentDetailRequests[incidentId] = request;
+    _incidentDetailRequests[requestKey] = request;
     try {
       return await request;
     } finally {
-      if (identical(_incidentDetailRequests[incidentId], request)) {
-        _incidentDetailRequests.remove(incidentId);
+      if (identical(_incidentDetailRequests[requestKey], request)) {
+        _incidentDetailRequests.remove(requestKey);
       }
     }
   }
