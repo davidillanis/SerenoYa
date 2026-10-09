@@ -17,7 +17,7 @@ class Incident {
   final DateTime? attendedAt;
   final DateTime? cancelledAt;
   final IncidentCategory? category;
-  final IncidentEvidence? evidence;
+  final List<IncidentEvidence> evidences;
   final IncidentAssignment? assignment;
   final List<IncidentStatusHistory> statusHistory;
   final List<IncidentAssignmentAttempt> assignmentAttempts;
@@ -36,12 +36,15 @@ class Incident {
     this.attendedAt,
     this.cancelledAt,
     this.category,
-    this.evidence,
+    this.evidences = const [],
     this.assignment,
     this.statusHistory = const [],
     this.assignmentAttempts = const [],
     this.adminDetailsIncluded = false,
   });
+
+  /// Primera evidencia, para compatibilidad con vistas de una sola imagen.
+  IncidentEvidence? get evidence => evidences.isEmpty ? null : evidences.first;
 
   factory Incident.fromJson(Map<String, dynamic> json) {
     return Incident(
@@ -59,11 +62,7 @@ class Incident {
       category: json['category'] != null
           ? IncidentCategory.fromJson(json['category'] as Map<String, dynamic>)
           : null,
-      evidence: json['evidence'] is Map
-          ? IncidentEvidence.fromJson(
-              Map<String, dynamic>.from(json['evidence'] as Map),
-            )
-          : null,
+      evidences: _parseEvidences(json),
       assignment: json['assignment'] is Map
           ? IncidentAssignment.fromJson(
               Map<String, dynamic>.from(json['assignment'] as Map),
@@ -100,5 +99,23 @@ class Incident {
     if (value is! String) return null;
 
     return DateTime.tryParse(value)?.toLocal();
+  }
+
+  static List<IncidentEvidence> _parseEvidences(Map<String, dynamic> json) {
+    final rawList = json['evidences'];
+    if (rawList is List) {
+      return rawList
+          .whereType<Map>()
+          .map(
+            (entry) =>
+                IncidentEvidence.fromJson(Map<String, dynamic>.from(entry)),
+          )
+          .toList(growable: false);
+    }
+    final legacy = json['evidence'];
+    if (legacy is Map) {
+      return [IncidentEvidence.fromJson(Map<String, dynamic>.from(legacy))];
+    }
+    return const [];
   }
 }

@@ -30,6 +30,28 @@ void main() {
     test('deserializa la evidencia devuelta por el backend', () {
       final incident = Incident.fromJson({
         ..._incidentJson(createdAt: '2026-09-28T10:00:00'),
+        'evidences': [
+          {
+            'id': 'evidence-1',
+            'fileUrl': 'https://cdn.example.com/incident.jpg',
+            'fileName': 'incident.jpg',
+            'fileType': 'image/jpeg',
+            'createdAt': '2026-09-28T10:00:01',
+          },
+        ],
+      });
+
+      expect(incident.evidences.single.id, 'evidence-1');
+      expect(
+        incident.evidence?.fileUrl,
+        'https://cdn.example.com/incident.jpg',
+      );
+      expect(incident.evidence?.fileType, 'image/jpeg');
+    });
+
+    test('mantiene compatibilidad con la respuesta singular evidence', () {
+      final incident = Incident.fromJson({
+        ..._incidentJson(createdAt: '2026-09-28T10:00:00'),
         'evidence': {
           'id': 'evidence-1',
           'fileUrl': 'https://cdn.example.com/incident.jpg',
@@ -39,12 +61,8 @@ void main() {
         },
       });
 
-      expect(incident.evidence?.id, 'evidence-1');
-      expect(
-        incident.evidence?.fileUrl,
-        'https://cdn.example.com/incident.jpg',
-      );
-      expect(incident.evidence?.fileType, 'image/jpeg');
+      expect(incident.evidences.single.id, 'evidence-1');
+      expect(incident.evidence?.fileUrl, contains('incident.jpg'));
     });
   });
 }

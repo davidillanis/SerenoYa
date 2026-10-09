@@ -20,7 +20,7 @@ class IncidentCreateRequest {
   final double longitude;
   final String referenceAddress;
   final String categoryName;
-  final IncidentEvidenceCreateRequest evidence;
+  final List<IncidentEvidenceCreateRequest> evidences;
 
   const IncidentCreateRequest({
     required this.description,
@@ -28,7 +28,7 @@ class IncidentCreateRequest {
     required this.longitude,
     required this.referenceAddress,
     required this.categoryName,
-    required this.evidence,
+    required this.evidences,
   });
 
   Map<String, dynamic> toJson() {
@@ -38,7 +38,7 @@ class IncidentCreateRequest {
       'longitude': longitude,
       'referenceAddress': referenceAddress,
       'categoryName': categoryName,
-      'evidence': evidence.toJson(),
+      'evidences': evidences.map((item) => item.toJson()).toList(),
     };
   }
 }

@@ -177,11 +177,13 @@ class ReportIncidentViewModel extends ChangeNotifier {
         latitude: location.latitude,
         longitude: location.longitude,
         categoryName: _selectedCategory!.name,
-        evidence: IncidentEvidenceCreateRequest(
-          fileUrl: _uploadedImage!.publicUrl,
-          fileName: _fileNameFromKey(_uploadedImage!.fileKey),
-          fileType: _uploadedImage!.contentType,
-        ),
+        evidences: [
+          IncidentEvidenceCreateRequest(
+            fileUrl: _uploadedImage!.publicUrl,
+            fileName: _fileNameFromKey(_uploadedImage!.fileKey),
+            fileType: _uploadedImage!.contentType,
+          ),
+        ],
       );
 
       final result = await _repository.createIncident(request);

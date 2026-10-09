@@ -15,13 +15,15 @@ void main() {
           'description': 'Incendio',
           'status': 'REQUESTED',
           'createdAt': '2026-09-28T10:00:00',
-          'evidence': {
-            'id': 'evidence-1',
-            'fileUrl': 'https://cdn.example.com/incident.jpg',
-            'fileName': 'incident.jpg',
-            'fileType': 'image/jpeg',
-            'createdAt': '2026-09-28T10:00:01',
-          },
+          'evidences': [
+            {
+              'id': 'evidence-1',
+              'fileUrl': 'https://cdn.example.com/incident.jpg',
+              'fileName': 'incident.jpg',
+              'fileType': 'image/jpeg',
+              'createdAt': '2026-09-28T10:00:01',
+            },
+          ],
         },
       );
 
@@ -32,24 +34,28 @@ void main() {
           longitude: -73.365,
           referenceAddress: 'Av. Principal',
           categoryName: 'Incendio',
-          evidence: IncidentEvidenceCreateRequest(
-            fileUrl: 'https://cdn.example.com/incident.jpg',
-            fileName: 'incident.jpg',
-            fileType: 'image/jpeg',
-          ),
+          evidences: [
+            IncidentEvidenceCreateRequest(
+              fileUrl: 'https://cdn.example.com/incident.jpg',
+              fileName: 'incident.jpg',
+              fileType: 'image/jpeg',
+            ),
+          ],
         ),
       );
 
       final requestData = Map<String, dynamic>.from(
         capturedRequest.data as Map,
       );
-      final evidence = Map<String, dynamic>.from(
-        requestData['evidence'] as Map,
-      );
+      final evidences = (requestData['evidences'] as List)
+          .map((item) => Map<String, dynamic>.from(item as Map))
+          .toList();
+      final evidence = evidences.single;
       expect(capturedRequest.method, 'POST');
       expect(capturedRequest.path, '/incidents/create');
       expect(requestData['categoryName'], 'Incendio');
       expect(requestData, isNot(contains('categoryId')));
+      expect(requestData, isNot(contains('evidence')));
       expect(evidence['fileType'], 'image/jpeg');
       expect(evidence, isNot(contains('mimeType')));
       expect(response.data?.id, 'incident-1');
@@ -100,13 +106,15 @@ void main() {
         'latitude': -13.6519,
         'longitude': -73.365,
         'createdAt': '2026-09-28T10:00:00',
-        'evidence': {
-          'id': 'evidence-1',
-          'fileUrl': 'https://cdn.example.com/incident.jpg',
-          'fileName': 'incident.jpg',
-          'fileType': 'image/jpeg',
-          'createdAt': '2026-09-28T10:00:01',
-        },
+        'evidences': [
+          {
+            'id': 'evidence-1',
+            'fileUrl': 'https://cdn.example.com/incident.jpg',
+            'fileName': 'incident.jpg',
+            'fileType': 'image/jpeg',
+            'createdAt': '2026-09-28T10:00:01',
+          },
+        ],
       },
     );
 

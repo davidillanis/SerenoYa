@@ -9,11 +9,13 @@ void main() {
       longitude: -73.365,
       referenceAddress: 'Av. Principal',
       categoryName: 'Incendio',
-      evidence: const IncidentEvidenceCreateRequest(
-        fileUrl: 'https://storage.example.com/incidents/image.jpg',
-        fileName: 'image.jpg',
-        fileType: 'image/jpeg',
-      ),
+      evidences: const [
+        IncidentEvidenceCreateRequest(
+          fileUrl: 'https://storage.example.com/incidents/image.jpg',
+          fileName: 'image.jpg',
+          fileType: 'image/jpeg',
+        ),
+      ],
     );
 
     expect(request.toJson(), {
@@ -22,11 +24,13 @@ void main() {
       'longitude': -73.365,
       'referenceAddress': 'Av. Principal',
       'categoryName': 'Incendio',
-      'evidence': {
-        'fileUrl': 'https://storage.example.com/incidents/image.jpg',
-        'fileName': 'image.jpg',
-        'fileType': 'image/jpeg',
-      },
+      'evidences': [
+        {
+          'fileUrl': 'https://storage.example.com/incidents/image.jpg',
+          'fileName': 'image.jpg',
+          'fileType': 'image/jpeg',
+        },
+      ],
     });
   });
 }
