@@ -14,7 +14,9 @@ class OfficerRepository {
   static const officerFields =
       'id,status,latitude,longitude,description,referenceAddress,createdAt,'
       'acceptedAt,arrivedAt,attendedAt,cancelledAt,category.name,'
-      'citizen.id,citizen.userEntity.phone';
+      'citizen.id,citizen.userEntity.phone,'
+      'evidences.id,evidences.fileUrl,evidences.fileName,evidences.fileType,'
+      'evidences.createdAt';
 
   /// Bolsa general de incidentes (`GET /incident/list`).
   /// Se usa para los pendientes que cualquier sereno puede aceptar.

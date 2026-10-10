@@ -204,6 +204,26 @@ void main() {
     },
   );
 
+  test('el detalle expone la primera evidencia del listado', () {
+    final withEvidence = OfficerIncident.fromJson({
+      ...incidentJson('ACCEPTED'),
+      'evidences': [
+        {
+          'id': 'ev-1',
+          'fileUrl': 'https://ejemplo.test/ev-1.jpg',
+          'fileName': 'ev-1.jpg',
+          'fileType': 'image/jpeg',
+        },
+      ],
+    });
+    expect(withEvidence.incident.evidences, hasLength(1));
+    expect(
+      withEvidence.incident.evidence?.fileUrl,
+      'https://ejemplo.test/ev-1.jpg',
+    );
+    expect(item('REQUESTED').incident.evidence, isNull);
+  });
+
   test(
     'servicio usa los contratos v2 de listado, detalle, mis casos y aceptación',
     () async {
@@ -259,6 +279,10 @@ void main() {
       );
       expect(
         requests.last.queryParameters['fields'],
+        contains('evidences.fileUrl'),
+      );
+      expect(
+        requests.last.queryParameters['fields'],
         isNot(contains('priority')),
       );
 
@@ -274,6 +298,10 @@ void main() {
       expect(
         requests.last.queryParameters['fields'],
         contains('citizen.userEntity.phone'),
+      );
+      expect(
+        requests.last.queryParameters['fields'],
+        contains('evidences.fileUrl'),
       );
 
       await repository.accept(
