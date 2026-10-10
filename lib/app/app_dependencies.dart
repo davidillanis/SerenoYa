@@ -16,7 +16,7 @@ import 'package:sereno_ya/data/repositories/citizen/incident_repository.dart';
 import 'package:sereno_ya/data/services/api/api_client.dart';
 import 'package:sereno_ya/data/services/api/auth/auth_api_service.dart';
 import 'package:sereno_ya/data/services/api/auth/auth_interceptor.dart';
-import 'package:sereno_ya/data/services/api/citizen/incident_api_service.dart';
+import 'package:sereno_ya/data/services/api/citizen/incidents_api_service.dart';
 import 'package:sereno_ya/data/services/api/file/image_api_service.dart';
 import 'package:sereno_ya/data/services/api/profile/profile_api_service.dart';
 import 'package:sereno_ya/data/services/local/citizen/incident_local_data_source.dart';
@@ -45,7 +45,7 @@ class AppDependencies {
       googleIdentityService: googleIdentityService,
     );
 
-    final incidentApiService = IncidentApiService(apiClient.dio);
+    final incidentApiService = IncidentsApiService(apiClient.dio);
     final profileApiService = ProfileApiService(apiClient.dio);
     final localDataSource = IncidentLocalDataSourceImpl();
     final incidentRepository = IncidentRepository(

@@ -11,7 +11,7 @@ import 'package:provider/provider.dart';
 import 'package:sereno_ya/data/models/officer/officer_incident.dart';
 import 'package:sereno_ya/data/models/page_response.dart';
 import 'package:sereno_ya/data/repositories/officer/officer_repository.dart';
-import 'package:sereno_ya/data/services/api/citizen/incident_api_service.dart';
+import 'package:sereno_ya/data/services/api/citizen/incidents_api_service.dart';
 import 'package:sereno_ya/models/auth/auth_failure.dart';
 import 'package:sereno_ya/models/auth/auth_session.dart';
 import 'package:sereno_ya/models/auth/authenticated_user.dart';
@@ -187,7 +187,7 @@ void main() {
           },
         ),
       );
-      final repository = OfficerRepository(IncidentApiService(dio));
+      final repository = OfficerRepository(IncidentsApiService(dio));
       final result = await repository.list(
         status: OfficerIncidentStatus.pending,
         page: 2,
@@ -226,7 +226,7 @@ void main() {
           ),
         ),
       );
-      final result = await OfficerRepository(IncidentApiService(dio)).list();
+      final result = await OfficerRepository(IncidentsApiService(dio)).list();
       expect(result.isSuccess, isFalse);
       expect(result.failure!.code, AuthFailureCode.network);
     },
@@ -360,7 +360,7 @@ Future<void> _capture(GlobalKey key, String name) async {
 }
 
 class FakeRepository extends OfficerRepository {
-  FakeRepository() : super(IncidentApiService(Dio()));
+  FakeRepository() : super(IncidentsApiService(Dio()));
   String currentStatus = 'REQUESTED';
   bool hold = false;
   bool detailFails = false;

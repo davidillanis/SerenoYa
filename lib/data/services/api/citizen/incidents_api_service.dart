@@ -8,8 +8,8 @@ import 'package:sereno_ya/data/models/page_response.dart';
 import 'package:sereno_ya/data/models/officer/incident_acceptance.dart';
 import 'package:sereno_ya/models/auth/auth_failure.dart';
 
-class IncidentApiService {
-  IncidentApiService(this._dio);
+class IncidentsApiService {
+  IncidentsApiService(this._dio);
 
   final Dio _dio;
 

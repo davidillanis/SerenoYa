@@ -1,7 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sereno_ya/data/models/citizen/incident_create_request.dart';
-import 'package:sereno_ya/data/services/api/citizen/incident_api_service.dart';
+import 'package:sereno_ya/data/services/api/citizen/incidents_api_service.dart';
 
 void main() {
   test(
@@ -129,7 +129,7 @@ void main() {
   });
 }
 
-IncidentApiService _serviceThatResponds({
+IncidentsApiService _serviceThatResponds({
   required void Function(RequestOptions request) onRequest,
   required Object? data,
 }) {
@@ -153,5 +153,5 @@ IncidentApiService _serviceThatResponds({
       },
     ),
   );
-  return IncidentApiService(dio);
+  return IncidentsApiService(dio);
 }

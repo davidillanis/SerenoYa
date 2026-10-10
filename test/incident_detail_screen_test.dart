@@ -4,7 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 import 'package:sereno_ya/data/models/citizen/incident_category.dart';
 import 'package:sereno_ya/data/repositories/citizen/incident_repository.dart';
-import 'package:sereno_ya/data/services/api/citizen/incident_api_service.dart';
+import 'package:sereno_ya/data/services/api/citizen/incidents_api_service.dart';
 import 'package:sereno_ya/data/services/local/citizen/incident_local_data_source.dart';
 import 'package:sereno_ya/ui/citizen/incident_detail/incident_detail_screen.dart';
 import 'package:sereno_ya/ui/citizen/incident_detail/view_models/incident_detail_view_model.dart';
@@ -22,7 +22,7 @@ void main() {
       addTearDown(() => tester.binding.setSurfaceSize(null));
 
       final repository = IncidentRepository(
-        apiService: IncidentApiService(_detailDio()),
+        apiService: IncidentsApiService(_detailDio()),
         localDataSource: _NoopIncidentLocalDataSource(),
       );
 

@@ -2,7 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sereno_ya/data/models/citizen/incident_category.dart';
 import 'package:sereno_ya/data/repositories/citizen/incident_repository.dart';
-import 'package:sereno_ya/data/services/api/citizen/incident_api_service.dart';
+import 'package:sereno_ya/data/services/api/citizen/incidents_api_service.dart';
 import 'package:sereno_ya/data/services/local/citizen/incident_local_data_source.dart';
 import 'package:sereno_ya/ui/citizen/incident_detail/view_models/incident_detail_view_model.dart';
 
@@ -37,7 +37,7 @@ void main() {
       ),
     );
     final repository = IncidentRepository(
-      apiService: IncidentApiService(dio),
+      apiService: IncidentsApiService(dio),
       localDataSource: _NoopIncidentLocalDataSource(),
     );
 

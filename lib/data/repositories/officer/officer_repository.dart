@@ -1,13 +1,13 @@
 import 'package:sereno_ya/data/models/auth/api_response_dto.dart';
 import 'package:sereno_ya/data/models/officer/officer_incident.dart';
 import 'package:sereno_ya/data/models/page_response.dart';
-import 'package:sereno_ya/data/services/api/citizen/incident_api_service.dart';
+import 'package:sereno_ya/data/services/api/citizen/incidents_api_service.dart';
 import 'package:sereno_ya/models/auth/auth_failure.dart';
 import 'package:sereno_ya/models/auth/result.dart';
 
 class OfficerRepository {
   OfficerRepository(this._service);
-  final IncidentApiService _service;
+  final IncidentsApiService _service;
 
   Future<Result<PageResponse<OfficerIncident>>> list({
     OfficerIncidentStatus? status,

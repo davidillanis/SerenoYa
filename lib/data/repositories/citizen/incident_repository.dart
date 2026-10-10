@@ -3,7 +3,7 @@ import 'package:sereno_ya/data/models/citizen/incident_create_request.dart';
 import 'package:sereno_ya/data/models/citizen/incident.dart';
 import 'package:sereno_ya/data/models/page_response.dart';
 import 'package:sereno_ya/data/models/officer/incident_acceptance.dart';
-import 'package:sereno_ya/data/services/api/citizen/incident_api_service.dart';
+import 'package:sereno_ya/data/services/api/citizen/incidents_api_service.dart';
 import 'package:sereno_ya/models/auth/auth_failure.dart';
 import 'package:sereno_ya/models/auth/result.dart';
 
@@ -11,12 +11,12 @@ import 'package:sereno_ya/data/services/local/citizen/incident_local_data_source
 
 class IncidentRepository {
   IncidentRepository({
-    required IncidentApiService apiService,
+    required IncidentsApiService apiService,
     required IncidentLocalDataSource localDataSource,
   }) : _apiService = apiService,
        _localDataSource = localDataSource;
 
-  final IncidentApiService _apiService;
+  final IncidentsApiService _apiService;
   final IncidentLocalDataSource _localDataSource;
 
   List<IncidentCategory>? _cachedCategories;
