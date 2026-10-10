@@ -1,7 +1,6 @@
 import 'package:sereno_ya/data/models/citizen/incident_category.dart';
 import 'package:sereno_ya/data/models/citizen/incident_evidence.dart';
 import 'package:sereno_ya/data/models/incident_assignment.dart';
-import 'package:sereno_ya/data/models/incident_assignment_attempt.dart';
 import 'package:sereno_ya/data/models/incident_status_history.dart';
 
 class Incident {
@@ -20,7 +19,6 @@ class Incident {
   final List<IncidentEvidence> evidences;
   final IncidentAssignment? assignment;
   final List<IncidentStatusHistory> statusHistory;
-  final List<IncidentAssignmentAttempt> assignmentAttempts;
   final bool adminDetailsIncluded;
 
   Incident({
@@ -39,7 +37,6 @@ class Incident {
     this.evidences = const [],
     this.assignment,
     this.statusHistory = const [],
-    this.assignmentAttempts = const [],
     this.adminDetailsIncluded = false,
   });
 
@@ -78,20 +75,9 @@ class Incident {
                 )
                 .toList(growable: false)
           : const [],
-      assignmentAttempts: json['assignmentAttempts'] is List
-          ? (json['assignmentAttempts'] as List)
-                .whereType<Map>()
-                .map(
-                  (entry) => IncidentAssignmentAttempt.fromJson(
-                    Map<String, dynamic>.from(entry),
-                  ),
-                )
-                .toList(growable: false)
-          : const [],
       adminDetailsIncluded:
           json.containsKey('assignment') &&
-          json.containsKey('statusHistory') &&
-          json.containsKey('assignmentAttempts'),
+          json.containsKey('statusHistory'),
     );
   }
 
