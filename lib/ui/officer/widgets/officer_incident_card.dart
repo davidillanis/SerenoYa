@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:sereno_ya/data/models/officer/officer_incident.dart';
 import 'package:sereno_ya/ui/core/theme/colors.dart';
 import 'package:sereno_ya/ui/officer/officer_map_screen.dart';
@@ -164,61 +163,4 @@ Future<void> openIncidentMap(BuildContext context, OfficerIncident item) async {
   await Navigator.of(
     context,
   ).push<void>(MaterialPageRoute(builder: (_) => OfficerMapScreen(item: item)));
-}
-
-Future<int?> requestArrivalTime(BuildContext context) =>
-    showDialog<int>(context: context, builder: (_) => const _ArrivalDialog());
-
-class _ArrivalDialog extends StatefulWidget {
-  const _ArrivalDialog();
-  @override
-  State<_ArrivalDialog> createState() => _ArrivalDialogState();
-}
-
-class _ArrivalDialogState extends State<_ArrivalDialog> {
-  final controller = TextEditingController();
-  final formKey = GlobalKey<FormState>();
-  @override
-  void dispose() {
-    controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) => AlertDialog(
-    title: const Text('Enviar respuesta al ciudadano'),
-    content: Form(
-      key: formKey,
-      child: TextFormField(
-        controller: controller,
-        autofocus: true,
-        keyboardType: TextInputType.number,
-        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-        decoration: const InputDecoration(
-          labelText: 'Tiempo de llegada',
-          suffixText: 'min',
-        ),
-        validator: (value) {
-          final minutes = int.tryParse(value ?? '');
-          return minutes == null || minutes < 1 || minutes > 180
-              ? 'Ingresa entre 1 y 180 minutos'
-              : null;
-        },
-      ),
-    ),
-    actions: [
-      TextButton(
-        onPressed: () => Navigator.pop(context),
-        child: const Text('Cancelar'),
-      ),
-      FilledButton(
-        onPressed: () {
-          if (formKey.currentState!.validate()) {
-            Navigator.pop(context, int.parse(controller.text));
-          }
-        },
-        child: const Text('Aceptar y enviar'),
-      ),
-    ],
-  );
 }

@@ -1,25 +1,48 @@
 import 'package:flutter/foundation.dart';
 import 'package:sereno_ya/data/models/officer/officer_incident.dart';
 import 'package:sereno_ya/data/repositories/officer/officer_repository.dart';
+import 'package:sereno_ya/data/services/maps/citizen_location_service.dart';
 import 'package:sereno_ya/models/auth/auth_session.dart';
 
 class OfficerIncidentsViewModel extends ChangeNotifier {
-  OfficerIncidentsViewModel(this.repository, this._session) {
+  OfficerIncidentsViewModel(
+    this.repository,
+    this._session, {
+    CitizenLocationService? locationService,
+  }) : _locationService = locationService ?? CitizenLocationService() {
     loadInitial();
+    loadMine();
   }
   final OfficerRepository repository;
+  final CitizenLocationService _locationService;
   final Set<String> _accepting = {};
   bool isAccepting(String id) => _accepting.contains(id);
 
-  Future<String?> acceptIncident(String id, int minutes) async {
+  /// Acepta con la ubicación GPS actual (`POST /incident/accept`).
+  Future<String?> acceptIncident(String id) async {
     if (_disposed || _session == null) return 'No hay sesión activa';
     if (!_accepting.add(id)) return 'La aceptación está en curso.';
-    if (minutes < 1 || minutes > 180) {
-      _accepting.remove(id);
-      return 'Ingresa entre 1 y 180 minutos.';
-    }
     _notify();
-    final result = await repository.accept(id, minutes);
+    late final double latitude;
+    late final double longitude;
+    try {
+      final position = await _locationService.currentLocation();
+      latitude = position.latitude;
+      longitude = position.longitude;
+    } on LocationFailure catch (error) {
+      _accepting.remove(id);
+      _notify();
+      return error.message;
+    } catch (_) {
+      _accepting.remove(id);
+      _notify();
+      return 'No se pudo obtener tu ubicación. Vuelve a intentar.';
+    }
+    final result = await repository.accept(
+      id: id,
+      latitude: latitude,
+      longitude: longitude,
+    );
     String? error = result.failure?.message;
     if (result.isSuccess) {
       _acceptedIds.add(id);
@@ -42,14 +65,25 @@ class OfficerIncidentsViewModel extends ChangeNotifier {
   final Map<String, OfficerIncident> _accepted = {};
   final Set<String> _acceptedIds = {};
   List<OfficerIncident> get accepted => List.unmodifiable(_accepted.values);
+  Set<String> get acceptedIds => Set.unmodifiable(_acceptedIds);
+  // Incidentes del sereno autenticado (`GET /incident/list-me-sereno`).
+  // Es la única fuente persistente de "mis incidentes": sobrevive reinicios,
+  // a diferencia de [accepted], que solo cubre la sesión actual.
+  List<OfficerIncident> _mine = [];
+  List<OfficerIncident> get mineIncidents => List.unmodifiable(_mine);
+  bool mineBusy = false;
+  bool mineHasMore = false;
+  String? mineError;
   OfficerIncidentStatus? filter = OfficerIncidentStatus.pending;
   bool isBusy = false;
   bool hasMore = false;
   String? errorMessage;
   String? metricsError;
   int _nextPage = 0;
+  int _mineNextPage = 0;
   bool _disposed = false;
   int _generation = 0;
+  int _mineGeneration = 0;
   int _metricsGeneration = 0;
 
   Future<void> selectFilter(OfficerIncidentStatus? value) async {
@@ -93,6 +127,43 @@ class OfficerIncidentsViewModel extends ChangeNotifier {
   }
 
   Future<void> loadMore() => _load(reset: false);
+
+  /// Mis incidentes del sereno (`GET /incident/list-me-sereno`, sin filtro).
+  Future<void> loadMine() => _loadMine(reset: true);
+
+  Future<void> loadMoreMine() => _loadMine(reset: false);
+
+  Future<void> _loadMine({required bool reset}) async {
+    if (_disposed || mineBusy || (!reset && !mineHasMore)) return;
+    if (_session == null) {
+      mineError = 'No hay sesión activa';
+      _notify();
+      return;
+    }
+    final generation = ++_mineGeneration;
+    mineBusy = true;
+    mineError = null;
+    _notify();
+    final result = await repository.listMine(page: reset ? 0 : _mineNextPage);
+    if (_disposed || generation != _mineGeneration) return;
+    if (result.isSuccess) {
+      final page = result.data!;
+      final items = reset
+          ? <String, OfficerIncident>{}
+          : {for (final item in _mine) item.id: item};
+      for (final item in page.content) {
+        items[item.id] = item;
+      }
+      _mine = items.values.toList();
+      _mineNextPage = page.page + 1;
+      mineHasMore = _mineNextPage < page.totalPages;
+    } else {
+      mineError = result.failure!.message;
+    }
+    mineBusy = false;
+    _notify();
+  }
+
   Future<void> _load({required bool reset}) async {
     if (_disposed || isBusy || (!reset && !hasMore)) return;
     if (_session == null) {
@@ -104,10 +175,14 @@ class OfficerIncidentsViewModel extends ChangeNotifier {
     isBusy = true;
     errorMessage = null;
     _notify();
-    final result = await repository.list(
-      status: filter,
-      page: reset ? 0 : _nextPage,
-    );
+    // Pendientes: bolsa general aceptable por cualquier sereno.
+    // Cualquier otro filtro o "Todos": casos propios del sereno.
+    final result = filter == OfficerIncidentStatus.pending
+        ? await repository.list(status: filter, page: reset ? 0 : _nextPage)
+        : await repository.listMine(
+            status: filter,
+            page: reset ? 0 : _nextPage,
+          );
     if (_disposed || generation != _generation) return;
     if (result.isSuccess) {
       final page = result.data!;
@@ -132,7 +207,8 @@ class OfficerIncidentsViewModel extends ChangeNotifier {
     final generation = ++_metricsGeneration;
     metricsError = null;
     final results = await Future.wait([
-      for (final status in operationalStatuses) repository.list(status: status),
+      for (final status in operationalStatuses)
+        repository.listMine(status: status),
     ]);
     if (_disposed || generation != _metricsGeneration) return;
     for (var i = 0; i < results.length; i++) {
@@ -157,6 +233,7 @@ class OfficerIncidentsViewModel extends ChangeNotifier {
       _rememberAccepted(item);
     }
     await loadInitial(forceRefresh: true);
+    await loadMine();
     await loadMetrics();
   }
 
@@ -168,6 +245,7 @@ class OfficerIncidentsViewModel extends ChangeNotifier {
   void dispose() {
     _disposed = true;
     _generation++;
+    _mineGeneration++;
     super.dispose();
   }
 }

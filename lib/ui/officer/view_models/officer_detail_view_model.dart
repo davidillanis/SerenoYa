@@ -1,12 +1,18 @@
 import 'package:flutter/foundation.dart';
 import 'package:sereno_ya/data/models/officer/officer_incident.dart';
 import 'package:sereno_ya/data/repositories/officer/officer_repository.dart';
+import 'package:sereno_ya/data/services/maps/citizen_location_service.dart';
 
 class OfficerDetailViewModel extends ChangeNotifier {
-  OfficerDetailViewModel(this._repository, this.id) {
+  OfficerDetailViewModel(
+    this._repository,
+    this.id, {
+    CitizenLocationService? locationService,
+  }) : _locationService = locationService ?? CitizenLocationService() {
     load();
   }
   final OfficerRepository _repository;
+  final CitizenLocationService _locationService;
   final String id;
   OfficerIncident? item;
   bool loading = false;
@@ -36,32 +42,43 @@ class OfficerDetailViewModel extends ChangeNotifier {
     _notify();
   }
 
-  Future<String?> act({int? etaMinutes}) async {
+  /// Solo los pendientes admiten acción: aceptar con el GPS actual.
+  /// La API v2 no expone llegada/atendido, así que esos estados no operan.
+  Future<String?> act() async {
     if (_disposed || saving || loading || item == null) {
       return 'Espera a que termine la operación.';
     }
-    final status = item!.status;
-    if (status == OfficerIncidentStatus.pending &&
-        (etaMinutes == null || etaMinutes < 1 || etaMinutes > 180)) {
-      return 'Ingresa un tiempo entre 1 y 180 minutos.';
-    }
-    final next = switch (status) {
-      OfficerIncidentStatus.enRoute => OfficerIncidentStatus.attending,
-      OfficerIncidentStatus.attending => OfficerIncidentStatus.attended,
-      _ => null,
-    };
-    if (status != OfficerIncidentStatus.pending && next == null) {
+    if (item!.status != OfficerIncidentStatus.pending) {
       return 'Este incidente no admite esa operación.';
     }
     saving = true;
     _notify();
-    final result = status == OfficerIncidentStatus.pending
-        ? await _repository.accept(id, etaMinutes!)
-        : await _repository.update(id, next!);
+    late final double latitude;
+    late final double longitude;
+    try {
+      final position = await _locationService.currentLocation();
+      latitude = position.latitude;
+      longitude = position.longitude;
+    } on LocationFailure catch (failure) {
+      if (_disposed) return failure.message;
+      saving = false;
+      _notify();
+      return failure.message;
+    } catch (_) {
+      if (_disposed) return 'No se pudo obtener tu ubicación.';
+      saving = false;
+      _notify();
+      return 'No se pudo obtener tu ubicación. Vuelve a intentar.';
+    }
+    final result = await _repository.accept(
+      id: id,
+      latitude: latitude,
+      longitude: longitude,
+    );
     if (_disposed) return null;
     if (result.isSuccess) {
       changed = true;
-      acceptedHere = acceptedHere || status == OfficerIncidentStatus.pending;
+      acceptedHere = true;
       item =
           null; // Never leave stale actions enabled after a successful write.
       await _load();

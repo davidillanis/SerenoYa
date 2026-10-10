@@ -26,6 +26,14 @@ class IncidentApiService {
     (value) => PageResponse.fromJson(value, OfficerIncident.fromJson),
   );
 
+  Future<ApiResponseDto<OfficerIncident>> byIdSereno({required String fields,required String id,}) => _request(
+    () => _dio.get<dynamic>(
+      '/incident/byId-sereno/$id',
+      queryParameters: {'fields': fields, 'id': id},
+    ),
+    (value) => OfficerIncident.fromJson(_asJsonMap(value)),
+  );
+
   Future<ApiResponseDto<IncidentAcceptance>> accept(IncidentAcceptRequest request,) {
     return _request(
       () => _dio.post<dynamic>('/incident/accept', data: request.toJson()),

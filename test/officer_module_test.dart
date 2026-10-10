@@ -7,11 +7,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:provider/provider.dart';
 import 'package:sereno_ya/data/models/officer/officer_incident.dart';
 import 'package:sereno_ya/data/models/page_dto.dart';
 import 'package:sereno_ya/data/repositories/officer/officer_repository.dart';
-import 'package:sereno_ya/data/services/api/citizen/incidents_api_service.dart';
+import 'package:sereno_ya/data/services/api/incident_api_service.dart';
+import 'package:sereno_ya/data/services/maps/citizen_location_service.dart';
 import 'package:sereno_ya/models/auth/auth_failure.dart';
 import 'package:sereno_ya/models/auth/auth_session.dart';
 import 'package:sereno_ya/models/auth/authenticated_user.dart';
@@ -68,15 +70,31 @@ PageResponse<OfficerIncident> page(
   totalPages: 3,
 );
 
+class FakeLocationService extends CitizenLocationService {
+  @override
+  Future<LatLng> currentLocation() async => const LatLng(-13.65, -73.36);
+}
+
+class FailingLocationService extends CitizenLocationService {
+  @override
+  Future<LatLng> currentLocation() async {
+    throw const LocationFailure('Sin ubicación');
+  }
+}
+
 void main() {
   test(
     'evita aceptar dos veces y actualiza aceptados al cerrar en el servidor',
     () async {
       final repository = FakeRepository();
-      final model = OfficerIncidentsViewModel(repository, session);
+      final model = OfficerIncidentsViewModel(
+        repository,
+        session,
+        locationService: FakeLocationService(),
+      );
       await Future<void>.delayed(Duration.zero);
-      final first = model.acceptIncident('incident-test', 12);
-      expect(await model.acceptIncident('incident-test', 12), isNotNull);
+      final first = model.acceptIncident('incident-test');
+      expect(await model.acceptIncident('incident-test'), isNotNull);
       await first;
       expect(repository.acceptCount, 1);
       expect(model.accepted, hasLength(1));
@@ -87,13 +105,48 @@ void main() {
     },
   );
 
+  test('sin GPS la aceptación informa el error sin llamar a la API', () async {
+    final repository = FakeRepository();
+    final model = OfficerIncidentsViewModel(
+      repository,
+      session,
+      locationService: FailingLocationService(),
+    );
+    await Future<void>.delayed(Duration.zero);
+    expect(await model.acceptIncident('incident-test'), 'Sin ubicación');
+    expect(repository.acceptCount, 0);
+    model.dispose();
+  });
+
   test('sin sesión no consulta métricas ni acepta incidentes', () async {
     final repository = FakeRepository();
-    final model = OfficerIncidentsViewModel(repository, null);
+    final model = OfficerIncidentsViewModel(
+      repository,
+      null,
+      locationService: FakeLocationService(),
+    );
     await model.loadMetrics();
-    expect(await model.acceptIncident('incident-test', 12), isNotNull);
+    expect(await model.acceptIncident('incident-test'), isNotNull);
     expect(repository.acceptCount, 0);
     expect(model.totals, isEmpty);
+    expect(model.mineIncidents, isEmpty);
+    expect(model.mineError, isNotNull);
+    model.dispose();
+  });
+
+  test('el inicio carga mis incidentes con list-me-sereno', () async {
+    final model = OfficerIncidentsViewModel(
+      FakeRepository(),
+      session,
+      locationService: FakeLocationService(),
+    );
+    await Future<void>.delayed(Duration.zero);
+    expect(model.mineBusy, isFalse);
+    expect(model.mineError, isNull);
+    expect(model.mineIncidents, hasLength(1));
+    expect(model.mineHasMore, isTrue);
+    await model.loadMoreMine();
+    expect(model.mineIncidents, hasLength(1));
     model.dispose();
   });
 
@@ -152,7 +205,7 @@ void main() {
   );
 
   test(
-    'servicio usa los contratos reales de listado, detalle y acciones',
+    'servicio usa los contratos v2 de listado, detalle, mis casos y aceptación',
     () async {
       final requests = <RequestOptions>[];
       final dio = Dio();
@@ -160,23 +213,25 @@ void main() {
         InterceptorsWrapper(
           onRequest: (request, handler) {
             requests.add(request);
-            final data = request.path == '/incidents/list'
-                ? {
-                    'content': [incidentJson('REQUESTED')],
-                    'page': 2,
-                    'size': 15,
-                    'totalElements': 31,
-                    'totalPages': 3,
-                  }
-                : request.path.endsWith('/accept')
-                ? {
-                    'incidentId': 'incident-test',
-                    'assignmentId': 'assignment-test',
-                    'serenoId': 'test-officer',
-                    'etaMinutes': 12,
-                    'status': 'ACCEPTED',
-                  }
-                : incidentJson('ON_SITE');
+            final Object data;
+            if (request.path == '/incident/accept') {
+              data = {
+                'incidentId': 'incident-test',
+                'assignmentId': 'assignment-test',
+                'serenoId': 'test-officer',
+                'status': 'ACCEPTED',
+              };
+            } else if (request.path.contains('/byId-sereno/')) {
+              data = incidentJson('ACCEPTED');
+            } else {
+              data = {
+                'content': [incidentJson('REQUESTED')],
+                'page': 2,
+                'size': 15,
+                'totalElements': 31,
+                'totalPages': 3,
+              };
+            }
             handler.resolve(
               Response(
                 requestOptions: request,
@@ -187,14 +242,17 @@ void main() {
           },
         ),
       );
-      final repository = OfficerRepository(IncidentsApiService(dio));
+      final repository = OfficerRepository(IncidentApiService(dio));
       final result = await repository.list(
         status: OfficerIncidentStatus.pending,
         page: 2,
       );
       expect(result.data!.totalElements, 31);
+      expect(requests.last.path, '/incident/list');
       expect(requests.last.queryParameters['status'], 'REQUESTED');
       expect(requests.last.queryParameters['page'], 2);
+      expect(requests.last.queryParameters['sortBy'], 'id');
+      expect(requests.last.queryParameters['direction'], 'DESC');
       expect(
         requests.last.queryParameters['fields'],
         contains('citizen.userEntity.phone'),
@@ -203,12 +261,30 @@ void main() {
         requests.last.queryParameters['fields'],
         isNot(contains('priority')),
       );
-      await repository.detail('incident-test');
-      expect(requests.last.path, '/incidents/byId/incident-test');
-      await repository.accept('incident-test', 12);
-      expect(requests.last.data, {'etaMinutes': 12});
-      await repository.update('incident-test', OfficerIncidentStatus.attending);
-      expect(requests.last.queryParameters['status'], 'ON_SITE');
+
+      await repository.listMine(status: OfficerIncidentStatus.attended);
+      expect(requests.last.path, '/incident/list-me-sereno');
+      expect(requests.last.queryParameters['status'], 'ATTENDED');
+
+      final found = await repository.detail('incident-test');
+      expect(found.isSuccess, isTrue);
+      expect(found.data!.status, OfficerIncidentStatus.enRoute);
+      expect(requests.last.path, '/incident/byId-sereno/incident-test');
+      expect(requests.last.queryParameters['id'], 'incident-test');
+      expect(
+        requests.last.queryParameters['fields'],
+        contains('citizen.userEntity.phone'),
+      );
+
+      await repository.accept(
+        id: 'incident-test',
+        latitude: -13.65,
+        longitude: -73.36,
+      );
+      expect(requests.last.path, '/incident/accept');
+      expect(requests.last.data['incidentId'], 'incident-test');
+      expect(requests.last.data['acceptedLatitude'], -13.65);
+      expect(requests.last.data['acceptedLongitude'], -73.36);
     },
   );
 
@@ -226,7 +302,7 @@ void main() {
           ),
         ),
       );
-      final result = await OfficerRepository(IncidentsApiService(dio)).list();
+      final result = await OfficerRepository(IncidentApiService(dio)).list();
       expect(result.isSuccess, isFalse);
       expect(result.failure!.code, AuthFailureCode.network);
     },
@@ -235,9 +311,19 @@ void main() {
   test(
     'descarta respuestas viejas al cambiar de filtro y al desmontarse',
     () async {
-      final repository = FakeRepository()..hold = true;
-      final model = OfficerIncidentsViewModel(repository, session);
+      final repository = FakeRepository()
+        ..hold = true
+        ..holdMine = true;
+      final model = OfficerIncidentsViewModel(
+        repository,
+        session,
+        locationService: FakeLocationService(),
+      );
+      // El constructor encola la lista principal y mis incidentes.
       final old = repository.pending.removeAt(0);
+      repository.pending
+          .removeAt(0)
+          .complete(Result.success(page('REQUESTED')));
       final current = model.selectFilter(OfficerIncidentStatus.attended);
       repository.pending.removeAt(0).complete(Result.success(page('ATTENDED')));
       await current;
@@ -254,32 +340,49 @@ void main() {
   );
 
   test('métricas usan totalElements y paginación elimina duplicados', () async {
-    final model = OfficerIncidentsViewModel(FakeRepository(), session);
+    final model = OfficerIncidentsViewModel(
+      FakeRepository(),
+      session,
+      locationService: FakeLocationService(),
+    );
     await Future<void>.delayed(Duration.zero);
     await model.loadMore();
     expect(model.incidents.length, 1);
     await model.loadMetrics();
     expect(model.totals[OfficerIncidentStatus.pending], 31);
     expect(model.accepted, isEmpty);
-    await model.acceptIncident('incident-test', 12);
+    await model.acceptIncident('incident-test');
     expect(model.accepted.single.status, OfficerIncidentStatus.enRoute);
     model.dispose();
   });
 
-  test('detalle valida ETA y ejecuta aceptación, llegada y cierre', () async {
+  test('detalle acepta pendientes con GPS y bloquea otros estados', () async {
     final repository = FakeRepository();
-    final model = OfficerDetailViewModel(repository, 'incident-test');
+    final model = OfficerDetailViewModel(
+      repository,
+      'incident-test',
+      locationService: FakeLocationService(),
+    );
     await Future<void>.delayed(Duration.zero);
-    expect(await model.act(etaMinutes: 0), isNotNull);
-    expect(repository.acceptCount, 0);
-    expect(await model.act(etaMinutes: 12), isNull);
+    expect(await model.act(), isNull);
     expect(model.item!.status, OfficerIncidentStatus.enRoute);
     expect(model.acceptedHere, isTrue);
-    await model.act();
-    expect(model.item!.status, OfficerIncidentStatus.attending);
-    await model.act();
-    expect(model.item!.status, OfficerIncidentStatus.attended);
+    // La API v2 no expone llegada/atendido: no hay más acciones.
     expect(await model.act(), isNotNull);
+    expect(repository.acceptCount, 1);
+    model.dispose();
+  });
+
+  test('detalle sin GPS informa el error sin aceptar', () async {
+    final repository = FakeRepository();
+    final model = OfficerDetailViewModel(
+      repository,
+      'incident-test',
+      locationService: FailingLocationService(),
+    );
+    await Future<void>.delayed(Duration.zero);
+    expect(await model.act(), 'Sin ubicación');
+    expect(repository.acceptCount, 0);
     model.dispose();
   });
 
@@ -287,10 +390,14 @@ void main() {
     'un error al releer una mutación exitosa no deja acciones obsoletas',
     () async {
       final repository = FakeRepository();
-      final model = OfficerDetailViewModel(repository, 'incident-test');
+      final model = OfficerDetailViewModel(
+        repository,
+        'incident-test',
+        locationService: FakeLocationService(),
+      );
       await Future<void>.delayed(Duration.zero);
       repository.detailFails = true;
-      expect(await model.act(etaMinutes: 12), isNull);
+      expect(await model.act(), isNull);
       expect(model.item, isNull);
       expect(model.error, isNotNull);
       model.dispose();
@@ -306,7 +413,11 @@ void main() {
         tester.view.devicePixelRatio = 1;
         addTearDown(tester.view.resetPhysicalSize);
         addTearDown(tester.view.resetDevicePixelRatio);
-        final model = OfficerIncidentsViewModel(FakeRepository(), session);
+        final model = OfficerIncidentsViewModel(
+          FakeRepository(),
+          session,
+          locationService: FakeLocationService(),
+        );
         addTearDown(model.dispose);
         final boundary = GlobalKey();
         await tester.pumpWidget(
@@ -322,7 +433,10 @@ void main() {
           ),
         );
         await tester.pumpAndSettle();
-        expect(find.text('Aceptar y enviar respuesta'), findsOneWidget);
+        expect(find.text('Mis incidentes'), findsOneWidget);
+        // El mismo incidente llega por la bolsa general y por
+        // `list-me-sereno`: una tarjeta en cada sección.
+        expect(find.text('Aceptar y enviar respuesta'), findsNWidgets(2));
         expect(tester.takeException(), isNull);
         await tester.runAsync(
           () => _capture(boundary, 'inicio-${brightness.name}-$width'),
@@ -334,9 +448,9 @@ void main() {
           () => _capture(boundary, 'reportes-${brightness.name}-$width'),
         );
         expect(tester.takeException(), isNull);
-        await tester.ensureVisible(find.text('Ver detalle y evidencia'));
+        await tester.ensureVisible(find.text('Ver detalle y evidencia').first);
         await tester.pumpAndSettle();
-        await tester.tap(find.text('Ver detalle y evidencia'));
+        await tester.tap(find.text('Ver detalle y evidencia').first);
         await tester.pumpAndSettle();
         expect(find.byType(OfficerDetailScreen), findsOneWidget);
         expect(find.text('Ciudadano'), findsOneWidget);
@@ -360,9 +474,10 @@ Future<void> _capture(GlobalKey key, String name) async {
 }
 
 class FakeRepository extends OfficerRepository {
-  FakeRepository() : super(IncidentsApiService(Dio()));
+  FakeRepository() : super(IncidentApiService(Dio()));
   String currentStatus = 'REQUESTED';
   bool hold = false;
+  bool holdMine = false;
   bool detailFails = false;
   int acceptCount = 0;
   final pending = <Completer<Result<PageResponse<OfficerIncident>>>>[];
@@ -370,8 +485,35 @@ class FakeRepository extends OfficerRepository {
   Future<Result<PageResponse<OfficerIncident>>> list({
     OfficerIncidentStatus? status,
     int page = 0,
+    int size = 15,
   }) {
     if (hold) {
+      final completer = Completer<Result<PageResponse<OfficerIncident>>>();
+      pending.add(completer);
+      return completer.future;
+    }
+    return Future.value(
+      Result.success(
+        PageResponse(
+          content: [item(status?.apiValue ?? currentStatus)],
+          page: page,
+          size: 15,
+          totalElements: 31,
+          totalPages: 3,
+        ),
+      ),
+    );
+  }
+
+  @override
+  Future<Result<PageResponse<OfficerIncident>>> listMine({
+    OfficerIncidentStatus? status,
+    int page = 0,
+    int size = 15,
+  }) {
+    // [holdMine] permite retener mis casos en pruebas de generación sin
+    // afectar a las demás pruebas, donde responde de inmediato.
+    if (holdMine) {
       final completer = Completer<Result<PageResponse<OfficerIncident>>>();
       pending.add(completer);
       return completer.future;
@@ -396,15 +538,13 @@ class FakeRepository extends OfficerRepository {
         )
       : Result.success(item(currentStatus));
   @override
-  Future<Result<bool>> accept(String id, int minutes) async {
+  Future<Result<bool>> accept({
+    required String id,
+    required double latitude,
+    required double longitude,
+  }) async {
     acceptCount++;
     currentStatus = 'ACCEPTED';
-    return Result.success(true);
-  }
-
-  @override
-  Future<Result<bool>> update(String id, OfficerIncidentStatus status) async {
-    currentStatus = status.apiValue;
     return Result.success(true);
   }
 }

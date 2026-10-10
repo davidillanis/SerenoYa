@@ -46,7 +46,9 @@ class _OfficerHomeScreenState extends State<OfficerHomeScreen> {
         actions: [
           IconButton(
             tooltip: 'Actualizar',
-            onPressed: model.isBusy ? null : () => _refresh(model),
+            onPressed: model.isBusy || model.mineBusy
+                ? null
+                : () => _refresh(model),
             icon: const Icon(Icons.refresh),
           ),
         ],
@@ -95,6 +97,7 @@ class _OfficerHomeScreenState extends State<OfficerHomeScreen> {
     if (_tab == index) return;
     setState(() => _tab = index);
     model.selectFilter(index == 0 ? OfficerIncidentStatus.pending : null);
+    if (index == 0) model.loadMine();
     if (index == 1) model.loadMetrics();
   }
 
@@ -107,6 +110,7 @@ class _OfficerHomeScreenState extends State<OfficerHomeScreen> {
       );
   Future<void> _refresh(OfficerIncidentsViewModel model) async {
     await model.loadInitial(forceRefresh: true);
+    await model.loadMine();
     if (_tab == 1) await model.loadMetrics();
   }
 
@@ -114,9 +118,7 @@ class _OfficerHomeScreenState extends State<OfficerHomeScreen> {
     OfficerIncidentsViewModel model,
     OfficerIncident item,
   ) async {
-    final minutes = await requestArrivalTime(context);
-    if (minutes == null || !mounted) return;
-    final error = await model.acceptIncident(item.id, minutes);
+    final error = await model.acceptIncident(item.id);
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(

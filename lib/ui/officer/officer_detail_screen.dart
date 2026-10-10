@@ -182,39 +182,31 @@ class OfficerDetailScreen extends StatelessWidget {
 
   String? _actionLabel(OfficerIncidentStatus status) => switch (status) {
     OfficerIncidentStatus.pending => 'Aceptar y enviar respuesta',
-    OfficerIncidentStatus.enRoute => 'Registrar llegada',
-    OfficerIncidentStatus.attending => 'Marcar como atendido',
     _ => null,
   };
 
   Future<void> _act(BuildContext context, OfficerDetailViewModel model) async {
-    int? minutes;
-    if (model.item!.status == OfficerIncidentStatus.pending) {
-      minutes = await requestArrivalTime(context);
-      if (minutes == null || !context.mounted) return;
-    } else {
-      final confirmed = await showDialog<bool>(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: Text(_actionLabel(model.item!.status)!),
-          content: const Text(
-            'Se actualizará el estado del incidente para el ciudadano.',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('Cancelar'),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.pop(context, true),
-              child: const Text('Confirmar'),
-            ),
-          ],
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(_actionLabel(model.item!.status)!),
+        content: const Text(
+          'Se usará tu ubicación actual para registrar la aceptación.',
         ),
-      );
-      if (confirmed != true || !context.mounted) return;
-    }
-    final error = await model.act(etaMinutes: minutes);
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Confirmar'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !context.mounted) return;
+    final error = await model.act();
     if (!context.mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(error ?? 'Respuesta enviada correctamente.')),

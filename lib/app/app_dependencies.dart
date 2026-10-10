@@ -18,6 +18,7 @@ import 'package:sereno_ya/data/services/api/auth/auth_api_service.dart';
 import 'package:sereno_ya/data/services/api/auth/auth_interceptor.dart';
 import 'package:sereno_ya/data/services/api/citizen/incidents_api_service.dart';
 import 'package:sereno_ya/data/services/api/file/image_api_service.dart';
+import 'package:sereno_ya/data/services/api/incident_api_service.dart';
 import 'package:sereno_ya/data/services/api/profile/profile_api_service.dart';
 import 'package:sereno_ya/data/services/local/citizen/incident_local_data_source.dart';
 import 'package:sereno_ya/data/services/storage/session_storage_service.dart';
@@ -46,6 +47,7 @@ class AppDependencies {
     );
 
     final incidentApiService = IncidentsApiService(apiClient.dio);
+    final officerApiService = IncidentApiService(apiClient.dio);
     final profileApiService = ProfileApiService(apiClient.dio);
     final localDataSource = IncidentLocalDataSourceImpl();
     final incidentRepository = IncidentRepository(
@@ -78,7 +80,7 @@ class AppDependencies {
     dependencies.routerNotifier = AuthRouterNotifier(authRepository);
     dependencies.router = createAppRouter(
       onLoginSuccess: NotificationService.instance.synchronizeToken,
-      officerRepository: OfficerRepository(incidentApiService),
+      officerRepository: OfficerRepository(officerApiService),
       googleIdentityService: googleIdentityService,
       authRepository: authRepository,
       incidentRepository: incidentRepository,

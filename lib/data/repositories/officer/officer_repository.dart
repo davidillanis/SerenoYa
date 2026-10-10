@@ -1,36 +1,77 @@
 import 'package:sereno_ya/data/models/auth/api_response_dto.dart';
+import 'package:sereno_ya/data/models/incident_assignment.dart';
+import 'package:sereno_ya/data/models/incident_status.dart';
 import 'package:sereno_ya/data/models/officer/officer_incident.dart';
 import 'package:sereno_ya/data/models/page_dto.dart';
-import 'package:sereno_ya/data/services/api/citizen/incidents_api_service.dart';
+import 'package:sereno_ya/data/services/api/incident_api_service.dart';
 import 'package:sereno_ya/models/auth/auth_failure.dart';
 import 'package:sereno_ya/models/auth/result.dart';
 
 class OfficerRepository {
   OfficerRepository(this._service);
-  final IncidentsApiService _service;
+  final IncidentApiService _service;
 
+  static const officerFields =
+      'id,status,latitude,longitude,description,referenceAddress,createdAt,'
+      'acceptedAt,arrivedAt,attendedAt,cancelledAt,category.name,'
+      'citizen.id,citizen.userEntity.phone';
+
+  /// Bolsa general de incidentes (`GET /incident/list`).
+  /// Se usa para los pendientes que cualquier sereno puede aceptar.
   Future<Result<PageResponse<OfficerIncident>>> list({
     OfficerIncidentStatus? status,
     int page = 0,
+    int size = 15,
   }) => _run(
-    () => _service.listOfficerIncidents(status: status?.apiValue, page: page),
+    () => _service.list(
+      fields: officerFields,
+      status: _toIncidentStatus(status),
+      pageRequest: PageRequestDTO(
+        page: page,
+        size: size,
+        sortBy: 'id',
+        direction: EDirection.DESC,
+      ),
+    ),
   );
 
+  /// Incidentes del sereno autenticado (`GET /incident/list-me-sereno`).
+  /// Se usa para reportes, métricas y aceptados.
+  Future<Result<PageResponse<OfficerIncident>>> listMine({
+    OfficerIncidentStatus? status,
+    int page = 0,
+    int size = 15,
+  }) => _run(
+    () => _service.listMeSereno(
+      fields: officerFields,
+      status: _toIncidentStatus(status),
+      pageRequest: PageRequestDTO(
+        page: page,
+        size: size,
+        sortBy: 'id',
+        direction: EDirection.DESC,
+      ),
+    ),
+  );
+
+  /// Detalle del sereno (`GET /incident/byId-sereno/{id}`).
   Future<Result<OfficerIncident>> detail(String id) =>
-      _run(() => _service.getOfficerIncident(id));
+      _run(() => _service.byIdSereno(fields: officerFields, id: id));
 
-  Future<Result<bool>> accept(String id, int minutes) async {
+  /// Acepta con la ubicación del sereno (`POST /incident/accept`).
+  Future<Result<bool>> accept({
+    required String id,
+    required double latitude,
+    required double longitude,
+  }) async {
     final result = await _run(
-      () => _service.acceptIncident(incidentId: id, etaMinutes: minutes),
-    );
-    return result.isSuccess
-        ? Result.success(true)
-        : Result.failure(result.failure!);
-  }
-
-  Future<Result<bool>> update(String id, OfficerIncidentStatus status) async {
-    final result = await _run(
-      () => _service.updateStatus(incidentId: id, status: status.apiValue),
+      () => _service.accept(
+        IncidentAcceptRequest(
+          incidentId: id,
+          acceptedLatitude: latitude,
+          acceptedLongitude: longitude,
+        ),
+      ),
     );
     return result.isSuccess
         ? Result.success(true)
@@ -58,3 +99,15 @@ class OfficerRepository {
     }
   }
 }
+
+IncidentStatus? _toIncidentStatus(OfficerIncidentStatus? status) =>
+    switch (status) {
+      null => null,
+      OfficerIncidentStatus.pending => IncidentStatus.requested,
+      OfficerIncidentStatus.enRoute => IncidentStatus.accepted,
+      OfficerIncidentStatus.attending => IncidentStatus.onSite,
+      OfficerIncidentStatus.attended => IncidentStatus.attended,
+      OfficerIncidentStatus.cancelled => IncidentStatus.cancelledByCitizen,
+      OfficerIncidentStatus.expired => IncidentStatus.expired,
+      OfficerIncidentStatus.unknown => null,
+    };
