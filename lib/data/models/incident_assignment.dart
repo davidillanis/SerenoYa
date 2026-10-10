@@ -27,3 +27,22 @@ class IncidentAssignment {
     );
   }
 }
+
+
+class IncidentAcceptRequest {
+  const IncidentAcceptRequest({
+    required this.incidentId,
+    required this.acceptedLatitude,
+    required this.acceptedLongitude,
+  });
+
+  final String incidentId;
+  final double acceptedLatitude;
+  final double acceptedLongitude;
+
+  Map<String, dynamic> toJson() => {
+    'incidentId': incidentId,
+    'acceptedLatitude': acceptedLatitude,
+    'acceptedLongitude': acceptedLongitude,
+  };
+}

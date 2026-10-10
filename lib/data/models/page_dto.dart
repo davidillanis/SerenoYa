@@ -50,3 +50,44 @@ class PageResponse<T> {
     return int.tryParse(value?.toString() ?? '') ?? 0;
   }
 }
+
+// ignore: constant_identifier_names
+enum EDirection { ASC, DESC }
+
+class PageRequestDTO {
+  static const int defaultPage = 0;
+  static const int defaultSize = 10;
+  static const int maxSize = 100;
+
+  final int? page;
+  final int? size;
+  final String? sortBy;
+  final EDirection? direction;
+
+  const PageRequestDTO({this.page, this.size, this.sortBy, this.direction});
+
+  int get validPage {
+    return page != null && page! >= 0 ? page! : defaultPage;
+  }
+
+  int get validSize {
+    return size != null && size! > 0 && size! <= maxSize ? size! : defaultSize;
+  }
+
+  String get sortDirection {
+    return direction == EDirection.DESC ? 'DESC' : 'ASC';
+  }
+
+  bool get hasSorting {
+    return sortBy != null && sortBy!.trim().isNotEmpty;
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'page': validPage,
+      'size': validSize,
+      if (hasSorting) 'sortBy': sortBy,
+      if (hasSorting) 'direction': sortDirection,
+    };
+  }
+}

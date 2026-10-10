@@ -1,7 +1,7 @@
 import 'package:sereno_ya/data/models/citizen/incident_category.dart';
 import 'package:sereno_ya/data/models/citizen/incident_create_request.dart';
 import 'package:sereno_ya/data/models/citizen/incident.dart';
-import 'package:sereno_ya/data/models/page_response.dart';
+import 'package:sereno_ya/data/models/page_dto.dart';
 import 'package:sereno_ya/data/models/officer/incident_acceptance.dart';
 import 'package:sereno_ya/data/services/api/citizen/incidents_api_service.dart';
 import 'package:sereno_ya/models/auth/auth_failure.dart';
