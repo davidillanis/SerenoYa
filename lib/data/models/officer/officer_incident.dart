@@ -33,6 +33,11 @@ class OfficerIncident {
   factory OfficerIncident.fromJson(Map<String, dynamic> json) {
     final citizen = json['citizen'];
     final user = citizen is Map ? citizen['userEntity'] : null;
+    // Privacidad: en pendiente (REQUESTED) no se expone información del
+    // ciudadano; solo se carga una vez aceptado el incidente.
+    final isPending =
+        (json['status']?.toString() ?? '') ==
+        OfficerIncidentStatus.pending.apiValue;
     return OfficerIncident(
       incident: Incident.fromJson(json),
       coordinatesProvided: json['latitude'] is num && json['longitude'] is num,
@@ -42,8 +47,12 @@ class OfficerIncident {
         'LOW' => IncidentPriority.low,
         _ => IncidentPriority.unknown,
       },
-      citizenId: citizen is Map ? citizen['id']?.toString() : null,
-      citizenPhone: user is Map ? user['phone']?.toString() : null,
+      citizenId: isPending
+          ? null
+          : (citizen is Map ? citizen['id']?.toString() : null),
+      citizenPhone: isPending
+          ? null
+          : (user is Map ? user['phone']?.toString() : null),
     );
   }
 
@@ -55,6 +64,9 @@ class OfficerIncident {
   String get id => incident.id;
   OfficerIncidentStatus get status =>
       OfficerIncidentStatus.parse(incident.status);
+
+  /// La información del ciudadano solo está disponible una vez aceptado.
+  bool get showsCitizenInfo => status != OfficerIncidentStatus.pending;
   String get priorityLabel => switch (priority) {
     IncidentPriority.high => 'Prioridad alta',
     IncidentPriority.medium => 'Prioridad media',

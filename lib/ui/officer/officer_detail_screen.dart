@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:sereno_ya/data/models/officer/officer_incident.dart';
+import 'package:sereno_ya/data/services/officer/contact_service.dart';
 import 'package:sereno_ya/ui/core/theme/colors.dart';
 import 'package:sereno_ya/ui/core/widgets/responsive_body.dart';
 import 'package:sereno_ya/ui/officer/view_models/officer_detail_view_model.dart';
@@ -64,11 +65,15 @@ class OfficerDetailScreen extends StatelessWidget {
                       _section(
                         context,
                         'Ciudadano',
-                        [
-                          'Identificador: ${item.citizenId ?? 'No disponible'}',
-                          'Teléfono: ${item.citizenPhone ?? 'No disponible'}',
-                        ].join('\n'),
+                        item.showsCitizenInfo
+                            ? [
+                                'Identificador: ${item.citizenId ?? 'No disponible'}',
+                                'Teléfono: ${item.citizenPhone ?? 'No disponible'}',
+                              ].join('\n')
+                            : 'Disponible una vez aceptado el incidente.',
                       ),
+                      if (item.showsCitizenInfo)
+                        _CitizenContactButtons(item: item),
                       _section(
                         context,
                         'Ubicación',
@@ -211,5 +216,68 @@ class OfficerDetailScreen extends StatelessWidget {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(error ?? 'Respuesta enviada correctamente.')),
     );
+  }
+}
+
+/// Contacto directo con el ciudadano: llamada y WhatsApp.
+/// Solo se muestra en incidentes aceptados, cuando el teléfono ya está
+/// disponible. Sin teléfono no hay acción que lanzar y los botones se
+/// deshabilitan.
+class _CitizenContactButtons extends StatelessWidget {
+  const _CitizenContactButtons({required this.item});
+  final OfficerIncident item;
+
+  @override
+  Widget build(BuildContext context) {
+    final phone = item.citizenPhone;
+    final hasPhone = telUri(phone ?? '') != null;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Row(
+        children: [
+          Expanded(
+            child: OutlinedButton.icon(
+              onPressed: hasPhone ? () => _call(context, phone!) : null,
+              icon: const Icon(Icons.call_outlined),
+              label: const Text('Llamar'),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: OutlinedButton.icon(
+              onPressed: hasPhone ? () => _message(context, phone!) : null,
+              icon: const Icon(Icons.chat_outlined),
+              label: const Text('WhatsApp'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _call(BuildContext context, String phone) async {
+    final ok = await const ContactService().call(phone);
+    if (!context.mounted) return;
+    if (!ok) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No se pudo iniciar la llamada.')),
+      );
+    }
+  }
+
+  Future<void> _message(BuildContext context, String phone) async {
+    final category = item.incident.category?.name;
+    final ok = await const ContactService().whatsapp(
+      phone,
+      message:
+          'Hola, le escribe el Serenazgo de San Jerónimo por su reporte'
+          '${category != null ? ' de $category' : ''}.',
+    );
+    if (!context.mounted) return;
+    if (!ok) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No se pudo abrir WhatsApp.')),
+      );
+    }
   }
 }

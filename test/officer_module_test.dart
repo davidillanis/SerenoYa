@@ -193,7 +193,11 @@ void main() {
             .hasCoordinates,
         isFalse,
       );
-      expect(item('REQUESTED').citizenPhone, '000000000');
+      expect(item('REQUESTED').citizenPhone, isNull);
+      expect(item('REQUESTED').citizenId, isNull);
+      expect(item('REQUESTED').showsCitizenInfo, isFalse);
+      expect(item('ACCEPTED').citizenPhone, '000000000');
+      expect(item('ACCEPTED').showsCitizenInfo, isTrue);
       expect(
         elapsedLabel(
           DateTime(2026, 10, 5, 9),
