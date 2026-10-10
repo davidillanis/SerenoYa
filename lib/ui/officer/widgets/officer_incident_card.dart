@@ -174,7 +174,13 @@ Future<void> openIncidentMap(BuildContext context, OfficerIncident item) async {
   final repository = routes;
   OfficerRouteViewModel? routeModel;
   if (repository != null && item.hasCoordinates) {
-    routeModel = OfficerRouteViewModel(repository, item)..load();
+    routeModel = OfficerRouteViewModel(repository, item);
+    // En ACCEPTED / ON_SITE la comparación (`POST /route/compare`) y el
+    // seguimiento se inician con el botón «Iniciar» del mapa; aquí no se
+    // llama a la API. Sin ruta (p. ej. pendientes) se ubica al sereno.
+    if (!routeModel.routeEnabled) {
+      routeModel.load();
+    }
   }
   try {
     await Navigator.of(context).push<void>(

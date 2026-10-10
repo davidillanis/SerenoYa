@@ -40,12 +40,27 @@ class OfficerRouteViewModel extends ChangeNotifier {
   bool loading = false;
   String? error;
 
-  /// La comparación de rutas solo aplica en aceptados o en curso.
+  /// Indica si ya se presionó «Iniciar» (o se reintentó) y por tanto ya se
+  /// llamó a `POST /route/compare`. Permite diferir la llamada a la API
+  /// hasta que el sereno lo pida explícitamente.
+  bool _started = false;
+  bool get started => _started;
+
+  /// La comparación de rutas solo aplica en aceptados o en curso y solo
+  /// después de presionar «Iniciar».
   /// La ubicación del sereno ([origin]) se obtiene siempre.
   bool get routeEnabled => item.showsRoute;
 
+  bool get needsStart =>
+      routeEnabled &&
+      !_started &&
+      !loading &&
+      error == null &&
+      _options.isEmpty;
+
   Future<void> load() async {
     if (loading || _disposed) return;
+    if (routeEnabled) _started = true;
     loading = true;
     error = null;
     _notify();

@@ -86,6 +86,29 @@ class _OfficerMapScreenState extends State<OfficerMapScreen> {
     // Sin ruta comparada (p. ej. pendiente) solo se muestra la ubicación
     // del sereno en el mapa, sin sección de opciones.
     if (!routes.routeEnabled) return const SizedBox.shrink();
+    // En ACCEPTED / ON_SITE la llamada a `POST /route/compare` se difiere
+    // hasta que el sereno presione «Iniciar».
+    if (routes.needsStart) {
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              'Obtén la ruta más rápida y activa el seguimiento hasta el lugar.',
+              style: Theme.of(context).textTheme.bodyMedium
+                  ?.copyWith(color: context.appColors.textSecondary),
+            ),
+            const SizedBox(height: 8),
+            FilledButton.icon(
+              onPressed: routes.load,
+              icon: const Icon(Icons.navigation_outlined),
+              label: const Text('Iniciar'),
+            ),
+          ],
+        ),
+      );
+    }
     if (routes.loading && routes.options.isEmpty) {
       return const Padding(
         padding: EdgeInsets.fromLTRB(16, 0, 16, 12),
@@ -216,25 +239,94 @@ class _OfficerMapScreenState extends State<OfficerMapScreen> {
         if (snapshot.connectionState != ConnectionState.done) {
           return const Center(child: CircularProgressIndicator());
         }
-        return GoogleMap(
-          initialCameraPosition: CameraPosition(target: destination, zoom: 16),
-          onMapCreated: (controller) {
-            if (!_mapController.isCompleted) {
-              _mapController.complete(controller);
-            }
-            if (routes != null) _fitRoute(routes);
-          },
-          style: Theme.of(context).brightness == Brightness.dark
-              ? darkMapStyle(context)
-              : null,
-          mapToolbarEnabled: false,
-          myLocationButtonEnabled: false,
-          compassEnabled: true,
-          markers: markers,
-          polylines: polylines,
+        return Stack(
+          children: [
+            GoogleMap(
+              initialCameraPosition: CameraPosition(
+                target: destination,
+                zoom: 16,
+              ),
+              onMapCreated: (controller) {
+                if (!_mapController.isCompleted) {
+                  _mapController.complete(controller);
+                }
+                if (routes != null) _fitRoute(routes);
+              },
+              style: Theme.of(context).brightness == Brightness.dark
+                  ? darkMapStyle(context)
+                  : null,
+              mapToolbarEnabled: false,
+              myLocationButtonEnabled: false,
+              myLocationEnabled: routes?.origin != null,
+              compassEnabled: true,
+              markers: markers,
+              polylines: polylines,
+            ),
+            Positioned(
+              right: 16,
+              bottom: 16,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  FloatingActionButton.small(
+                    heroTag: 'officer-my-location',
+                    tooltip: 'Ir a mi ubicación',
+                    onPressed: () => _goToMyLocation(routes),
+                    child: const Icon(Icons.my_location_outlined),
+                  ),
+                  const SizedBox(height: 12),
+                  FloatingActionButton.small(
+                    heroTag: 'officer-incident-location',
+                    tooltip: 'Ir al lugar del incidente',
+                    onPressed: _goToIncident,
+                    child: const Icon(Icons.location_on_outlined),
+                  ),
+                ],
+              ),
+            ),
+          ],
         );
       },
     );
+  }
+
+  /// Centra la cámara en la ubicación actual del sereno (seguimiento).
+  /// Si aún no hay ubicación, invita a presionar «Iniciar» primero.
+  Future<void> _goToMyLocation(OfficerRouteViewModel? routes) async {
+    final origin = routes?.origin;
+    if (origin == null) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Presiona «Iniciar» para activar tu ubicación.'),
+        ),
+      );
+      return;
+    }
+    if (!_mapController.isCompleted) return;
+    try {
+      final controller = await _mapController.future;
+      await controller.animateCamera(CameraUpdate.newLatLngZoom(origin, 16));
+    } catch (_) {
+      // La cámara puede no estar lista; se conserva el encuadre actual.
+    }
+  }
+
+  /// Centra la cámara en el lugar del incidente.
+  Future<void> _goToIncident() async {
+    if (!widget.item.hasCoordinates || !_mapController.isCompleted) return;
+    final incident = widget.item.incident;
+    try {
+      final controller = await _mapController.future;
+      await controller.animateCamera(
+        CameraUpdate.newLatLngZoom(
+          LatLng(incident.latitude, incident.longitude),
+          16,
+        ),
+      );
+    } catch (_) {
+      // La cámara puede no estar lista; se conserva el encuadre actual.
+    }
   }
 
   /// Encuadra la cámara a la ruta seleccionada cuando el mapa y los puntos

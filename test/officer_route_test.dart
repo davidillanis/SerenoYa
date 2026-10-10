@@ -56,6 +56,7 @@ OfficerIncident _incident({String status = 'ACCEPTED'}) =>
 class FakeRouteCompareRepository extends RouteCompareRepository {
   FakeRouteCompareRepository() : super(RouteApiService(Dio()));
   bool fail = false;
+  int compareCalls = 0;
   RouteCoordinate? lastOrigin;
   RouteCoordinate? lastDestination;
 
@@ -64,6 +65,7 @@ class FakeRouteCompareRepository extends RouteCompareRepository {
     required RouteCoordinate origin,
     required RouteCoordinate destination,
   }) async {
+    compareCalls++;
     lastOrigin = origin;
     lastDestination = destination;
     if (fail) {
@@ -234,6 +236,63 @@ void main() {
     await Future<void>.delayed(Duration.zero);
     expect(model.origin, const LatLng(-13.64, -73.36));
     expect(model.selectedOption!.mode, RouteMode.drive);
+  });
+
+  test('la comparación se difiere hasta presionar «Iniciar»', () async {
+    final repository = FakeRouteCompareRepository();
+    final model = OfficerRouteViewModel(
+      repository,
+      _incident(),
+      locationService: FakeLocationService(),
+    );
+    addTearDown(model.dispose);
+    expect(model.needsStart, isTrue);
+    expect(model.started, isFalse);
+    expect(repository.compareCalls, 0);
+    await model.load();
+    expect(model.started, isTrue);
+    expect(model.needsStart, isFalse);
+    expect(repository.compareCalls, 1);
+  });
+
+  test('en pendiente no se pide iniciar la comparación', () {
+    final model = OfficerRouteViewModel(
+      FakeRouteCompareRepository(),
+      _incident(status: 'REQUESTED'),
+      locationService: FakeLocationService(),
+    );
+    addTearDown(model.dispose);
+    expect(model.needsStart, isFalse);
+    expect(model.started, isFalse);
+  });
+
+  testWidgets('el botón «Iniciar» llama a la API y muestra las rutas', (
+    tester,
+  ) async {
+    final repository = FakeRouteCompareRepository();
+    final model = OfficerRouteViewModel(
+      repository,
+      _incident(),
+      locationService: FakeLocationService(),
+    );
+    addTearDown(model.dispose);
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: buildAppTheme(Brightness.light, ThemeVariant.normal),
+        home: OfficerMapScreen(item: _incident(), routeModel: model),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(repository.compareCalls, 0);
+    expect(find.text('Iniciar'), findsOneWidget);
+    expect(find.text('Ruta desde tu ubicación'), findsNothing);
+    await tester.tap(find.text('Iniciar'));
+    await tester.pumpAndSettle();
+    expect(repository.compareCalls, 1);
+    expect(find.text('Iniciar'), findsNothing);
+    expect(find.text('Ruta desde tu ubicación'), findsOneWidget);
+    expect(find.textContaining('más rápida'), findsOneWidget);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('el mapa ofrece las opciones con la más rápida destacada', (

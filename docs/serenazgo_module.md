@@ -32,8 +32,12 @@ GPS abre Google Maps con las coordenadas recibidas mediante `url_launcher`.
 El mapa interno (`OfficerMapScreen`) muestra siempre la ubicación actual del
 sereno con seguimiento en vivo y, solo en incidentes aceptados o en curso
 (`ACCEPTED`, `ON_SITE`),
-compara rutas con `POST /route/compare`: dibuja la más rápida y permite
-cambiar entre auto, moto, bicicleta y a pie. En pendientes no se consulta
+ofrece un botón «Iniciar»: recién al presionarlo compara rutas con
+`POST /route/compare` (origen GPS del sereno, destino del incidente), dibuja
+la más rápida, permite
+cambiar entre auto, moto, bicicleta y a pie, y mantiene el seguimiento del
+sereno hasta el lugar. Incluye botones flotantes para ir a la ubicación
+actual del sereno o al lugar del incidente. En pendientes no se consulta
 la comparación.
 
 ## Límites de la API v2 revisada
