@@ -11,6 +11,13 @@ import 'package:sereno_ya/data/models/citizen/incident_create_request.dart';
 import 'package:sereno_ya/data/repositories/citizen/incident_repository.dart';
 import 'package:sereno_ya/data/services/api/file/image_api_service.dart';
 
+class _EvidenceDraft {
+  _EvidenceDraft(this.file);
+
+  final File file;
+  ImageUploadResponse? upload;
+}
+
 class ReportIncidentViewModel extends ChangeNotifier {
   ReportIncidentViewModel(
     this._repository,
@@ -90,11 +97,27 @@ class ReportIncidentViewModel extends ChangeNotifier {
   IncidentCategory? _selectedCategory;
   IncidentCategory? get selectedCategory => _selectedCategory;
 
-  ImageUploadResponse? _uploadedImage;
-  String? get imageUrl => _uploadedImage?.publicUrl;
+  ImageUploadResponse? get _firstUpload =>
+      _drafts.where((item) => item.upload != null).isEmpty
+      ? null
+      : _drafts.firstWhere((item) => item.upload != null).upload;
 
-  File? _selectedImage;
-  File? get selectedImage => _selectedImage;
+  /// Máximo de evidencias por reporte para no saturar la subida.
+  static const int maxEvidences = 5;
+
+  List<File> get selectedImages =>
+      List<File>.unmodifiable(_drafts.map((item) => item.file));
+  List<String> get imageUrls => _drafts
+      .where((item) => item.upload != null)
+      .map((item) => item.upload!.publicUrl)
+      .toList(growable: false);
+  int get evidenceCount => _drafts.length;
+  bool get hasEvidence => _drafts.isNotEmpty;
+
+  // Compatibilidad con la vista de una sola imagen.
+  String? get imageUrl => _firstUpload?.publicUrl;
+  File? get selectedImage => _drafts.isEmpty ? null : _drafts.first.file;
+  final List<_EvidenceDraft> _drafts = [];
   bool _disposed = false;
 
   void setSelectedCategory(IncidentCategory? category) {
@@ -104,6 +127,11 @@ class ReportIncidentViewModel extends ChangeNotifier {
 
   Future<void> pickImage(ImageSource source) async {
     if (_isSubmitting || _isUploadingImage) return;
+    if (_drafts.length >= maxEvidences) {
+      _errorMessage = 'Puedes agregar hasta $maxEvidences evidencias';
+      _notifyListeners();
+      return;
+    }
     final picker = ImagePicker();
     final pickedFile = await picker.pickImage(
       source: source,
@@ -113,16 +141,47 @@ class ReportIncidentViewModel extends ChangeNotifier {
     );
 
     if (pickedFile != null) {
-      _selectedImage = File(pickedFile.path);
-      _uploadedImage = null;
+      _drafts.add(_EvidenceDraft(File(pickedFile.path)));
       _errorMessage = null;
       _notifyListeners();
     }
   }
 
+  /// Galería con selección múltiple; agrega hasta [maxEvidences] en total.
+  Future<void> pickGalleryImages() async {
+    if (_isSubmitting || _isUploadingImage) return;
+    final remaining = maxEvidences - _drafts.length;
+    if (remaining <= 0) {
+      _errorMessage = 'Puedes agregar hasta $maxEvidences evidencias';
+      _notifyListeners();
+      return;
+    }
+    final picker = ImagePicker();
+    final pickedFiles = await picker.pickMultiImage(
+      maxWidth: 1920,
+      maxHeight: 1080,
+      imageQuality: 85,
+    );
+    if (pickedFiles.isEmpty) return;
+    for (final picked in pickedFiles.take(remaining)) {
+      _drafts.add(_EvidenceDraft(File(picked.path)));
+    }
+    if (pickedFiles.length > remaining) {
+      _errorMessage = 'Puedes agregar hasta $maxEvidences evidencias';
+    } else {
+      _errorMessage = null;
+    }
+    _notifyListeners();
+  }
+
+  void removeImageAt(int index) {
+    if (index < 0 || index >= _drafts.length) return;
+    _drafts.removeAt(index);
+    _notifyListeners();
+  }
+
   void removeImage() {
-    _selectedImage = null;
-    _uploadedImage = null;
+    _drafts.clear();
     _notifyListeners();
   }
 
@@ -149,8 +208,8 @@ class ReportIncidentViewModel extends ChangeNotifier {
       _notifyListeners();
       return false;
     }
-    if (_selectedImage == null && _uploadedImage == null) {
-      _errorMessage = 'Agrega una imagen como evidencia';
+    if (_drafts.isEmpty) {
+      _errorMessage = 'Agrega al menos una imagen como evidencia';
       _notifyListeners();
       return false;
     }
@@ -160,16 +219,16 @@ class ReportIncidentViewModel extends ChangeNotifier {
     _notifyListeners();
 
     try {
-      if (_uploadedImage == null) {
-        _isUploadingImage = true;
-        _notifyListeners();
-        _uploadedImage = await _storageService.uploadImage(
-          file: _selectedImage!,
+      _isUploadingImage = true;
+      _notifyListeners();
+      for (final draft in _drafts) {
+        draft.upload ??= await _storageService.uploadImage(
+          file: draft.file,
           folder: 'INCIDENTS',
         );
-        _isUploadingImage = false;
-        _notifyListeners();
       }
+      _isUploadingImage = false;
+      _notifyListeners();
 
       final request = IncidentCreateRequest(
         description: description,
@@ -177,13 +236,15 @@ class ReportIncidentViewModel extends ChangeNotifier {
         latitude: location.latitude,
         longitude: location.longitude,
         categoryName: _selectedCategory!.name,
-        evidences: [
-          IncidentEvidenceCreateRequest(
-            fileUrl: _uploadedImage!.publicUrl,
-            fileName: _fileNameFromKey(_uploadedImage!.fileKey),
-            fileType: _uploadedImage!.contentType,
-          ),
-        ],
+        evidences: _drafts
+            .map(
+              (draft) => IncidentEvidenceCreateRequest(
+                fileUrl: draft.upload!.publicUrl,
+                fileName: _fileNameFromKey(draft.upload!.fileKey),
+                fileType: draft.upload!.contentType,
+              ),
+            )
+            .toList(),
       );
 
       final result = await _repository.createIncident(request);

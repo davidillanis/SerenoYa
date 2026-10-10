@@ -88,6 +88,33 @@ void main() {
     expect(repository.request?.categoryName, 'Incendio');
     expect(repository.request?.latitude, -13.64);
     expect(repository.request?.longitude, -73.35);
+    expect(repository.request?.evidences, hasLength(1));
+  });
+  test('envía varias evidencias en el mismo reporte', () async {
+    const channel = MethodChannel('plugins.flutter.io/image_picker');
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, (_) async => '/tmp/evidence.jpg');
+    addTearDown(
+      () => TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(channel, null),
+    );
+    final repository = _Repository();
+    final model = ReportIncidentViewModel(repository, _Storage());
+    addTearDown(model.dispose);
+    model.setSelectedCategory(
+      IncidentCategory(id: 'category', name: 'Incendio', description: ''),
+    );
+    await model.pickImage(ImageSource.gallery);
+    await model.pickImage(ImageSource.camera);
+    expect(model.evidenceCount, 2);
+    await model.submitIncident(
+      description: 'Incendio',
+      referenceAddress: 'Plaza',
+      location: const LatLng(-13.64, -73.35),
+    );
+    expect(repository.request?.evidences, hasLength(2));
+    model.removeImageAt(0);
+    expect(model.evidenceCount, 1);
   });
   test('obtiene el GPS sin enviar y evita solicitudes duplicadas', () async {
     final service = _LocationService();

@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:sereno_ya/config/maps_config.dart';
@@ -108,9 +110,11 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
 
     FocusScope.of(context).unfocus();
 
-    if (viewModel.selectedImage == null && viewModel.imageUrl == null) {
+    if (!viewModel.hasEvidence) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Agrega una imagen como evidencia')),
+        const SnackBar(
+          content: Text('Agrega al menos una imagen como evidencia'),
+        ),
       );
       return;
     }
@@ -160,10 +164,17 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
     return Text(emoji, style: const TextStyle(fontSize: 24));
   }
 
-  Widget _buildSelectedImage(
+  Widget _buildEvidenceItem(
     BuildContext context,
     ReportIncidentViewModel viewModel,
+    int index,
   ) {
+    final File? file = index < viewModel.selectedImages.length
+        ? viewModel.selectedImages[index]
+        : null;
+    final String? url = index < viewModel.imageUrls.length
+        ? viewModel.imageUrls[index]
+        : viewModel.imageUrl;
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -184,16 +195,11 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
                         child: CircularProgressIndicator(strokeWidth: 2),
                       ),
                     )
-                  : viewModel.selectedImage != null
-                  ? Image.file(
-                      viewModel.selectedImage!,
-                      fit: BoxFit.cover,
-                      width: 80,
-                      height: 60,
-                    )
-                  : viewModel.imageUrl != null
+                  : file != null
+                  ? Image.file(file, fit: BoxFit.cover, width: 80, height: 60)
+                  : url != null
                   ? Image.network(
-                      viewModel.imageUrl!,
+                      url,
                       fit: BoxFit.cover,
                       width: 80,
                       height: 60,
@@ -223,9 +229,9 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
               children: [
                 Text(
                   viewModel.isUploadingImage
-                      ? 'Subiendo imagen...'
-                      : viewModel.selectedImage != null
-                      ? 'Imagen seleccionada'
+                      ? 'Subiendo imágenes...'
+                      : file != null
+                      ? 'Evidencia ${index + 1}'
                       : 'Imagen subida',
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
@@ -236,8 +242,8 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
                 Text(
                   viewModel.isUploadingImage
                       ? 'Por favor espere...'
-                      : viewModel.selectedImage != null
-                      ? 'Toca para cambiar o eliminar'
+                      : file != null
+                      ? 'Lista para enviar'
                       : 'Lista para enviar',
                   style: TextStyle(
                     fontSize: 11,
@@ -255,7 +261,7 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
             ),
             onPressed: viewModel.isUploadingImage
                 ? null
-                : () => viewModel.removeImage(),
+                : () => viewModel.removeImageAt(index),
           ),
         ],
       ),
@@ -481,7 +487,9 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
                               SizedBox(width: 8),
                               Expanded(
                                 child: Text(
-                                  'Agregar evidencia multimedia',
+                                  viewModel.evidenceCount == 0
+                                      ? 'Agregar evidencia multimedia'
+                                      : 'Evidencias (${viewModel.evidenceCount}/${ReportIncidentViewModel.maxEvidences})',
                                   style: TextStyle(
                                     fontWeight: FontWeight.bold,
                                     color: context.appColors.text,
@@ -543,9 +551,7 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
                                 child: InkWell(
                                   onTap: viewModel.isUploadingImage
                                       ? null
-                                      : () => viewModel.pickImage(
-                                          ImageSource.gallery,
-                                        ),
+                                      : () => viewModel.pickGalleryImages(),
                                   borderRadius: BorderRadius.circular(12),
                                   child: Container(
                                     padding: const EdgeInsets.symmetric(
@@ -567,7 +573,7 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
                                         ),
                                         const SizedBox(height: 4),
                                         Text(
-                                          'Subir Imagen',
+                                          'Subir imágenes',
                                           style: TextStyle(
                                             fontSize: 12,
                                             fontWeight: FontWeight.bold,
@@ -588,11 +594,18 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
 
                           const SizedBox(height: 16),
 
-                          // Imagen seleccionada o subida
-                          if (viewModel.selectedImage != null ||
-                              viewModel.imageUrl != null ||
+                          // Evidencias seleccionadas o subidas
+                          if (viewModel.hasEvidence ||
                               viewModel.isUploadingImage)
-                            _buildSelectedImage(context, viewModel),
+                            ListView.separated(
+                              shrinkWrap: true,
+                              physics: const NeverScrollableScrollPhysics(),
+                              itemCount: viewModel.evidenceCount,
+                              separatorBuilder: (_, _) =>
+                                  const SizedBox(height: 8),
+                              itemBuilder: (context, index) =>
+                                  _buildEvidenceItem(context, viewModel, index),
+                            ),
                         ],
                       ),
                     ),
