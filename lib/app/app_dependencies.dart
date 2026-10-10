@@ -1,4 +1,5 @@
 import 'package:sereno_ya/data/repositories/officer/officer_repository.dart';
+import 'package:sereno_ya/data/repositories/route/route_compare_repository.dart';
 import 'package:sereno_ya/data/services/api/notification_service.dart';
 
 import 'package:flutter/foundation.dart';
@@ -20,6 +21,7 @@ import 'package:sereno_ya/data/services/api/citizen/incidents_api_service.dart';
 import 'package:sereno_ya/data/services/api/file/image_api_service.dart';
 import 'package:sereno_ya/data/services/api/incident_api_service.dart';
 import 'package:sereno_ya/data/services/api/profile/profile_api_service.dart';
+import 'package:sereno_ya/data/services/api/route_api_service.dart';
 import 'package:sereno_ya/data/services/local/citizen/incident_local_data_source.dart';
 import 'package:sereno_ya/data/services/storage/session_storage_service.dart';
 import 'package:sereno_ya/routing/app_router.dart';
@@ -29,6 +31,7 @@ class AppDependencies {
   AppDependencies._({
     required this.authRepository,
     required this.incidentRepository,
+    required this.routeCompareRepository,
     required this.storageService,
     required this.deviceTokenService,
   });
@@ -48,6 +51,9 @@ class AppDependencies {
 
     final incidentApiService = IncidentsApiService(apiClient.dio);
     final officerApiService = IncidentApiService(apiClient.dio);
+    final routeCompareRepository = RouteCompareRepository(
+      RouteApiService(apiClient.dio),
+    );
     final profileApiService = ProfileApiService(apiClient.dio);
     final localDataSource = IncidentLocalDataSourceImpl();
     final incidentRepository = IncidentRepository(
@@ -67,6 +73,7 @@ class AppDependencies {
     final dependencies = AppDependencies._(
       authRepository: authRepository,
       incidentRepository: incidentRepository,
+      routeCompareRepository: routeCompareRepository,
       storageService: imageApiService,
       deviceTokenService: DeviceTokenService(
         authRepository: authRepository,
@@ -94,6 +101,7 @@ class AppDependencies {
   final DeviceTokenService deviceTokenService;
   final AuthRepository authRepository;
   final IncidentRepository incidentRepository;
+  final RouteCompareRepository routeCompareRepository;
   final StorageService storageService;
 
   late final AuthRouterNotifier routerNotifier;

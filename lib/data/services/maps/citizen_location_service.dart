@@ -5,6 +5,35 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 class CitizenLocationService {
   Future<LatLng> currentLocation() async {
+    await _ensurePermission();
+    try {
+      final position = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+          timeLimit: Duration(seconds: 20),
+        ),
+      );
+      return LatLng(position.latitude, position.longitude);
+    } on TimeoutException {
+      throw const LocationFailure(
+        'No se pudo obtener tu ubicación a tiempo. Vuelve a intentar.',
+      );
+    }
+  }
+
+  /// Emite la ubicación actual del dispositivo mientras se mueve.
+  /// Útil para mostrar al sereno en el mapa de forma efectiva.
+  Stream<LatLng> watchLocation({int distanceFilterMeters = 10}) async* {
+    await _ensurePermission();
+    yield* Geolocator.getPositionStream(
+      locationSettings: LocationSettings(
+        accuracy: LocationAccuracy.high,
+        distanceFilter: distanceFilterMeters,
+      ),
+    ).map((position) => LatLng(position.latitude, position.longitude));
+  }
+
+  Future<void> _ensurePermission() async {
     if (!await Geolocator.isLocationServiceEnabled()) {
       throw const LocationFailure(
         'Activa la ubicación del dispositivo y vuelve a intentar.',
@@ -22,19 +51,6 @@ class CitizenLocationService {
     if (permission == LocationPermission.denied) {
       throw const LocationFailure(
         'Permite acceder a tu ubicación para elegir el lugar del incidente.',
-      );
-    }
-    try {
-      final position = await Geolocator.getCurrentPosition(
-        locationSettings: const LocationSettings(
-          accuracy: LocationAccuracy.high,
-          timeLimit: Duration(seconds: 20),
-        ),
-      );
-      return LatLng(position.latitude, position.longitude);
-    } on TimeoutException {
-      throw const LocationFailure(
-        'No se pudo obtener tu ubicación a tiempo. Vuelve a intentar.',
       );
     }
   }

@@ -67,6 +67,12 @@ class OfficerIncident {
 
   /// La información del ciudadano solo está disponible una vez aceptado.
   bool get showsCitizenInfo => status != OfficerIncidentStatus.pending;
+
+  /// La ruta comparada solo se obtiene en incidentes aceptados o en curso
+  /// (ACCEPTED, ON_SITE); en pendientes no se consulta.
+  bool get showsRoute =>
+      status == OfficerIncidentStatus.enRoute ||
+      status == OfficerIncidentStatus.attending;
   String get priorityLabel => switch (priority) {
     IncidentPriority.high => 'Prioridad alta',
     IncidentPriority.medium => 'Prioridad media',

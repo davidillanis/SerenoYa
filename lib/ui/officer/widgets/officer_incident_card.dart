@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:sereno_ya/data/models/officer/officer_incident.dart';
+import 'package:sereno_ya/data/repositories/route/route_compare_repository.dart';
 import 'package:sereno_ya/ui/core/theme/colors.dart';
 import 'package:sereno_ya/ui/officer/officer_map_screen.dart';
+import 'package:sereno_ya/ui/officer/view_models/officer_route_view_model.dart';
 
 // Operational cards: action first, 16px inset, 8px rhythm, theme surfaces and
 // semantic status colors. Location and elapsed time remain visible at a glance.
@@ -160,7 +163,26 @@ String elapsedLabel(DateTime? date, {DateTime? now}) {
 }
 
 Future<void> openIncidentMap(BuildContext context, OfficerIncident item) async {
-  await Navigator.of(
-    context,
-  ).push<void>(MaterialPageRoute(builder: (_) => OfficerMapScreen(item: item)));
+  // La comparación de rutas es opcional: sin repositorio disponible el mapa
+  // muestra solo el marcador, como antes.
+  RouteCompareRepository? routes;
+  try {
+    routes = context.read<RouteCompareRepository>();
+  } catch (_) {
+    routes = null;
+  }
+  final repository = routes;
+  OfficerRouteViewModel? routeModel;
+  if (repository != null && item.hasCoordinates) {
+    routeModel = OfficerRouteViewModel(repository, item)..load();
+  }
+  try {
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute(
+        builder: (_) => OfficerMapScreen(item: item, routeModel: routeModel),
+      ),
+    );
+  } finally {
+    routeModel?.dispose();
+  }
 }

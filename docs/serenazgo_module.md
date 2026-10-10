@@ -29,6 +29,12 @@ duplica aunque ya llegue por `list-me-sereno`. Reportes, métricas y filtros
 usan `list-me-sereno`. No se simula el envío de
 mensajes: la respuesta al ciudadano depende de la aceptación del backend.
 GPS abre Google Maps con las coordenadas recibidas mediante `url_launcher`.
+El mapa interno (`OfficerMapScreen`) muestra siempre la ubicación actual del
+sereno con seguimiento en vivo y, solo en incidentes aceptados o en curso
+(`ACCEPTED`, `ON_SITE`),
+compara rutas con `POST /route/compare`: dibuja la más rápida y permite
+cambiar entre auto, moto, bicicleta y a pie. En pendientes no se consulta
+la comparación.
 
 ## Límites de la API v2 revisada
 

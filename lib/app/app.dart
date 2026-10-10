@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:sereno_ya/app/app_dependencies.dart';
 import 'package:sereno_ya/data/repositories/auth/auth_repository.dart';
+import 'package:sereno_ya/data/repositories/route/route_compare_repository.dart';
 import 'package:sereno_ya/ui/auth/view_models/session_view_model.dart';
 
 class SerenoYaApp extends StatefulWidget {
@@ -48,6 +49,9 @@ class _SerenoYaAppState extends State<SerenoYaApp> {
         ),
         Provider<AuthRepository>.value(
           value: widget.dependencies.authRepository,
+        ),
+        Provider<RouteCompareRepository>.value(
+          value: widget.dependencies.routeCompareRepository,
         ),
         ChangeNotifierProvider<SessionViewModel>.value(
           value: _sessionViewModel,
