@@ -1,7 +1,8 @@
 import 'dart:convert';
-import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:http/http.dart' as http;
+import 'package:image_picker/image_picker.dart';
 
 class ImageUploadResponse {
   final String fileKey;
@@ -32,8 +33,10 @@ class ImageUploadResponse {
 class StorageService {
   static const String baseUrl = 'http://187.33.158.70:8083';
 
-  Future<ImageUploadResponse> uploadImage({
-    required File file,
+  Future<ImageUploadResponse> uploadBytes({
+    required Uint8List bytes,
+    required String filename,
+    String? contentType,
     String bucket = 'SERENO_YA',
     String folder = 'GENERAL',
   }) async {
@@ -43,7 +46,13 @@ class StorageService {
     request.fields['bucket'] = bucket;
     request.fields['folder'] = folder;
 
-    request.files.add(await http.MultipartFile.fromPath('file', file.path));
+    request.files.add(
+      http.MultipartFile.fromBytes(
+        'file',
+        bytes,
+        filename: filename.isEmpty ? 'incident-image.jpg' : filename,
+      ),
+    );
     final streamedResponse = await request.send();
     final response = await http.Response.fromStream(streamedResponse);
 
@@ -62,6 +71,22 @@ class StorageService {
       throw Exception('Respuesta inválida del servidor');
     }
     return ImageUploadResponse.fromJson(data);
+  }
+
+  /// Sube un archivo elegido con `image_picker` en móvil y web.
+  Future<ImageUploadResponse> uploadXFile({
+    required XFile file,
+    String bucket = 'SERENO_YA',
+    String folder = 'GENERAL',
+  }) async {
+    final bytes = await file.readAsBytes();
+    return uploadBytes(
+      bytes: bytes,
+      filename: file.name,
+      contentType: file.mimeType,
+      bucket: bucket,
+      folder: folder,
+    );
   }
 
   static String _serverMessage(dynamic body, String fallback) {

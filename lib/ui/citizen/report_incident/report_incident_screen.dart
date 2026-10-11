@@ -1,5 +1,4 @@
-import 'dart:io';
-
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:sereno_ya/config/maps_config.dart';
@@ -169,9 +168,7 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
     ReportIncidentViewModel viewModel,
     int index,
   ) {
-    final File? file = index < viewModel.selectedImages.length
-        ? viewModel.selectedImages[index]
-        : null;
+    final Uint8List? previewBytes = viewModel.previewBytesAt(index);
     final String? url = index < viewModel.imageUrls.length
         ? viewModel.imageUrls[index]
         : viewModel.imageUrl;
@@ -195,8 +192,13 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
                         child: CircularProgressIndicator(strokeWidth: 2),
                       ),
                     )
-                  : file != null
-                  ? Image.file(file, fit: BoxFit.cover, width: 80, height: 60)
+                  : previewBytes != null
+                  ? Image.memory(
+                      previewBytes,
+                      fit: BoxFit.cover,
+                      width: 80,
+                      height: 60,
+                    )
                   : url != null
                   ? Image.network(
                       url,
@@ -230,7 +232,7 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
                 Text(
                   viewModel.isUploadingImage
                       ? 'Subiendo imágenes...'
-                      : file != null
+                      : previewBytes != null
                       ? 'Evidencia ${index + 1}'
                       : 'Imagen subida',
                   style: TextStyle(
@@ -242,7 +244,7 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
                 Text(
                   viewModel.isUploadingImage
                       ? 'Por favor espere...'
-                      : file != null
+                      : previewBytes != null
                       ? 'Lista para enviar'
                       : 'Lista para enviar',
                   style: TextStyle(
@@ -502,51 +504,56 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
                           const SizedBox(height: 16),
                           Row(
                             children: [
-                              Expanded(
-                                child: InkWell(
-                                  onTap: viewModel.isUploadingImage
-                                      ? null
-                                      : () => viewModel.pickImage(
-                                          ImageSource.camera,
-                                        ),
-                                  borderRadius: BorderRadius.circular(12),
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      vertical: 12,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: viewModel.isUploadingImage
-                                          ? context.appColors.textTertiary
-                                          : context.appColors.infoLight,
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                    child: Column(
-                                      children: [
-                                        Icon(
-                                          Icons.camera_alt_outlined,
-                                          color: viewModel.isUploadingImage
-                                              ? context.appColors.textSecondary
-                                              : context.appColors.info,
-                                        ),
-                                        const SizedBox(height: 4),
-                                        Text(
-                                          'Tomar foto',
-                                          style: TextStyle(
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.bold,
+                              // En web la cámara de image_picker no está
+                              // disponible de forma fiable; solo galería.
+                              if (!kIsWeb)
+                                Expanded(
+                                  child: InkWell(
+                                    onTap: viewModel.isUploadingImage
+                                        ? null
+                                        : () => viewModel.pickImage(
+                                            ImageSource.camera,
+                                          ),
+                                    borderRadius: BorderRadius.circular(12),
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        vertical: 12,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: viewModel.isUploadingImage
+                                            ? context.appColors.textTertiary
+                                            : context.appColors.infoLight,
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      child: Column(
+                                        children: [
+                                          Icon(
+                                            Icons.camera_alt_outlined,
                                             color: viewModel.isUploadingImage
                                                 ? context
                                                       .appColors
                                                       .textSecondary
                                                 : context.appColors.info,
                                           ),
-                                        ),
-                                      ],
+                                          const SizedBox(height: 4),
+                                          Text(
+                                            'Tomar foto',
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.bold,
+                                              color: viewModel.isUploadingImage
+                                                  ? context
+                                                        .appColors
+                                                        .textSecondary
+                                                  : context.appColors.info,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
                                     ),
                                   ),
                                 ),
-                              ),
-                              const SizedBox(width: 12),
+                              if (!kIsWeb) const SizedBox(width: 12),
                               Expanded(
                                 child: InkWell(
                                   onTap: viewModel.isUploadingImage

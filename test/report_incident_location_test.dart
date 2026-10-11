@@ -67,6 +67,7 @@ void main() {
   }
   test('envía el punto elegido en lugar del GPS inicial', () async {
     const channel = MethodChannel('plugins.flutter.io/image_picker');
+    File('/tmp/evidence.jpg').writeAsBytesSync(const [0xFF, 0xD8, 0xFF, 0x00]);
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(channel, (_) async => '/tmp/evidence.jpg');
     addTearDown(
@@ -92,6 +93,7 @@ void main() {
   });
   test('envía varias evidencias en el mismo reporte', () async {
     const channel = MethodChannel('plugins.flutter.io/image_picker');
+    File('/tmp/evidence.jpg').writeAsBytesSync(const [0xFF, 0xD8, 0xFF, 0x00]);
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(channel, (_) async => '/tmp/evidence.jpg');
     addTearDown(
@@ -198,8 +200,23 @@ class _Repository implements IncidentRepository {
 
 class _Storage extends StorageService {
   @override
-  Future<ImageUploadResponse> uploadImage({
-    required File file,
+  Future<ImageUploadResponse> uploadBytes({
+    required Uint8List bytes,
+    required String filename,
+    String? contentType,
+    String bucket = 'SERENO_YA',
+    String folder = 'GENERAL',
+  }) async => const ImageUploadResponse(
+    fileKey: 'evidence.jpg',
+    publicUrl: 'https://example.com/evidence.jpg',
+    contentType: 'image/jpeg',
+    sizeBytes: 1,
+    category: 'INCIDENTS',
+  );
+
+  @override
+  Future<ImageUploadResponse> uploadXFile({
+    required XFile file,
     String bucket = 'SERENO_YA',
     String folder = 'GENERAL',
   }) async => const ImageUploadResponse(

@@ -1,4 +1,4 @@
-import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
@@ -12,9 +12,14 @@ import 'package:sereno_ya/data/repositories/citizen/incident_repository.dart';
 import 'package:sereno_ya/data/services/api/file/image_api_service.dart';
 
 class _EvidenceDraft {
-  _EvidenceDraft(this.file);
+  _EvidenceDraft({required this.pickedFile, required this.bytes});
 
-  final File file;
+  final XFile pickedFile;
+  final Uint8List bytes;
+
+  String get filename =>
+      pickedFile.name.trim().isEmpty ? 'incident-image.jpg' : pickedFile.name;
+
   ImageUploadResponse? upload;
 }
 
@@ -105,8 +110,15 @@ class ReportIncidentViewModel extends ChangeNotifier {
   /// Máximo de evidencias por reporte para no saturar la subida.
   static const int maxEvidences = 5;
 
-  List<File> get selectedImages =>
-      List<File>.unmodifiable(_drafts.map((item) => item.file));
+  List<XFile> get selectedImages =>
+      List<XFile>.unmodifiable(_drafts.map((item) => item.pickedFile));
+
+  /// Bytes para la vista previa (funciona en móvil y web con `Image.memory`).
+  Uint8List? previewBytesAt(int index) {
+    if (index < 0 || index >= _drafts.length) return null;
+    return _drafts[index].bytes;
+  }
+
   List<String> get imageUrls => _drafts
       .where((item) => item.upload != null)
       .map((item) => item.upload!.publicUrl)
@@ -116,7 +128,7 @@ class ReportIncidentViewModel extends ChangeNotifier {
 
   // Compatibilidad con la vista de una sola imagen.
   String? get imageUrl => _firstUpload?.publicUrl;
-  File? get selectedImage => _drafts.isEmpty ? null : _drafts.first.file;
+  XFile? get selectedImage => _drafts.isEmpty ? null : _drafts.first.pickedFile;
   final List<_EvidenceDraft> _drafts = [];
   bool _disposed = false;
 
@@ -141,7 +153,8 @@ class ReportIncidentViewModel extends ChangeNotifier {
     );
 
     if (pickedFile != null) {
-      _drafts.add(_EvidenceDraft(File(pickedFile.path)));
+      final bytes = await pickedFile.readAsBytes();
+      _drafts.add(_EvidenceDraft(pickedFile: pickedFile, bytes: bytes));
       _errorMessage = null;
       _notifyListeners();
     }
@@ -164,7 +177,8 @@ class ReportIncidentViewModel extends ChangeNotifier {
     );
     if (pickedFiles.isEmpty) return;
     for (final picked in pickedFiles.take(remaining)) {
-      _drafts.add(_EvidenceDraft(File(picked.path)));
+      final bytes = await picked.readAsBytes();
+      _drafts.add(_EvidenceDraft(pickedFile: picked, bytes: bytes));
     }
     if (pickedFiles.length > remaining) {
       _errorMessage = 'Puedes agregar hasta $maxEvidences evidencias';
@@ -222,8 +236,8 @@ class ReportIncidentViewModel extends ChangeNotifier {
       _isUploadingImage = true;
       _notifyListeners();
       for (final draft in _drafts) {
-        draft.upload ??= await _storageService.uploadImage(
-          file: draft.file,
+        draft.upload ??= await _storageService.uploadXFile(
+          file: draft.pickedFile,
           folder: 'INCIDENTS',
         );
       }
