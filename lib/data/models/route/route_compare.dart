@@ -1,4 +1,4 @@
-/// Contrato de `POST /route/compare`.
+/// Contrato de `POST /incident/incident-compare/{id}`.
 /// El backend compara rutas en auto, moto, bicicleta y a pie; la primera
 /// opción de la lista es la más rápida.
 enum RouteMode {

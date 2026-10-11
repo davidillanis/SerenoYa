@@ -6,8 +6,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:sereno_ya/data/models/officer/officer_incident.dart';
 import 'package:sereno_ya/data/models/route/route_compare.dart';
+import 'package:sereno_ya/data/repositories/officer/officer_repository.dart';
 import 'package:sereno_ya/data/repositories/route/route_compare_repository.dart';
-import 'package:sereno_ya/data/services/api/route_api_service.dart';
+import 'package:sereno_ya/data/services/api/incident_api_service.dart';
 import 'package:sereno_ya/data/services/maps/citizen_location_service.dart';
 import 'package:sereno_ya/models/auth/auth_failure.dart';
 import 'package:sereno_ya/models/auth/result.dart';
@@ -54,18 +55,21 @@ OfficerIncident _incident({String status = 'ACCEPTED'}) =>
     });
 
 class FakeRouteCompareRepository extends RouteCompareRepository {
-  FakeRouteCompareRepository() : super(RouteApiService(Dio()));
+  FakeRouteCompareRepository() : super(IncidentApiService(Dio()));
   bool fail = false;
   int compareCalls = 0;
+  String? lastIncidentId;
   RouteCoordinate? lastOrigin;
   RouteCoordinate? lastDestination;
 
   @override
   Future<Result<List<RouteOption>>> compare({
+    required String incidentId,
     required RouteCoordinate origin,
     required RouteCoordinate destination,
   }) async {
     compareCalls++;
+    lastIncidentId = incidentId;
     lastOrigin = origin;
     lastDestination = destination;
     if (fail) {
@@ -97,6 +101,37 @@ class FailingLocationService extends CitizenLocationService {
   @override
   Stream<LatLng> watchLocation({int distanceFilterMeters = 10}) =>
       Stream.error(const LocationFailure('Sin ubicación'));
+}
+
+class FakeOfficerRepository extends OfficerRepository {
+  FakeOfficerRepository() : super(IncidentApiService(Dio()));
+  int onSiteCalls = 0;
+  String? lastId;
+  bool fail = false;
+
+  @override
+  Future<Result<bool>> markOnSite({required String id}) async {
+    onSiteCalls++;
+    lastId = id;
+    if (fail) {
+      return Result.failure(
+        const AuthFailure(AuthFailureCode.network, 'Sin conexión'),
+      );
+    }
+    return Result.success(true);
+  }
+}
+
+/// GPS fijo en el lugar del incidente (-13.65, -73.36).
+class AtSiteLocationService extends CitizenLocationService {
+  final movements = StreamController<LatLng>();
+
+  @override
+  Future<LatLng> currentLocation() async => const LatLng(-13.65, -73.36);
+
+  @override
+  Stream<LatLng> watchLocation({int distanceFilterMeters = 10}) =>
+      movements.stream;
 }
 
 OfficerRouteViewModel _model({bool fail = false, bool noGps = false}) {
@@ -137,7 +172,7 @@ void main() {
     },
   );
 
-  test('envía el GPS del sereno y el incidente como destino', () async {
+  test('envía el id del incidente, el GPS del sereno y el destino', () async {
     final repository = FakeRouteCompareRepository();
     final model = OfficerRouteViewModel(
       repository,
@@ -146,10 +181,72 @@ void main() {
     );
     addTearDown(model.dispose);
     await model.load();
+    // El backend resuelve la ruta por incidente
+    // (`POST /incident/incident-compare/{id}`).
+    expect(repository.lastIncidentId, 'route-test');
     expect(repository.lastOrigin!.latitude, -13.63);
     expect(repository.lastOrigin!.longitude, -73.35);
     expect(repository.lastDestination!.latitude, -13.65);
     expect(repository.lastDestination!.longitude, -73.36);
+  });
+
+  test('compare usa incident-compare con el id del incidente', () async {
+    late RequestOptions captured;
+    final dio = Dio();
+    dio.interceptors.add(
+      InterceptorsWrapper(
+        onRequest: (options, handler) {
+          captured = options;
+          handler.resolve(
+            Response<dynamic>(
+              requestOptions: options,
+              statusCode: 200,
+              data: {
+                'isSuccess': true,
+                'data': [
+                  {
+                    'mode': 'DRIVE',
+                    'distanceKm': 5.23,
+                    'durationMinutes': 12,
+                    'trafficDurationMinutes': 15,
+                    'polyline': 'poly-DRIVE',
+                  },
+                  {
+                    'mode': 'WALK',
+                    'distanceKm': 4.8,
+                    'durationMinutes': 55,
+                    'polyline': 'poly-WALK',
+                  },
+                ],
+              },
+            ),
+          );
+        },
+      ),
+    );
+    final response = await IncidentApiService(dio).compare(
+      const RouteCompareRequest(
+        origin: RouteCoordinate(latitude: -12.04, longitude: -77.04),
+        destination: RouteCoordinate(latitude: -13.65, longitude: -73.36),
+      ),
+      'route-test',
+    );
+    expect(captured.method, 'POST');
+    expect(captured.path, '/incident/incident-compare/route-test');
+    final body = Map<String, dynamic>.from(captured.data as Map);
+    expect(Map<String, dynamic>.from(body['originCoordinate'] as Map), {
+      'latitude': -12.04,
+      'longitude': -77.04,
+    });
+    expect(Map<String, dynamic>.from(body['destinationCoordinate'] as Map), {
+      'latitude': -13.65,
+      'longitude': -73.36,
+    });
+    expect(response.isSuccess, isTrue);
+    expect(response.data!, hasLength(2));
+    expect(response.data!.first.mode, RouteMode.drive);
+    expect(response.data!.first.effectiveMinutes, 15);
+    expect(response.data!.last.effectiveMinutes, 55);
   });
 
   test('permite cambiar de modo y conserva la selección más rápida', () async {
@@ -366,6 +463,150 @@ void main() {
     await tester.tap(find.text('Reintentar'));
     await tester.pumpAndSettle();
     expect(find.textContaining('más rápida'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  test('isWithinArrivalRadius respeta el radio en metros', () {
+    const destination = LatLng(-13.65, -73.36);
+    expect(isWithinArrivalRadius(destination, destination, 50), isTrue);
+    // ~2.4 km lejos del incidente: fuera del radio.
+    expect(
+      isWithinArrivalRadius(const LatLng(-13.63, -73.35), destination, 50),
+      isFalse,
+    );
+  });
+
+  test('registra la llegada al iniciar el seguimiento en el lugar', () async {
+    final officerRepository = FakeOfficerRepository();
+    final model = OfficerRouteViewModel(
+      FakeRouteCompareRepository(),
+      _incident(),
+      locationService: AtSiteLocationService(),
+      officerRepository: officerRepository,
+    );
+    addTearDown(model.dispose);
+    expect(model.canAutoMarkArrival, isFalse);
+    await model.load();
+    // La llamada a onSite es automática, sin botón.
+    await Future<void>.delayed(Duration.zero);
+    await Future<void>.delayed(Duration.zero);
+    expect(officerRepository.onSiteCalls, 1);
+    expect(officerRepository.lastId, 'route-test');
+    expect(model.arrived, isTrue);
+    expect(model.arrivalError, isNull);
+  });
+
+  test('no registra la llegada lejos y la registra al acercarse', () async {
+    final location = FakeLocationService();
+    addTearDown(location.movements.close);
+    final officerRepository = FakeOfficerRepository();
+    final model = OfficerRouteViewModel(
+      FakeRouteCompareRepository(),
+      _incident(),
+      locationService: location,
+      officerRepository: officerRepository,
+    );
+    addTearDown(model.dispose);
+    await model.load();
+    await Future<void>.delayed(Duration.zero);
+    expect(officerRepository.onSiteCalls, 0);
+    expect(model.arrived, isFalse);
+    // El seguimiento emite una posición en el lugar del incidente.
+    location.movements.add(const LatLng(-13.65, -73.36));
+    await Future<void>.delayed(Duration.zero);
+    await Future<void>.delayed(Duration.zero);
+    expect(officerRepository.onSiteCalls, 1);
+    expect(model.arrived, isTrue);
+    // No se llama dos veces aunque siga emitiendo posiciones cercanas.
+    location.movements.add(const LatLng(-13.65, -73.36));
+    await Future<void>.delayed(Duration.zero);
+    expect(officerRepository.onSiteCalls, 1);
+  });
+
+  test('sin repositorio no intenta registrar la llegada', () async {
+    final model = OfficerRouteViewModel(
+      FakeRouteCompareRepository(),
+      _incident(),
+      locationService: AtSiteLocationService(),
+    );
+    addTearDown(model.dispose);
+    await model.load();
+    await Future<void>.delayed(Duration.zero);
+    expect(model.canAutoMarkArrival, isFalse);
+    expect(model.arrived, isFalse);
+  });
+
+  test('en ON_SITE no vuelve a marcar la llegada', () async {
+    final officerRepository = FakeOfficerRepository();
+    final model = OfficerRouteViewModel(
+      FakeRouteCompareRepository(),
+      _incident(status: 'ON_SITE'),
+      locationService: AtSiteLocationService(),
+      officerRepository: officerRepository,
+    );
+    addTearDown(model.dispose);
+    await model.load();
+    await Future<void>.delayed(Duration.zero);
+    expect(model.canAutoMarkArrival, isFalse);
+    expect(officerRepository.onSiteCalls, 0);
+  });
+
+  test('un error de llegada se expone y reintenta con el GPS', () async {
+    final location = AtSiteLocationService();
+    addTearDown(location.movements.close);
+    final officerRepository = FakeOfficerRepository()..fail = true;
+    final model = OfficerRouteViewModel(
+      FakeRouteCompareRepository(),
+      _incident(),
+      locationService: location,
+      officerRepository: officerRepository,
+    );
+    addTearDown(model.dispose);
+    await model.load();
+    await Future<void>.delayed(Duration.zero);
+    await Future<void>.delayed(Duration.zero);
+    expect(model.arrived, isFalse);
+    expect(model.arrivalError, 'Sin conexión');
+    officerRepository.fail = false;
+    location.movements.add(const LatLng(-13.65, -73.36));
+    await Future<void>.delayed(Duration.zero);
+    await Future<void>.delayed(Duration.zero);
+    expect(model.arrived, isTrue);
+    expect(model.arrivalError, isNull);
+    expect(officerRepository.onSiteCalls, 2);
+  });
+
+  testWidgets('el mapa informa la llegada automática sin botón', (
+    tester,
+  ) async {
+    final location = FakeLocationService();
+    addTearDown(location.movements.close);
+    final model = OfficerRouteViewModel(
+      FakeRouteCompareRepository(),
+      _incident(),
+      locationService: location,
+      officerRepository: FakeOfficerRepository(),
+    );
+    addTearDown(model.dispose);
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: buildAppTheme(Brightness.light, ThemeVariant.normal),
+        home: OfficerMapScreen(item: _incident(), routeModel: model),
+      ),
+    );
+    await tester.tap(find.text('Iniciar'));
+    await tester.pumpAndSettle();
+    // Lejos del lugar: informa que la llegada será automática, sin botón.
+    expect(
+      find.text('Al llegar al lugar se registrará tu llegada automáticamente.'),
+      findsOneWidget,
+    );
+    location.movements.add(const LatLng(-13.65, -73.36));
+    await tester.pumpAndSettle();
+    expect(find.text('Llegada registrada automáticamente.'), findsOneWidget);
+    // No hay botón de confirmación manual para la llegada.
+    expect(find.text('Marcar llegada'), findsNothing);
+    expect(find.text('Confirmar llegada'), findsNothing);
     expect(tester.takeException(), isNull);
   });
 }

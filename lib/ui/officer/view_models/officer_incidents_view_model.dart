@@ -115,9 +115,9 @@ class OfficerIncidentsViewModel extends ChangeNotifier {
   }
 
   void _rememberAccepted(OfficerIncident item) {
-    if (item.status == OfficerIncidentStatus.attended ||
-        item.status == OfficerIncidentStatus.cancelled ||
-        item.status == OfficerIncidentStatus.expired) {
+    // El inicio solo conserva aceptados en curso (ACCEPTED); cualquier otro
+    // estado sale de la caché de sesión.
+    if (item.status != OfficerIncidentStatus.enRoute) {
       _accepted.remove(item.id);
       _acceptedIds.remove(item.id);
     } else {
@@ -128,7 +128,9 @@ class OfficerIncidentsViewModel extends ChangeNotifier {
 
   Future<void> loadMore() => _load(reset: false);
 
-  /// Mis incidentes del sereno (`GET /incident/list-me-sereno`, sin filtro).
+  /// Mis incidentes en curso del sereno (`GET /incident/list-me-sereno`
+  /// con `status=ACCEPTED`). La pestaña de inicio solo muestra estos junto a
+  /// los pendientes generales.
   Future<void> loadMine() => _loadMine(reset: true);
 
   Future<void> loadMoreMine() => _loadMine(reset: false);
@@ -144,7 +146,10 @@ class OfficerIncidentsViewModel extends ChangeNotifier {
     mineBusy = true;
     mineError = null;
     _notify();
-    final result = await repository.listMine(page: reset ? 0 : _mineNextPage);
+    final result = await repository.listMine(
+      status: OfficerIncidentStatus.enRoute,
+      page: reset ? 0 : _mineNextPage,
+    );
     if (_disposed || generation != _mineGeneration) return;
     if (result.isSuccess) {
       final page = result.data!;

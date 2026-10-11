@@ -85,7 +85,11 @@ class OfficerDetailScreen extends StatelessWidget {
                       ),
                       OutlinedButton.icon(
                         onPressed: item.hasCoordinates
-                            ? () => openIncidentMap(context, item)
+                            ? () => openIncidentMap(
+                                context,
+                                item,
+                                officerRepository: model.repository,
+                              )
                             : null,
                         icon: const Icon(Icons.near_me_outlined),
                         label: const Text('Ver en el mapa'),

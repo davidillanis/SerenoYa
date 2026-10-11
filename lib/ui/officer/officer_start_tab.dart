@@ -13,12 +13,21 @@ class OfficerStartTab extends StatelessWidget {
   final Widget Function(OfficerIncident) cardBuilder;
   @override
   Widget build(BuildContext context) {
+    // Inicio solo muestra incidentes en curso (ACCEPTED) del sereno y
+    // pendientes generales (REQUESTED). Se filtra en la vista como defensa
+    // por si el backend devolviera otros estados en `list-me-sereno`.
     // Evita duplicar la tarjeta recién aceptada en sesión, que también
     // llega por `list-me-sereno` una vez que el backend la asigna.
     final acceptedIds = model.acceptedIds;
+    final accepted = [
+      for (final item in model.accepted)
+        if (item.status == OfficerIncidentStatus.enRoute) item,
+    ];
     final mine = [
       for (final item in model.mineIncidents)
-        if (!acceptedIds.contains(item.id)) item,
+        if (!acceptedIds.contains(item.id) &&
+            item.status == OfficerIncidentStatus.enRoute)
+          item,
     ];
     return OfficerIncidentsList(
       model: model,
@@ -28,9 +37,12 @@ class OfficerStartTab extends StatelessWidget {
           'Tu atención hace la diferencia',
           style: Theme.of(context).textTheme.headlineSmall,
         ),
-        for (final item in model.accepted) cardBuilder(item),
+        for (final item in accepted) cardBuilder(item),
         const SizedBox(height: 24),
-        Text('Mis incidentes', style: Theme.of(context).textTheme.titleLarge),
+        Text(
+          'Mis incidentes en curso',
+          style: Theme.of(context).textTheme.titleLarge,
+        ),
         const SizedBox(height: 8),
         if (model.mineBusy && mine.isEmpty)
           const Padding(
@@ -55,7 +67,7 @@ class OfficerStartTab extends StatelessWidget {
         else if (mine.isEmpty)
           const Padding(
             padding: EdgeInsets.symmetric(vertical: 8),
-            child: Text('No tienes incidentes asignados.'),
+            child: Text('No tienes incidentes en curso.'),
           )
         else
           for (final item in mine) cardBuilder(item),

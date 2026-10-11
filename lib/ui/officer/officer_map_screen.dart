@@ -86,8 +86,10 @@ class _OfficerMapScreenState extends State<OfficerMapScreen> {
     // Sin ruta comparada (p. ej. pendiente) solo se muestra la ubicación
     // del sereno en el mapa, sin sección de opciones.
     if (!routes.routeEnabled) return const SizedBox.shrink();
-    // En ACCEPTED / ON_SITE la llamada a `POST /route/compare` se difiere
-    // hasta que el sereno presione «Iniciar».
+    final arrivalBanner = _arrivalBanner(context, routes);
+    // En ACCEPTED / ON_SITE la llamada a
+    // `POST /incident/incident-compare/{id}` se difiere hasta que el sereno
+    // presione «Iniciar».
     if (routes.needsStart) {
       return Padding(
         padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
@@ -110,16 +112,26 @@ class _OfficerMapScreenState extends State<OfficerMapScreen> {
       );
     }
     if (routes.loading && routes.options.isEmpty) {
-      return const Padding(
-        padding: EdgeInsets.fromLTRB(16, 0, 16, 12),
-        child: Row(
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
           children: [
-            SizedBox.square(
-              dimension: 20,
-              child: CircularProgressIndicator(strokeWidth: 2),
+            if (arrivalBanner != null) ...[
+              arrivalBanner,
+              const SizedBox(height: 8),
+            ],
+            const Row(
+              children: [
+                SizedBox.square(
+                  dimension: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+                SizedBox(width: 12),
+                Expanded(child: Text('Buscando la ruta más rápida…')),
+              ],
             ),
-            SizedBox(width: 12),
-            Expanded(child: Text('Buscando la ruta más rápida…')),
           ],
         ),
       );
@@ -127,20 +139,43 @@ class _OfficerMapScreenState extends State<OfficerMapScreen> {
     if (routes.error != null && routes.options.isEmpty) {
       return Padding(
         padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-        child: Row(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Expanded(child: Text(routes.error!)),
-            TextButton(onPressed: routes.load, child: const Text('Reintentar')),
+            if (arrivalBanner != null) ...[
+              arrivalBanner,
+              const SizedBox(height: 8),
+            ],
+            Row(
+              children: [
+                Expanded(child: Text(routes.error!)),
+                TextButton(
+                  onPressed: routes.load,
+                  child: const Text('Reintentar'),
+                ),
+              ],
+            ),
           ],
         ),
       );
     }
-    if (routes.options.isEmpty) return const SizedBox.shrink();
+    if (routes.options.isEmpty) {
+      if (arrivalBanner == null) return const SizedBox.shrink();
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+        child: arrivalBanner,
+      );
+    }
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          if (arrivalBanner != null) ...[
+            arrivalBanner,
+            const SizedBox(height: 8),
+          ],
           Text(
             'Ruta desde tu ubicación',
             style: Theme.of(context).textTheme.labelLarge
@@ -166,6 +201,78 @@ class _OfficerMapScreenState extends State<OfficerMapScreen> {
         ],
       ),
     );
+  }
+
+  /// Estado de la llegada automática, sin botón de confirmación.
+  /// Informa si el seguimiento registrará la llegada al estar en el lugar.
+  Widget? _arrivalBanner(BuildContext context, OfficerRouteViewModel routes) {
+    final colors = context.appColors;
+    if (routes.arrived) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: colors.success.withValues(alpha: .12),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.check_circle_outline, color: colors.success),
+            const SizedBox(width: 8),
+            const Expanded(child: Text('Llegada registrada automáticamente.')),
+          ],
+        ),
+      );
+    }
+    if (routes.markingArrival) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: colors.info.withValues(alpha: .12),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          children: [
+            const SizedBox.square(
+              dimension: 18,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
+            const SizedBox(width: 8),
+            const Expanded(
+              child: Text('Detectamos que llegaste. Registrando llegada…'),
+            ),
+          ],
+        ),
+      );
+    }
+    if (routes.arrivalError != null) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: colors.warning.withValues(alpha: .12),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.warning_amber_outlined, color: colors.warning),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                'No se pudo registrar la llegada: ${routes.arrivalError} '
+                'Se reintentará con tu ubicación.',
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+    if (routes.started && routes.canAutoMarkArrival) {
+      return Text(
+        'Al llegar al lugar se registrará tu llegada automáticamente.',
+        style: Theme.of(context).textTheme.bodySmall
+            ?.copyWith(color: colors.textSecondary),
+      );
+    }
+    return null;
   }
 
   String _optionLabel(RouteOption option, bool isFastest) {

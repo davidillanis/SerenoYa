@@ -1,10 +1,13 @@
 import 'package:dio/dio.dart';
 import 'package:sereno_ya/data/models/auth/api_response_dto.dart';
+import 'package:sereno_ya/data/models/citizen/incident.dart';
+import 'package:sereno_ya/data/models/citizen/incident_create_request.dart';
 import 'package:sereno_ya/data/models/incident_assignment.dart';
 import 'package:sereno_ya/data/models/incident_status.dart';
 import 'package:sereno_ya/data/models/officer/incident_acceptance.dart';
 import 'package:sereno_ya/data/models/officer/officer_incident.dart';
 import 'package:sereno_ya/data/models/page_dto.dart';
+import 'package:sereno_ya/data/models/route/route_compare.dart';
 import 'package:sereno_ya/models/auth/auth_failure.dart';
 
 class IncidentApiService {
@@ -27,17 +30,33 @@ class IncidentApiService {
   );
 
   Future<ApiResponseDto<OfficerIncident>> byIdSereno({required String fields,required String id,}) => _request(
-    () => _dio.get<dynamic>(
-      '/incident/byId-sereno/$id',
-      queryParameters: {'fields': fields},
-    ),
+    () => _dio.get<dynamic>('/incident/byId-sereno/$id',queryParameters: {'fields': fields},),
     (value) => OfficerIncident.fromJson(_asJsonMap(value)),
   );
+
+  Future<ApiResponseDto<Incident>> createIncident(IncidentCreateRequest request,) async {
+    return _request(
+      () => _dio.post<dynamic>('/incident/create', data: request.toJson()),
+      (value) => Incident.fromJson(_asJsonMap(value)),
+    );
+  }
 
   Future<ApiResponseDto<IncidentAcceptance>> accept(IncidentAcceptRequest request,) {
     return _request(
       () => _dio.post<dynamic>('/incident/accept', data: request.toJson()),
       (value) => IncidentAcceptance.fromJson(_asJsonMap(value)),
+    );
+  }
+
+  Future<ApiResponseDto<List<RouteOption>>> compare(RouteCompareRequest request, String incidentId) {
+    return _request(
+      () => _dio.post<dynamic>('/incident/incident-compare/$incidentId', data: request.toJson()),
+      (value) {
+        if (value is! List) {
+          throw const FormatException('La API devolvió datos inválidos.');
+        }
+        return value.map((item) => RouteOption.fromJson(_asJsonMap(item))).toList(growable: false);
+      },
     );
   }
 

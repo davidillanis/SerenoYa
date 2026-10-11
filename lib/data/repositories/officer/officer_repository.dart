@@ -80,6 +80,15 @@ class OfficerRepository {
         : Result.failure(result.failure!);
   }
 
+  /// Registra la llegada al lugar (`POST /incident/onSite/{id}`).
+  /// Se usa con detección automática por GPS, sin confirmación manual.
+  Future<Result<bool>> markOnSite({required String id}) async {
+    final result = await _run(() => _service.onSite(id: id));
+    return result.isSuccess
+        ? Result.success(true)
+        : Result.failure(result.failure!);
+  }
+
   Future<Result<T>> _run<T>(Future<ApiResponseDto<T>> Function() action) async {
     try {
       final response = await action();

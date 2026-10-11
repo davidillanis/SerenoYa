@@ -23,6 +23,7 @@ import 'package:sereno_ya/ui/core/theme/mapped_palette.dart';
 import 'package:sereno_ya/ui/core/theme/theme.dart';
 import 'package:sereno_ya/ui/officer/officer_home_screen.dart';
 import 'package:sereno_ya/ui/officer/officer_detail_screen.dart';
+import 'package:sereno_ya/ui/officer/officer_start_tab.dart';
 import 'package:sereno_ya/ui/officer/view_models/officer_detail_view_model.dart';
 import 'package:sereno_ya/ui/officer/view_models/officer_incidents_view_model.dart';
 import 'package:sereno_ya/ui/officer/widgets/officer_incident_card.dart';
@@ -134,9 +135,10 @@ void main() {
     model.dispose();
   });
 
-  test('el inicio carga mis incidentes con list-me-sereno', () async {
+  test('el inicio carga mis incidentes en curso con list-me-sereno', () async {
+    final repository = FakeRepository();
     final model = OfficerIncidentsViewModel(
-      FakeRepository(),
+      repository,
       session,
       locationService: FakeLocationService(),
     );
@@ -144,10 +146,95 @@ void main() {
     expect(model.mineBusy, isFalse);
     expect(model.mineError, isNull);
     expect(model.mineIncidents, hasLength(1));
+    // Solo se solicitan aceptados (ACCEPTED) para la pestaña de inicio.
+    expect(repository.lastMineStatus, OfficerIncidentStatus.enRoute);
+    expect(model.mineIncidents.single.status, OfficerIncidentStatus.enRoute);
     expect(model.mineHasMore, isTrue);
     await model.loadMoreMine();
     expect(model.mineIncidents, hasLength(1));
     model.dispose();
+  });
+
+  test('el inicio solo conserva aceptados en curso en la sesión', () async {
+    final repository = FakeRepository();
+    final model = OfficerIncidentsViewModel(
+      repository,
+      session,
+      locationService: FakeLocationService(),
+    );
+    await Future<void>.delayed(Duration.zero);
+    await model.acceptIncident('incident-test');
+    expect(model.accepted.single.status, OfficerIncidentStatus.enRoute);
+    // Si el incidente sale de ACCEPTED, deja de mostrarse en el inicio.
+    repository.currentStatus = 'ON_SITE';
+    await model.loadInitial(forceRefresh: true);
+    expect(model.accepted, isEmpty);
+    model.dispose();
+  });
+
+  testWidgets('el inicio solo muestra en curso y pendientes', (tester) async {
+    final model = OfficerIncidentsViewModel(
+      MixedMineRepository(),
+      session,
+      locationService: FakeLocationService(),
+    );
+    addTearDown(model.dispose);
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: buildAppTheme(Brightness.light, ThemeVariant.normal),
+        home: Scaffold(
+          body: ListenableBuilder(
+            listenable: model,
+            builder: (_, _) => OfficerStartTab(
+              model: model,
+              cardBuilder: (item) => Text('tarjeta-${item.status.name}'),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Mis incidentes en curso'), findsOneWidget);
+    expect(find.text('tarjeta-enRoute'), findsOneWidget);
+    expect(find.text('tarjeta-attending'), findsNothing);
+    expect(find.text('tarjeta-attended'), findsNothing);
+    // Los pendientes generales (REQUESTED) se siguen mostrando.
+    expect(find.text('Incidentes pendientes'), findsOneWidget);
+    expect(find.text('tarjeta-pending'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets('el historial muestra lo mínimo sin mapa ni detalle', (
+    tester,
+  ) async {
+    final model = OfficerIncidentsViewModel(
+      FakeRepository(),
+      session,
+      locationService: FakeLocationService(),
+    );
+    addTearDown(model.dispose);
+    await tester.pumpWidget(
+      ChangeNotifierProvider.value(
+        value: model,
+        child: MaterialApp(
+          theme: buildAppTheme(Brightness.light, ThemeVariant.normal),
+          home: const OfficerHomeScreen(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    // El inicio conserva el acceso al detalle y al mapa.
+    expect(find.text('Ver en el mapa'), findsWidgets);
+    expect(find.text('Ver detalle y evidencia'), findsWidgets);
+    await tester.tap(find.text('Reportes'));
+    await tester.pumpAndSettle();
+    // El historial solo muestra la información mínima indispensable.
+    expect(find.text('Ver en el mapa'), findsNothing);
+    expect(find.text('Ver detalle y evidencia'), findsNothing);
+    expect(find.text('Atención ciudadana'), findsWidgets);
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox());
   });
 
   setUpAll(() async {
@@ -317,6 +404,10 @@ void main() {
       expect(requests.last.data['incidentId'], 'incident-test');
       expect(requests.last.data['acceptedLatitude'], -13.65);
       expect(requests.last.data['acceptedLongitude'], -73.36);
+
+      final onSite = await repository.markOnSite(id: 'incident-test');
+      expect(onSite.isSuccess, isTrue);
+      expect(requests.last.path, '/incident/onSite/incident-test');
     },
   );
 
@@ -465,10 +556,10 @@ void main() {
           ),
         );
         await tester.pumpAndSettle();
-        expect(find.text('Mis incidentes'), findsOneWidget);
-        // El mismo incidente llega por la bolsa general y por
-        // `list-me-sereno`: una tarjeta en cada sección.
-        expect(find.text('Aceptar y enviar respuesta'), findsNWidgets(2));
+        expect(find.text('Mis incidentes en curso'), findsOneWidget);
+        // La bolsa general aporta el pendiente con botón de aceptar; mis
+        // incidentes en curso (ACCEPTED) no muestran ese botón.
+        expect(find.text('Aceptar y enviar respuesta'), findsOneWidget);
         expect(tester.takeException(), isNull);
         await tester.runAsync(
           () => _capture(boundary, 'inicio-${brightness.name}-$width'),
@@ -476,10 +567,16 @@ void main() {
         await tester.tap(find.text('Reportes'));
         await tester.pumpAndSettle();
         expect(find.text('31'), findsNWidgets(4));
+        // El historial es mínimo: sin detalle ni mapa.
+        expect(find.text('Ver detalle y evidencia'), findsNothing);
+        expect(find.text('Ver en el mapa'), findsNothing);
         await tester.runAsync(
           () => _capture(boundary, 'reportes-${brightness.name}-$width'),
         );
         expect(tester.takeException(), isNull);
+        // El detalle se abre desde el inicio, no desde el historial.
+        await tester.tap(find.text('Inicio'));
+        await tester.pumpAndSettle();
         await tester.ensureVisible(find.text('Ver detalle y evidencia').first);
         await tester.pumpAndSettle();
         await tester.tap(find.text('Ver detalle y evidencia').first);
@@ -512,6 +609,7 @@ class FakeRepository extends OfficerRepository {
   bool holdMine = false;
   bool detailFails = false;
   int acceptCount = 0;
+  OfficerIncidentStatus? lastMineStatus;
   final pending = <Completer<Result<PageResponse<OfficerIncident>>>>[];
   @override
   Future<Result<PageResponse<OfficerIncident>>> list({
@@ -550,6 +648,7 @@ class FakeRepository extends OfficerRepository {
       pending.add(completer);
       return completer.future;
     }
+    lastMineStatus = status;
     return Future.value(
       Result.success(
         PageResponse(
@@ -578,5 +677,33 @@ class FakeRepository extends OfficerRepository {
     acceptCount++;
     currentStatus = 'ACCEPTED';
     return Result.success(true);
+  }
+}
+
+/// Mis incidentes con estados mixtos para probar el filtro del inicio:
+/// solo ACCEPTED debe mostrarse en «Mis incidentes en curso».
+class MixedMineRepository extends FakeRepository {
+  @override
+  Future<Result<PageResponse<OfficerIncident>>> listMine({
+    OfficerIncidentStatus? status,
+    int page = 0,
+    int size = 15,
+  }) {
+    lastMineStatus = status;
+    return Future.value(
+      Result.success(
+        PageResponse(
+          content: [
+            OfficerIncident.fromJson(incidentJson('ACCEPTED', id: 'en-curso')),
+            OfficerIncident.fromJson(incidentJson('ON_SITE', id: 'en-sitio')),
+            OfficerIncident.fromJson(incidentJson('ATTENDED', id: 'atendido')),
+          ],
+          page: page,
+          size: 15,
+          totalElements: 3,
+          totalPages: 1,
+        ),
+      ),
+    );
   }
 }

@@ -68,7 +68,8 @@ class _OfficerHomeScreenState extends State<OfficerHomeScreen> {
                 )
               : OfficerReportsTab(
                   model: model,
-                  cardBuilder: (item) => _card(model, item),
+                  // Historial: solo información mínima, sin detalle ni mapa.
+                  cardBuilder: (item) => _card(model, item, compact: true),
                 ),
         ),
       ),
@@ -101,13 +102,17 @@ class _OfficerHomeScreenState extends State<OfficerHomeScreen> {
     if (index == 1) model.loadMetrics();
   }
 
-  Widget _card(OfficerIncidentsViewModel model, OfficerIncident item) =>
-      OfficerIncidentCard(
-        item: item,
-        onOpen: () => _open(model, item),
-        busy: model.isAccepting(item.id),
-        onAccept: () => _accept(model, item),
-      );
+  Widget _card(
+    OfficerIncidentsViewModel model,
+    OfficerIncident item, {
+    bool compact = false,
+  }) => OfficerIncidentCard(
+    item: item,
+    onOpen: () => _open(model, item),
+    busy: model.isAccepting(item.id),
+    onAccept: () => _accept(model, item),
+    compact: compact,
+  );
   Future<void> _refresh(OfficerIncidentsViewModel model) async {
     await model.loadInitial(forceRefresh: true);
     await model.loadMine();

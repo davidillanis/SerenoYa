@@ -4,6 +4,7 @@ import 'package:sereno_ya/data/models/citizen/incident.dart';
 import 'package:sereno_ya/data/models/page_dto.dart';
 import 'package:sereno_ya/data/models/officer/incident_acceptance.dart';
 import 'package:sereno_ya/data/services/api/citizen/incidents_api_service.dart';
+import 'package:sereno_ya/data/services/api/incident_api_service.dart';
 import 'package:sereno_ya/models/auth/auth_failure.dart';
 import 'package:sereno_ya/models/auth/result.dart';
 
@@ -12,11 +13,15 @@ import 'package:sereno_ya/data/services/local/citizen/incident_local_data_source
 class IncidentRepository {
   IncidentRepository({
     required IncidentsApiService apiService,
+    required IncidentApiService incidentApiService,
     required IncidentLocalDataSource localDataSource,
   }) : _apiService = apiService,
-       _localDataSource = localDataSource;
+       _localDataSource = localDataSource, 
+       _incidentApiService=incidentApiService;
+
 
   final IncidentsApiService _apiService;
+  final IncidentApiService _incidentApiService;
   final IncidentLocalDataSource _localDataSource;
 
   List<IncidentCategory>? _cachedCategories;
@@ -129,7 +134,7 @@ class IncidentRepository {
   Future<Result<Incident>> createIncident(IncidentCreateRequest request) async {
     final cacheOwnerId = _cacheOwnerId;
     try {
-      final response = await _apiService.createIncident(request);
+      final response = await _incidentApiService.createIncident(request);
       if (response.isSuccess && response.data != null) {
         final incident = response.data!;
         if (_cacheOwnerId == cacheOwnerId) {

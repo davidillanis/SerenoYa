@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import 'package:sereno_ya/data/models/citizen/incident_category.dart';
 import 'package:sereno_ya/data/repositories/citizen/incident_repository.dart';
 import 'package:sereno_ya/data/services/api/citizen/incidents_api_service.dart';
+import 'package:sereno_ya/data/services/api/incident_api_service.dart';
 import 'package:sereno_ya/data/services/local/citizen/incident_local_data_source.dart';
 import 'package:sereno_ya/models/auth/auth_session.dart';
 import 'package:sereno_ya/models/auth/auth_state.dart';
@@ -52,6 +53,7 @@ void main() {
     final repository = IncidentRepository(
       apiService: IncidentsApiService(dio),
       localDataSource: _NoopIncidentLocalDataSource(),
+      incidentApiService:IncidentApiService(dio)
     );
     final sessionViewModel = SessionViewModel(_AuthenticatedAuthRepository());
     final trackingViewModel = IncidentTrackingViewModel(

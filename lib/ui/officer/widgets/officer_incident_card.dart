@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:sereno_ya/data/models/officer/officer_incident.dart';
+import 'package:sereno_ya/data/repositories/officer/officer_repository.dart';
 import 'package:sereno_ya/data/repositories/route/route_compare_repository.dart';
 import 'package:sereno_ya/ui/core/theme/colors.dart';
 import 'package:sereno_ya/ui/officer/officer_map_screen.dart';
+import 'package:sereno_ya/ui/officer/view_models/officer_incidents_view_model.dart';
 import 'package:sereno_ya/ui/officer/view_models/officer_route_view_model.dart';
 
 // Operational cards: action first, 16px inset, 8px rhythm, theme surfaces and
@@ -15,11 +17,16 @@ class OfficerIncidentCard extends StatelessWidget {
     required this.onOpen,
     this.onAccept,
     this.busy = false,
+    this.compact = false,
   });
   final OfficerIncident item;
   final VoidCallback onOpen;
   final VoidCallback? onAccept;
   final bool busy;
+
+  /// En el historial solo se muestra la información mínima indispensable,
+  /// sin acceso al detalle ni al mapa.
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
@@ -74,11 +81,12 @@ class OfficerIncidentCard extends StatelessWidget {
               style: TextStyle(color: context.appColors.textSecondary),
             ),
             const SizedBox(height: 8),
-            TextButton.icon(
-              onPressed: onOpen,
-              icon: const Icon(Icons.image_outlined),
-              label: const Text('Ver detalle y evidencia'),
-            ),
+            if (!compact)
+              TextButton.icon(
+                onPressed: onOpen,
+                icon: const Icon(Icons.image_outlined),
+                label: const Text('Ver detalle y evidencia'),
+              ),
             if (onAccept != null &&
                 item.status == OfficerIncidentStatus.pending)
               SizedBox(
@@ -94,16 +102,17 @@ class OfficerIncidentCard extends StatelessWidget {
                   label: const Text('Aceptar y enviar respuesta'),
                 ),
               ),
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton.icon(
-                onPressed: item.hasCoordinates
-                    ? () => openIncidentMap(context, item)
-                    : null,
-                icon: const Icon(Icons.near_me_outlined),
-                label: const Text('Ver en el mapa'),
+            if (!compact)
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: item.hasCoordinates
+                      ? () => openIncidentMap(context, item)
+                      : null,
+                  icon: const Icon(Icons.near_me_outlined),
+                  label: const Text('Ver en el mapa'),
+                ),
               ),
-            ),
           ],
         ),
       ),
@@ -162,7 +171,11 @@ String elapsedLabel(DateTime? date, {DateTime? now}) {
   return 'Hace ${duration.inDays} días';
 }
 
-Future<void> openIncidentMap(BuildContext context, OfficerIncident item) async {
+Future<void> openIncidentMap(
+  BuildContext context,
+  OfficerIncident item, {
+  OfficerRepository? officerRepository,
+}) async {
   // La comparación de rutas es opcional: sin repositorio disponible el mapa
   // muestra solo el marcador, como antes.
   RouteCompareRepository? routes;
@@ -171,13 +184,29 @@ Future<void> openIncidentMap(BuildContext context, OfficerIncident item) async {
   } catch (_) {
     routes = null;
   }
+  // La llegada automática (`POST /incident/onSite/{id}`) necesita el
+  // repositorio de incidentes. Se resuelve desde los view models del sereno
+  // cuando el llamador no lo entrega de forma explícita.
+  var officerRepo = officerRepository;
+  if (officerRepo == null) {
+    try {
+      officerRepo = context.read<OfficerIncidentsViewModel>().repository;
+    } catch (_) {
+      officerRepo = null;
+    }
+  }
   final repository = routes;
   OfficerRouteViewModel? routeModel;
   if (repository != null && item.hasCoordinates) {
-    routeModel = OfficerRouteViewModel(repository, item);
-    // En ACCEPTED / ON_SITE la comparación (`POST /route/compare`) y el
-    // seguimiento se inician con el botón «Iniciar» del mapa; aquí no se
-    // llama a la API. Sin ruta (p. ej. pendientes) se ubica al sereno.
+    routeModel = OfficerRouteViewModel(
+      repository,
+      item,
+      officerRepository: officerRepo,
+    );
+    // En ACCEPTED / ON_SITE la comparación
+    // (`POST /incident/incident-compare/{id}`) y el seguimiento se inician
+    // con el botón «Iniciar» del mapa; aquí no se llama a la API. Sin ruta
+    // (p. ej. pendientes) se ubica al sereno.
     if (!routeModel.routeEnabled) {
       routeModel.load();
     }

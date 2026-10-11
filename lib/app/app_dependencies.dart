@@ -21,7 +21,6 @@ import 'package:sereno_ya/data/services/api/citizen/incidents_api_service.dart';
 import 'package:sereno_ya/data/services/api/file/image_api_service.dart';
 import 'package:sereno_ya/data/services/api/incident_api_service.dart';
 import 'package:sereno_ya/data/services/api/profile/profile_api_service.dart';
-import 'package:sereno_ya/data/services/api/route_api_service.dart';
 import 'package:sereno_ya/data/services/local/citizen/incident_local_data_source.dart';
 import 'package:sereno_ya/data/services/storage/session_storage_service.dart';
 import 'package:sereno_ya/routing/app_router.dart';
@@ -49,16 +48,16 @@ class AppDependencies {
       googleIdentityService: googleIdentityService,
     );
 
-    final incidentApiService = IncidentsApiService(apiClient.dio);
+    final incidentsApiService = IncidentsApiService(apiClient.dio);
+    final incidentApiService = IncidentApiService(apiClient.dio);
     final officerApiService = IncidentApiService(apiClient.dio);
-    final routeCompareRepository = RouteCompareRepository(
-      RouteApiService(apiClient.dio),
-    );
+    final routeCompareRepository = RouteCompareRepository(officerApiService);
     final profileApiService = ProfileApiService(apiClient.dio);
     final localDataSource = IncidentLocalDataSourceImpl();
     final incidentRepository = IncidentRepository(
-      apiService: incidentApiService,
+      apiService: incidentsApiService,
       localDataSource: localDataSource,
+      incidentApiService: incidentApiService,
     );
 
     final imageApiService = StorageService();

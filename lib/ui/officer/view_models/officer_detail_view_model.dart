@@ -12,6 +12,7 @@ class OfficerDetailViewModel extends ChangeNotifier {
     load();
   }
   final OfficerRepository _repository;
+  OfficerRepository get repository => _repository;
   final CitizenLocationService _locationService;
   final String id;
   OfficerIncident? item;
