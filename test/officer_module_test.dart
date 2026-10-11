@@ -298,7 +298,7 @@ void main() {
       expect(found.isSuccess, isTrue);
       expect(found.data!.status, OfficerIncidentStatus.enRoute);
       expect(requests.last.path, '/incident/byId-sereno/incident-test');
-      expect(requests.last.queryParameters['id'], 'incident-test');
+      expect(requests.last.queryParameters.containsKey('id'), isFalse);
       expect(
         requests.last.queryParameters['fields'],
         contains('citizen.userEntity.phone'),

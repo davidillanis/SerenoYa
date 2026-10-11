@@ -29,7 +29,7 @@ class IncidentApiService {
   Future<ApiResponseDto<OfficerIncident>> byIdSereno({required String fields,required String id,}) => _request(
     () => _dio.get<dynamic>(
       '/incident/byId-sereno/$id',
-      queryParameters: {'fields': fields, 'id': id},
+      queryParameters: {'fields': fields},
     ),
     (value) => OfficerIncident.fromJson(_asJsonMap(value)),
   );
@@ -40,6 +40,11 @@ class IncidentApiService {
       (value) => IncidentAcceptance.fromJson(_asJsonMap(value)),
     );
   }
+
+  Future<ApiResponseDto<String>> onSite({required String id}) => _request(
+    () => _dio.post<dynamic>('/incident/onSite/$id'),
+    (value) => value?.toString() ?? '',
+  );
 
   Future<ApiResponseDto<T>> _request<T>(Future<Response<dynamic>> Function() action,T Function(Object? value) decodeData,) async {
     try {
