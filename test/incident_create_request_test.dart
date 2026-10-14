@@ -7,6 +7,8 @@ void main() {
       description: 'Incendio',
       latitude: -13.6519,
       longitude: -73.365,
+      currentLat: -13.66,
+      currentLong: -73.37,
       referenceAddress: 'Av. Principal',
       categoryName: 'Incendio',
       evidences: const [
@@ -22,6 +24,8 @@ void main() {
       'description': 'Incendio',
       'latitude': -13.6519,
       'longitude': -73.365,
+      'currentLat': -13.66,
+      'currentLong': -73.37,
       'referenceAddress': 'Av. Principal',
       'categoryName': 'Incendio',
       'evidences': [

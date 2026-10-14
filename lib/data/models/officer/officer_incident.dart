@@ -28,6 +28,7 @@ class OfficerIncident {
     this.citizenId,
     this.citizenPhone,
     this.coordinatesProvided = true,
+    this.reporterCoordinatesProvided = false,
   });
 
   factory OfficerIncident.fromJson(Map<String, dynamic> json) {
@@ -41,6 +42,8 @@ class OfficerIncident {
     return OfficerIncident(
       incident: Incident.fromJson(json),
       coordinatesProvided: json['latitude'] is num && json['longitude'] is num,
+      reporterCoordinatesProvided:
+          json['currentLat'] is num && json['currentLong'] is num,
       priority: switch (json['priority']) {
         'HIGH' => IncidentPriority.high,
         'MEDIUM' => IncidentPriority.medium,
@@ -61,6 +64,13 @@ class OfficerIncident {
   final String? citizenId;
   final String? citizenPhone;
   final bool coordinatesProvided;
+  final bool reporterCoordinatesProvided;
+  bool get hasReporterCoordinates =>
+      reporterCoordinatesProvided &&
+      incident.currentLat.isFinite &&
+      incident.currentLong.isFinite &&
+      incident.currentLat.abs() <= 90 &&
+      incident.currentLong.abs() <= 180;
   String get id => incident.id;
   OfficerIncidentStatus get status =>
       OfficerIncidentStatus.parse(incident.status);

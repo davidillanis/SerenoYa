@@ -16,7 +16,7 @@ class OfficerMapScreen extends StatefulWidget {
   final OfficerIncident item;
 
   /// Comparación de rutas GPS del sereno al incidente. Cuando es `null`
-  /// el mapa muestra solo el marcador, como antes.
+  /// el mapa muestra las ubicaciones del incidente y del reporte.
   final OfficerRouteViewModel? routeModel;
 
   @override
@@ -297,7 +297,22 @@ class _OfficerMapScreenState extends State<OfficerMapScreen> {
     }
     final incident = widget.item.incident;
     final destination = LatLng(incident.latitude, incident.longitude);
+    final reporterLocation = widget.item.hasReporterCoordinates
+        ? LatLng(incident.currentLat, incident.currentLong)
+        : null;
     final markers = {
+      if (reporterLocation != null)
+        Marker(
+          markerId: const MarkerId('citizen-report-location'),
+          position: reporterLocation,
+          icon: BitmapDescriptor.defaultMarkerWithHue(
+            HSVColor.fromColor(context.appColors.tertiary).hue,
+          ),
+          infoWindow: const InfoWindow(
+            title: 'Ciudadano al reportar',
+            snippet: 'Ubicación del dispositivo al enviar el reporte',
+          ),
+        ),
       Marker(
         markerId: MarkerId(widget.item.id),
         position: destination,
@@ -382,6 +397,15 @@ class _OfficerMapScreenState extends State<OfficerMapScreen> {
                     child: const Icon(Icons.my_location_outlined),
                   ),
                   const SizedBox(height: 12),
+                  if (reporterLocation != null) ...[
+                    FloatingActionButton.small(
+                      heroTag: 'officer-citizen-location',
+                      tooltip: 'Ir a la ubicación del ciudadano al reportar',
+                      onPressed: () => _goToReporter(reporterLocation),
+                      child: const Icon(Icons.person_pin_circle_outlined),
+                    ),
+                    const SizedBox(height: 12),
+                  ],
                   FloatingActionButton.small(
                     heroTag: 'officer-incident-location',
                     tooltip: 'Ir al lugar del incidente',
@@ -414,6 +438,22 @@ class _OfficerMapScreenState extends State<OfficerMapScreen> {
     try {
       final controller = await _mapController.future;
       await controller.animateCamera(CameraUpdate.newLatLngZoom(origin, 16));
+    } catch (_) {
+      // La cámara puede no estar lista; se conserva el encuadre actual.
+    }
+  }
+
+  /// Centra la cámara en el lugar desde donde se envió el reporte.
+  Future<void> _goToReporter(LatLng location) async {
+    if (!_mapController.isCompleted) return;
+    try {
+      final controller = await _mapController.future;
+      if (!mounted) return;
+      await controller.animateCamera(CameraUpdate.newLatLngZoom(location, 16));
+      if (!mounted) return;
+      await controller.showMarkerInfoWindow(
+        const MarkerId('citizen-report-location'),
+      );
     } catch (_) {
       // La cámara puede no estar lista; se conserva el encuadre actual.
     }

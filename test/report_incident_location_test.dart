@@ -75,7 +75,13 @@ void main() {
           .setMockMethodCallHandler(channel, null),
     );
     final repository = _Repository();
-    final model = ReportIncidentViewModel(repository, _Storage());
+    final service = _LocationService();
+    service.result.complete(const LatLng(-13.65, -73.36));
+    final model = ReportIncidentViewModel(
+      repository,
+      _Storage(),
+      locationService: service,
+    );
     addTearDown(model.dispose);
     model.setSelectedCategory(
       IncidentCategory(id: 'category', name: 'Incendio', description: ''),
@@ -89,7 +95,22 @@ void main() {
     expect(repository.request?.categoryName, 'Incendio');
     expect(repository.request?.latitude, -13.64);
     expect(repository.request?.longitude, -73.35);
+    expect(repository.request?.currentLat, -13.65);
+    expect(repository.request?.currentLong, -73.36);
+    expect(service.calls, 1);
     expect(repository.request?.evidences, hasLength(1));
+    repository.request = null;
+    service.result = Completer<LatLng>();
+    final retry = model.submitIncident(
+      description: 'Incendio',
+      referenceAddress: 'Plaza',
+      location: const LatLng(-13.64, -73.35),
+    );
+    service.result.completeError(const LocationFailure('Activa el GPS'));
+    expect(await retry, isFalse);
+    expect(repository.request, isNull);
+    expect(model.errorMessage, 'Activa el GPS');
+    expect(model.isSubmitting, isFalse);
   });
   test('envía varias evidencias en el mismo reporte', () async {
     const channel = MethodChannel('plugins.flutter.io/image_picker');
@@ -101,7 +122,13 @@ void main() {
           .setMockMethodCallHandler(channel, null),
     );
     final repository = _Repository();
-    final model = ReportIncidentViewModel(repository, _Storage());
+    final service = _LocationService();
+    service.result.complete(const LatLng(-13.65, -73.36));
+    final model = ReportIncidentViewModel(
+      repository,
+      _Storage(),
+      locationService: service,
+    );
     addTearDown(model.dispose);
     model.setSelectedCategory(
       IncidentCategory(id: 'category', name: 'Incendio', description: ''),

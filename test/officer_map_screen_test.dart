@@ -23,6 +23,38 @@ OfficerIncident incident({bool coordinates = true}) =>
     });
 
 void main() {
+  test('distingue el lugar del reporte y valida sus coordenadas', () {
+    final json = <String, dynamic>{
+      'latitude': -13.65,
+      'longitude': -73.36,
+      'currentLat': -13.66,
+      'currentLong': -73.37,
+    };
+    final item = OfficerIncident.fromJson(json);
+    expect(item.hasReporterCoordinates, isTrue);
+    expect(item.incident.currentLat, -13.66);
+    expect(item.incident.currentLong, -73.37);
+    expect(item.incident.latitude, -13.65);
+    expect(item.incident.longitude, -73.36);
+    for (final value in [null, double.nan, double.infinity, 91]) {
+      expect(
+        OfficerIncident.fromJson({...json, 'currentLat': value})
+            .hasReporterCoordinates,
+        isFalse,
+      );
+    }
+    expect(
+      OfficerIncident.fromJson({...json, 'currentLong': 181})
+          .hasReporterCoordinates,
+      isFalse,
+    );
+    expect(incident().hasReporterCoordinates, isFalse);
+    expect(
+      OfficerIncident.fromJson({...json, 'currentLat': 0, 'currentLong': 0})
+          .hasReporterCoordinates,
+      isTrue,
+    );
+  });
   for (final brightness in Brightness.values) {
     for (final width in [320.0, 1000.0]) {
       testWidgets('abre y cierra el mapa interno ${brightness.name} $width', (

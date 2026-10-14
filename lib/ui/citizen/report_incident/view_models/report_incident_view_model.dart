@@ -233,6 +233,8 @@ class ReportIncidentViewModel extends ChangeNotifier {
     _notifyListeners();
 
     try {
+      // La ubicación del dispositivo es independiente del punto del mapa.
+      final currentLocation = await _locationService.currentLocation();
       _isUploadingImage = true;
       _notifyListeners();
       for (final draft in _drafts) {
@@ -249,6 +251,8 @@ class ReportIncidentViewModel extends ChangeNotifier {
         referenceAddress: referenceAddress,
         latitude: location.latitude,
         longitude: location.longitude,
+        currentLat: currentLocation.latitude,
+        currentLong: currentLocation.longitude,
         categoryName: _selectedCategory!.name,
         evidences: _drafts
             .map(
@@ -266,6 +270,9 @@ class ReportIncidentViewModel extends ChangeNotifier {
 
       _errorMessage =
           result.failure?.message ?? 'Error al reportar el incidente';
+      return false;
+    } on LocationFailure catch (error) {
+      _errorMessage = error.message;
       return false;
     } catch (error) {
       _errorMessage = 'Error al subir imagen: $error';

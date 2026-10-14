@@ -12,7 +12,7 @@ class OfficerRepository {
   final IncidentApiService _service;
 
   static const officerFields =
-      'id,status,latitude,longitude,description,referenceAddress,createdAt,'
+      'id,status,latitude,longitude,currentLat,currentLong,description,referenceAddress,createdAt,'
       'acceptedAt,arrivedAt,attendedAt,cancelledAt,category.name,'
       'citizen.id,citizen.userEntity.phone,'
       'evidences.id,evidences.fileUrl,evidences.fileName,evidences.fileType,'

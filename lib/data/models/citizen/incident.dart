@@ -9,6 +9,8 @@ class Incident {
   final String description;
   final double latitude;
   final double longitude;
+  final double currentLat;
+  final double currentLong;
   final String? referenceAddress;
   final DateTime? createdAt;
   final DateTime? acceptedAt;
@@ -27,6 +29,8 @@ class Incident {
     required this.description,
     required this.latitude,
     required this.longitude,
+    required this.currentLat,
+    required this.currentLong,
     this.referenceAddress,
     this.createdAt,
     this.acceptedAt,
@@ -50,6 +54,8 @@ class Incident {
       description: json['description'] as String? ?? '',
       latitude: (json['latitude'] as num?)?.toDouble() ?? 0.0,
       longitude: (json['longitude'] as num?)?.toDouble() ?? 0.0,
+      currentLat: (json['currentLat'] as num?)?.toDouble() ?? 0.0,
+      currentLong: (json['currentLong'] as num?)?.toDouble() ?? 0.0,
       referenceAddress: json['referenceAddress'] as String?,
       createdAt: _parseLocalDateTime(json['createdAt']),
       acceptedAt: _parseLocalDateTime(json['acceptedAt']),
@@ -76,8 +82,7 @@ class Incident {
                 .toList(growable: false)
           : const [],
       adminDetailsIncluded:
-          json.containsKey('assignment') &&
-          json.containsKey('statusHistory'),
+          json.containsKey('assignment') && json.containsKey('statusHistory'),
     );
   }
 

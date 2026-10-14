@@ -13,6 +13,10 @@ void main() {
         data: {
           'id': 'incident-1',
           'description': 'Incendio',
+          'latitude': -13.6519,
+          'longitude': -73.365,
+          'currentLat': -13.66,
+          'currentLong': -73.37,
           'status': 'REQUESTED',
           'createdAt': '2026-09-28T10:00:00',
           'evidences': [
@@ -32,6 +36,8 @@ void main() {
           description: 'Incendio',
           latitude: -13.6519,
           longitude: -73.365,
+          currentLat: -13.66,
+          currentLong: -73.37,
           referenceAddress: 'Av. Principal',
           categoryName: 'Incendio',
           evidences: [
@@ -54,6 +60,12 @@ void main() {
       expect(capturedRequest.method, 'POST');
       expect(capturedRequest.path, '/incidents/create');
       expect(requestData['categoryName'], 'Incendio');
+      expect(requestData['currentLat'], -13.66);
+      expect(requestData['currentLong'], -73.37);
+      expect(response.data?.latitude, -13.6519);
+      expect(response.data?.longitude, -73.365);
+      expect(response.data?.currentLat, -13.66);
+      expect(response.data?.currentLong, -73.37);
       expect(requestData, isNot(contains('categoryId')));
       expect(requestData, isNot(contains('evidence')));
       expect(evidence['fileType'], 'image/jpeg');

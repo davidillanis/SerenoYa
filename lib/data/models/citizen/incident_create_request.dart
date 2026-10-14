@@ -18,6 +18,8 @@ class IncidentCreateRequest {
   final String description;
   final double latitude;
   final double longitude;
+  final double currentLat;
+  final double currentLong;
   final String referenceAddress;
   final String categoryName;
   final List<IncidentEvidenceCreateRequest> evidences;
@@ -26,6 +28,8 @@ class IncidentCreateRequest {
     required this.description,
     required this.latitude,
     required this.longitude,
+    required this.currentLat,
+    required this.currentLong,
     required this.referenceAddress,
     required this.categoryName,
     required this.evidences,
@@ -36,6 +40,8 @@ class IncidentCreateRequest {
       'description': description,
       'latitude': latitude,
       'longitude': longitude,
+      'currentLat': currentLat,
+      'currentLong': currentLong,
       'referenceAddress': referenceAddress,
       'categoryName': categoryName,
       'evidences': evidences.map((item) => item.toJson()).toList(),
