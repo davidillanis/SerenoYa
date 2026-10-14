@@ -13,6 +13,7 @@ import 'package:sereno_ya/data/services/local/device_sync_storage.dart';
 import 'package:go_router/go_router.dart';
 import 'package:sereno_ya/data/repositories/auth/auth_repository.dart';
 import 'package:sereno_ya/data/repositories/auth/auth_repository_impl.dart';
+import 'package:sereno_ya/data/services/api/admin/admin_user_api_service.dart';
 import 'package:sereno_ya/data/repositories/citizen/incident_repository.dart';
 import 'package:sereno_ya/data/services/api/api_client.dart';
 import 'package:sereno_ya/data/services/api/auth/auth_api_service.dart';
@@ -47,6 +48,7 @@ class AppDependencies {
       storageService,
       googleIdentityService: googleIdentityService,
     );
+    final adminUserApiService = AdminUserApiService(apiClient.dio);
 
     final incidentsApiService = IncidentsApiService(apiClient.dio);
     final incidentApiService = IncidentApiService(apiClient.dio);
@@ -92,6 +94,7 @@ class AppDependencies {
       incidentRepository: incidentRepository,
       storageService: imageApiService,
       profileApiService: profileApiService,
+      adminUserApiService: adminUserApiService,
       routerNotifier: dependencies.routerNotifier,
     );
     return dependencies;

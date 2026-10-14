@@ -4,6 +4,7 @@ import 'package:sereno_ya/data/services/auth/google_identity_service.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:sereno_ya/data/repositories/auth/auth_repository.dart';
+import 'package:sereno_ya/data/services/api/admin/admin_user_api_service.dart';
 import 'package:sereno_ya/data/services/api/file/image_api_service.dart';
 import 'package:sereno_ya/data/services/api/profile/profile_api_service.dart';
 import 'package:sereno_ya/models/auth/auth_state.dart';
@@ -38,6 +39,10 @@ import 'package:sereno_ya/ui/officer/view_models/officer_incidents_view_model.da
 import 'package:sereno_ya/ui/admin/incidents/admin_incident_detail_screen.dart';
 import 'package:sereno_ya/ui/admin/incidents/admin_incidents_screen.dart';
 import 'package:sereno_ya/ui/admin/incidents/view_models/admin_incidents_view_model.dart';
+import 'package:sereno_ya/ui/admin/users/admin_user_create_screen.dart';
+import 'package:sereno_ya/ui/admin/users/admin_users_screen.dart';
+import 'package:sereno_ya/ui/admin/users/view_models/admin_user_create_view_model.dart';
+import 'package:sereno_ya/ui/admin/users/view_models/admin_users_view_model.dart';
 
 GoRouter createAppRouter({
   Future<void> Function()? onLoginSuccess,
@@ -45,6 +50,7 @@ GoRouter createAppRouter({
   required AuthRepository authRepository,
   required IncidentRepository incidentRepository,
   required OfficerRepository officerRepository,
+  required AdminUserApiService adminUserApiService,
   required StorageService storageService,
   required ProfileApiService profileApiService,
   required AuthRouterNotifier routerNotifier,
@@ -238,6 +244,20 @@ GoRouter createAppRouter({
                 .id,
           ),
           child: const AdminIncidentDetailScreen(),
+        ),
+      ),
+      GoRoute(
+        path: RouteNames.adminUsers,
+        builder: (_, _) => ChangeNotifierProvider(
+          create: (_) => AdminUsersViewModel(adminUserApiService),
+          child: const AdminUsersScreen(),
+        ),
+      ),
+      GoRoute(
+        path: RouteNames.adminUserCreate,
+        builder: (_, _) => ChangeNotifierProvider(
+          create: (_) => AdminUserCreateViewModel(adminUserApiService),
+          child: const AdminUserCreateScreen(),
         ),
       ),
       GoRoute(

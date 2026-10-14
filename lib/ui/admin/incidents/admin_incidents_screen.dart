@@ -51,6 +51,11 @@ class _AdminIncidentsScreenState extends State<AdminIncidentsScreen> {
         title: const Text('Administración'),
         actions: [
           IconButton(
+            tooltip: 'Gestionar usuarios',
+            onPressed: () => context.push(RouteNames.adminUsers),
+            icon: const Icon(Icons.manage_accounts_outlined),
+          ),
+          IconButton(
             tooltip: 'Actualizar incidencias',
             onPressed: viewModel.isLoadingInitial
                 ? null
