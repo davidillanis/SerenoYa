@@ -81,6 +81,7 @@ class OfficerIncidentCard extends StatelessWidget {
               style: TextStyle(color: context.appColors.textSecondary),
             ),
             const SizedBox(height: 8),
+            _EvidencePreview(item: item, onOpen: compact ? null : onOpen),
             if (!compact)
               TextButton.icon(
                 onPressed: onOpen,
@@ -169,6 +170,74 @@ String elapsedLabel(DateTime? date, {DateTime? now}) {
   if (duration.inHours < 1) return 'Hace ${duration.inMinutes} min';
   if (duration.inDays < 1) return 'Hace ${duration.inHours} h';
   return 'Hace ${duration.inDays} días';
+}
+
+// Vista previa del listado: muestra todas las miniaturas con su conteo para
+// que «Mis incidentes» no parezca tener una sola evidencia.
+class _EvidencePreview extends StatelessWidget {
+  const _EvidencePreview({required this.item, this.onOpen});
+  final OfficerIncident item;
+  final VoidCallback? onOpen;
+
+  @override
+  Widget build(BuildContext context) {
+    final evidences = [
+      for (final evidence in item.incident.evidences)
+        if (evidence.fileUrl.isNotEmpty) evidence,
+    ];
+    if (evidences.isEmpty) return const SizedBox.shrink();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(
+              Icons.image_outlined,
+              size: 18,
+              color: context.appColors.textSecondary,
+            ),
+            const SizedBox(width: 6),
+            Text(
+              'Evidencias (${evidences.length})',
+              style: TextStyle(
+                color: context.appColors.textSecondary,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        SizedBox(
+          height: 64,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            itemCount: evidences.length,
+            separatorBuilder: (_, _) => const SizedBox(width: 8),
+            itemBuilder: (_, index) => GestureDetector(
+              onTap: onOpen,
+              child: Container(
+                width: 64,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: context.appColors.borderVariant),
+                ),
+                clipBehavior: Clip.antiAlias,
+                child: Image.network(
+                  evidences[index].fileUrl,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, _, _) => Icon(
+                    Icons.image_not_supported_outlined,
+                    color: context.appColors.textTertiary,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 8),
+      ],
+    );
+  }
 }
 
 Future<void> openIncidentMap(

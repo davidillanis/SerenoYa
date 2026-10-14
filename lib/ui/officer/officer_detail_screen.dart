@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:sereno_ya/data/models/officer/officer_incident.dart';
 import 'package:sereno_ya/data/services/officer/contact_service.dart';
 import 'package:sereno_ya/ui/core/theme/colors.dart';
+import 'package:sereno_ya/ui/core/widgets/evidence_gallery.dart';
 import 'package:sereno_ya/ui/core/widgets/responsive_body.dart';
 import 'package:sereno_ya/ui/officer/view_models/officer_detail_view_model.dart';
 import 'package:sereno_ya/ui/officer/widgets/officer_incident_card.dart';
@@ -104,37 +105,11 @@ class OfficerDetailScreen extends StatelessWidget {
                                   .format(item.incident.createdAt!),
                       ),
                       Text(
-                        'Evidencia',
+                        'Evidencia${item.incident.evidences.length > 1 ? 's (${item.incident.evidences.length})' : ''}',
                         style: Theme.of(context).textTheme.titleMedium,
                       ),
                       const SizedBox(height: 8),
-                      if (item.incident.evidence?.fileUrl.isNotEmpty == true)
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(16),
-                          child: Image.network(
-                            item.incident.evidence!.fileUrl,
-                            height: 240,
-                            fit: BoxFit.contain,
-                            loadingBuilder: (_, child, progress) =>
-                                progress == null
-                                ? child
-                                : const SizedBox(
-                                    height: 240,
-                                    child: Center(
-                                      child: CircularProgressIndicator(),
-                                    ),
-                                  ),
-                            errorBuilder: (_, _, _) => const Padding(
-                              padding: EdgeInsets.all(24),
-                              child: Text('No se pudo mostrar la evidencia.'),
-                            ),
-                          ),
-                        )
-                      else
-                        const Padding(
-                          padding: EdgeInsets.symmetric(vertical: 24),
-                          child: Text('No hay evidencia disponible.'),
-                        ),
+                      EvidenceGallery(evidences: item.incident.evidences),
                       for (final event in [
                         ('Aceptado', item.incident.acceptedAt),
                         ('Llegada registrada', item.incident.arrivedAt),
