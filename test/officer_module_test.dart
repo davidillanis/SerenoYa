@@ -145,13 +145,19 @@ void main() {
     await Future<void>.delayed(Duration.zero);
     expect(model.mineBusy, isFalse);
     expect(model.mineError, isNull);
-    expect(model.mineIncidents, hasLength(1));
-    // Solo se solicitan aceptados (ACCEPTED) para la pestaña de inicio.
-    expect(repository.lastMineStatus, OfficerIncidentStatus.enRoute);
-    expect(model.mineIncidents.single.status, OfficerIncidentStatus.enRoute);
+    expect(model.mineIncidents, hasLength(2));
+    // Se consultan ambos estados activos del sereno.
+    expect(repository.lastMineStatus, OfficerIncidentStatus.attending);
+    expect(
+      model.mineIncidents.map((item) => item.status),
+      containsAll([
+        OfficerIncidentStatus.enRoute,
+        OfficerIncidentStatus.attending,
+      ]),
+    );
     expect(model.mineHasMore, isTrue);
     await model.loadMoreMine();
-    expect(model.mineIncidents, hasLength(1));
+    expect(model.mineIncidents, hasLength(2));
     model.dispose();
   });
 
@@ -196,7 +202,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Mis incidentes en curso'), findsOneWidget);
     expect(find.text('tarjeta-enRoute'), findsOneWidget);
-    expect(find.text('tarjeta-attending'), findsNothing);
+    expect(find.text('tarjeta-attending'), findsOneWidget);
     expect(find.text('tarjeta-attended'), findsNothing);
     // Los pendientes generales (REQUESTED) se siguen mostrando.
     expect(find.text('Incidentes pendientes'), findsOneWidget);
@@ -680,8 +686,7 @@ class FakeRepository extends OfficerRepository {
   }
 }
 
-/// Mis incidentes con estados mixtos para probar el filtro del inicio:
-/// solo ACCEPTED debe mostrarse en «Mis incidentes en curso».
+/// Mis incidentes con estados mixtos para probar el filtro del inicio.
 class MixedMineRepository extends FakeRepository {
   @override
   Future<Result<PageResponse<OfficerIncident>>> listMine({

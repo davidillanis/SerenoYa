@@ -80,7 +80,14 @@ class OfficerIncidentsViewModel extends ChangeNotifier {
   String? errorMessage;
   String? metricsError;
   int _nextPage = 0;
-  int _mineNextPage = 0;
+  final Map<OfficerIncidentStatus, int> _minePages = {
+    OfficerIncidentStatus.enRoute: 0,
+    OfficerIncidentStatus.attending: 0,
+  };
+  final Map<OfficerIncidentStatus, bool> _mineStatusHasMore = {
+    OfficerIncidentStatus.enRoute: true,
+    OfficerIncidentStatus.attending: true,
+  };
   bool _disposed = false;
   int _generation = 0;
   int _mineGeneration = 0;
@@ -129,8 +136,8 @@ class OfficerIncidentsViewModel extends ChangeNotifier {
   Future<void> loadMore() => _load(reset: false);
 
   /// Mis incidentes en curso del sereno (`GET /incident/list-me-sereno`
-  /// con `status=ACCEPTED`). La pestaña de inicio solo muestra estos junto a
-  /// los pendientes generales.
+  /// con `status=ACCEPTED` y `status=ON_SITE`). Ambos estados representan
+  /// incidentes activos del sereno.
   Future<void> loadMine() => _loadMine(reset: true);
 
   Future<void> loadMoreMine() => _loadMine(reset: false);
@@ -146,25 +153,40 @@ class OfficerIncidentsViewModel extends ChangeNotifier {
     mineBusy = true;
     mineError = null;
     _notify();
-    final result = await repository.listMine(
-      status: OfficerIncidentStatus.enRoute,
-      page: reset ? 0 : _mineNextPage,
-    );
-    if (_disposed || generation != _mineGeneration) return;
-    if (result.isSuccess) {
-      final page = result.data!;
-      final items = reset
-          ? <String, OfficerIncident>{}
-          : {for (final item in _mine) item.id: item};
-      for (final item in page.content) {
-        items[item.id] = item;
-      }
-      _mine = items.values.toList();
-      _mineNextPage = page.page + 1;
-      mineHasMore = _mineNextPage < page.totalPages;
-    } else {
-      mineError = result.failure!.message;
+    final statuses = [
+      OfficerIncidentStatus.enRoute,
+      OfficerIncidentStatus.attending,
+    ].where((status) => reset || _mineStatusHasMore[status] == true);
+    if (reset) {
+      _minePages.updateAll((_, _) => 0);
+      _mineStatusHasMore.updateAll((_, _) => true);
     }
+    final results = await Future.wait([
+      for (final status in statuses)
+        repository.listMine(status: status, page: _minePages[status]!),
+    ]);
+    if (_disposed || generation != _mineGeneration) return;
+    var failed = false;
+    final items = reset
+        ? <String, OfficerIncident>{}
+        : {for (final item in _mine) item.id: item};
+    var index = 0;
+    for (final status in statuses) {
+      final result = results[index++];
+      if (result.isSuccess) {
+        final page = result.data!;
+        for (final item in page.content) {
+          items[item.id] = item;
+        }
+        _minePages[status] = page.page + 1;
+        _mineStatusHasMore[status] = page.page + 1 < page.totalPages;
+      } else {
+        failed = true;
+      }
+    }
+    _mine = items.values.toList();
+    mineHasMore = _mineStatusHasMore.values.any((hasMore) => hasMore);
+    if (failed) mineError = 'No se pudieron actualizar todos tus incidentes.';
     mineBusy = false;
     _notify();
   }

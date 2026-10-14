@@ -21,12 +21,12 @@ class OfficerStartTab extends StatelessWidget {
     final acceptedIds = model.acceptedIds;
     final accepted = [
       for (final item in model.accepted)
-        if (item.status == OfficerIncidentStatus.enRoute) item,
+        if (_isActive(item)) item,
     ];
     final mine = [
       for (final item in model.mineIncidents)
         if (!acceptedIds.contains(item.id) &&
-            item.status == OfficerIncidentStatus.enRoute)
+            _isActive(item))
           item,
     ];
     return OfficerIncidentsList(
@@ -85,4 +85,8 @@ class OfficerStartTab extends StatelessWidget {
       ],
     );
   }
+
+  bool _isActive(OfficerIncident item) =>
+      item.status == OfficerIncidentStatus.enRoute ||
+      item.status == OfficerIncidentStatus.attending;
 }
