@@ -65,6 +65,14 @@ class OfficerIncident {
   final String? citizenPhone;
   final bool coordinatesProvided;
   final bool reporterCoordinatesProvided;
+
+  /// El punto de envío se muestra únicamente tras aceptar la incidencia.
+  bool get showsReporterLocation =>
+      hasReporterCoordinates &&
+      (status == OfficerIncidentStatus.enRoute ||
+          status == OfficerIncidentStatus.attending ||
+          status == OfficerIncidentStatus.attended);
+
   bool get hasReporterCoordinates =>
       reporterCoordinatesProvided &&
       incident.currentLat.isFinite &&

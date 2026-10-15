@@ -297,7 +297,7 @@ class _OfficerMapScreenState extends State<OfficerMapScreen> {
     }
     final incident = widget.item.incident;
     final destination = LatLng(incident.latitude, incident.longitude);
-    final reporterLocation = widget.item.hasReporterCoordinates
+    final reporterLocation = widget.item.showsReporterLocation
         ? LatLng(incident.currentLat, incident.currentLong)
         : null;
     final markers = {

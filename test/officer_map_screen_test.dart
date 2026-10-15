@@ -23,6 +23,29 @@ OfficerIncident incident({bool coordinates = true}) =>
     });
 
 void main() {
+  test('muestra el punto de envío solo después de aceptar la incidencia', () {
+    for (final status in OfficerIncidentStatus.values) {
+      final json = <String, dynamic>{
+        'status': status.apiValue,
+        'currentLat': -13.66,
+        'currentLong': -73.37,
+      };
+      expect(
+        OfficerIncident.fromJson(json).showsReporterLocation,
+        [
+          OfficerIncidentStatus.enRoute,
+          OfficerIncidentStatus.attending,
+          OfficerIncidentStatus.attended,
+        ].contains(status),
+        reason: status.apiValue,
+      );
+      expect(
+        OfficerIncident.fromJson({...json, 'currentLat': null})
+            .showsReporterLocation,
+        isFalse,
+      );
+    }
+  });
   test('distingue el lugar del reporte y valida sus coordenadas', () {
     final json = <String, dynamic>{
       'latitude': -13.65,
