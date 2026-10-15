@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:sereno_ya/data/models/officer/officer_incident.dart';
+import 'package:sereno_ya/data/models/incident_status.dart';
 import 'package:sereno_ya/data/models/route/route_compare.dart';
 import 'package:sereno_ya/data/repositories/officer/officer_repository.dart';
 import 'package:sereno_ya/data/repositories/route/route_compare_repository.dart';
@@ -144,6 +145,16 @@ OfficerRouteViewModel _model({bool fail = false, bool noGps = false}) {
 }
 
 void main() {
+  test('los estados del sereno usan el contrato de IncidentStatus', () {
+    for (final status in IncidentStatus.values) {
+      final officerStatus = OfficerIncidentStatus.parse(status.apiValue);
+      expect(officerStatus.incidentStatus, status);
+      expect(officerStatus.label, status.label);
+    }
+    expect(OfficerIncidentStatus.parse('ACCEPTED').label, 'Aceptado');
+    expect(OfficerIncidentStatus.parse('ON_SITE').label, 'En recorrido');
+  });
+
   test('decodePolyline decodifica el ejemplo documentado por Google', () {
     final points = decodePolyline(_encoded);
     expect(points, hasLength(3));
@@ -536,10 +547,11 @@ void main() {
     expect(model.arrived, isFalse);
   });
 
-  test('en ON_SITE no vuelve a marcar la llegada', () async {
+  test('en ON_SITE registra la llegada sin reiniciar el recorrido', () async {
     final officerRepository = FakeOfficerRepository();
+    final routes = FakeRouteCompareRepository();
     final model = OfficerRouteViewModel(
-      FakeRouteCompareRepository(),
+      routes,
       _incident(status: 'ON_SITE'),
       locationService: AtSiteLocationService(),
       officerRepository: officerRepository,
@@ -547,8 +559,28 @@ void main() {
     addTearDown(model.dispose);
     await model.load();
     await Future<void>.delayed(Duration.zero);
-    expect(model.canAutoMarkArrival, isFalse);
-    expect(officerRepository.onSiteCalls, 0);
+    expect(model.canAutoMarkArrival, isTrue);
+    expect(routes.compareCalls, 0);
+    expect(officerRepository.onSiteCalls, 1);
+  });
+
+  test('no registra llegada si falla el inicio del recorrido', () async {
+    final repository = FakeRouteCompareRepository()..fail = true;
+    final officer = FakeOfficerRepository();
+    final model = OfficerRouteViewModel(
+      repository,
+      _incident(),
+      locationService: AtSiteLocationService(),
+      officerRepository: officer,
+    );
+    addTearDown(model.dispose);
+    await model.load();
+    expect(officer.onSiteCalls, 0);
+    expect(model.arrived, isFalse);
+    repository.fail = false;
+    await model.load();
+    expect(officer.onSiteCalls, 1);
+    expect(model.arrived, isTrue);
   });
 
   test('un error de llegada se expone y reintenta con el GPS', () async {

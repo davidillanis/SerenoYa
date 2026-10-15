@@ -156,7 +156,7 @@ class OfficerIncidentsViewModel extends ChangeNotifier {
     final statuses = [
       OfficerIncidentStatus.enRoute,
       OfficerIncidentStatus.attending,
-    ].where((status) => reset || _mineStatusHasMore[status] == true);
+    ].where((status) => reset || _mineStatusHasMore[status] == true).toList();
     if (reset) {
       _minePages.updateAll((_, _) => 0);
       _mineStatusHasMore.updateAll((_, _) => true);

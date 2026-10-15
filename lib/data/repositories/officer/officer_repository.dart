@@ -112,13 +112,4 @@ class OfficerRepository {
 }
 
 IncidentStatus? _toIncidentStatus(OfficerIncidentStatus? status) =>
-    switch (status) {
-      null => null,
-      OfficerIncidentStatus.pending => IncidentStatus.requested,
-      OfficerIncidentStatus.enRoute => IncidentStatus.accepted,
-      OfficerIncidentStatus.attending => IncidentStatus.onSite,
-      OfficerIncidentStatus.attended => IncidentStatus.attended,
-      OfficerIncidentStatus.cancelled => IncidentStatus.cancelledByCitizen,
-      OfficerIncidentStatus.expired => IncidentStatus.expired,
-      OfficerIncidentStatus.unknown => null,
-    };
+    status?.incidentStatus;

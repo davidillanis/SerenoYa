@@ -256,6 +256,12 @@ Future<void> openIncidentMap(
   // La llegada automática (`POST /incident/onSite/{id}`) necesita el
   // repositorio de incidentes. Se resuelve desde los view models del sereno
   // cuando el llamador no lo entrega de forma explícita.
+  OfficerIncidentsViewModel? incidentsModel;
+  try {
+    incidentsModel = context.read<OfficerIncidentsViewModel>();
+  } catch (_) {
+    incidentsModel = null;
+  }
   var officerRepo = officerRepository;
   if (officerRepo == null) {
     try {
@@ -287,6 +293,10 @@ Future<void> openIncidentMap(
       ),
     );
   } finally {
+    final started = routeModel?.started == true;
     routeModel?.dispose();
+    if (started && context.mounted) {
+      await incidentsModel?.synchronize(null);
+    }
   }
 }

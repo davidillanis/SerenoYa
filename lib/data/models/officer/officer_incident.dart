@@ -1,17 +1,19 @@
+import 'package:sereno_ya/data/models/incident_status.dart';
 import 'package:sereno_ya/data/models/citizen/incident.dart';
 
 enum OfficerIncidentStatus {
-  pending('REQUESTED', 'Pendiente'),
-  enRoute('ACCEPTED', 'En curso'),
-  attending('ON_SITE', 'Atendiendo'),
-  attended('ATTENDED', 'Atendido'),
-  cancelled('CANCELLED_BY_CITIZEN', 'Cancelado'),
-  expired('EXPIRED', 'Expirado'),
-  unknown('', 'Estado no disponible');
+  pending(IncidentStatus.requested),
+  enRoute(IncidentStatus.accepted),
+  attending(IncidentStatus.onSite),
+  attended(IncidentStatus.attended),
+  cancelled(IncidentStatus.cancelledByCitizen),
+  expired(IncidentStatus.expired),
+  unknown(null);
 
-  const OfficerIncidentStatus(this.apiValue, this.label);
-  final String apiValue;
-  final String label;
+  const OfficerIncidentStatus(this.incidentStatus);
+  final IncidentStatus? incidentStatus;
+  String get apiValue => incidentStatus?.apiValue ?? '';
+  String get label => incidentStatus?.label ?? 'Estado no disponible';
 
   static OfficerIncidentStatus parse(String value) => values.firstWhere(
     (status) => status.apiValue == value,

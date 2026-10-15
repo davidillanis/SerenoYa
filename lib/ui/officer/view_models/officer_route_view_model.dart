@@ -63,6 +63,7 @@ class OfficerRouteViewModel extends ChangeNotifier {
   /// llamó a `POST /incident/incident-compare/{id}`. Permite diferir la
   /// llamada a la API hasta que el sereno lo pida explícitamente.
   bool _started = false;
+  bool _routeStarted = false;
   bool get started => _started;
 
   /// La comparación de rutas solo aplica en aceptados o en curso y solo
@@ -81,7 +82,7 @@ class OfficerRouteViewModel extends ChangeNotifier {
   /// iniciado el seguimiento y con repositorio de incidentes disponible.
   bool get canAutoMarkArrival =>
       _officerRepository != null &&
-      item.status == OfficerIncidentStatus.enRoute &&
+      (item.status == OfficerIncidentStatus.attending || _routeStarted) &&
       item.hasCoordinates &&
       _started;
 
@@ -117,11 +118,16 @@ class OfficerRouteViewModel extends ChangeNotifier {
       _notify();
       unawaited(_checkArrival(current));
     }, onError: (_) {});
-    // Detección automática: si ya inició en el lugar, se registra sin botón.
-    unawaited(_checkArrival(position));
     if (!routeEnabled) {
       loading = false;
       _notify();
+      return;
+    }
+    // ON_SITE ya inició en el backend: no se puede comparar otra vez.
+    if (item.status == OfficerIncidentStatus.attending || _routeStarted) {
+      loading = false;
+      _notify();
+      await _checkArrival(origin!);
       return;
     }
     final result = await _repository.compare(
@@ -138,12 +144,14 @@ class OfficerRouteViewModel extends ChangeNotifier {
     if (_disposed) return;
     loading = false;
     if (result.isSuccess) {
+      _routeStarted = true;
       _options = result.data!;
       _selected = 0;
     } else {
       error = result.failure!.message;
     }
     _notify();
+    if (result.isSuccess) await _checkArrival(origin!);
   }
 
   void select(int index) {
