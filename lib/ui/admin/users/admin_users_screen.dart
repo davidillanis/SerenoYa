@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:sereno_ya/data/models/admin/admin_user_roles_update_request.dart';
@@ -34,13 +33,6 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
     context.read<AdminUsersViewModel>().loadMore();
   }
 
-  Future<void> _openCreateUser() async {
-    final created = await context.push<bool>(RouteNames.adminUserCreate);
-    if (!mounted || created != true) return;
-    if (_scrollController.hasClients) _scrollController.jumpTo(0);
-    await context.read<AdminUsersViewModel>().loadInitial(forceRefresh: true);
-  }
-
   Future<void> _openRoleEditor(AdminUserSummary user) async {
     final request = await showDialog<AdminUserRolesUpdateRequest>(
       context: context,
@@ -63,6 +55,12 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
     );
   }
 
+  Future<void> _openUserEditor(AdminUserSummary user) async {
+    final updated = await context.push<bool>(RouteNames.adminUserEdit(user.id));
+    if (!mounted || updated != true) return;
+    await context.read<AdminUsersViewModel>().loadInitial(forceRefresh: true);
+  }
+
   @override
   void dispose() {
     _scrollController
@@ -74,28 +72,9 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
   @override
   Widget build(BuildContext context) {
     final viewModel = context.watch<AdminUsersViewModel>();
-    final compactScreen = MediaQuery.sizeOf(context).width < 600;
-    return Scaffold(
-      backgroundColor: context.appColors.background,
-      appBar: AppBar(
-        title: const Text('Usuarios'),
-        actions: [
-          if (!compactScreen)
-            IconButton(
-              tooltip: 'Registrar usuario',
-              onPressed: viewModel.isLoadingInitial ? null : _openCreateUser,
-              icon: const Icon(Icons.person_add_alt_1_outlined),
-            ),
-          IconButton(
-            tooltip: 'Actualizar usuarios',
-            onPressed: viewModel.isLoadingInitial
-                ? null
-                : () => viewModel.loadInitial(forceRefresh: true),
-            icon: const Icon(Icons.refresh),
-          ),
-        ],
-      ),
-      body: ResponsiveBody(
+    return ColoredBox(
+      color: context.appColors.background,
+      child: ResponsiveBody(
         maxWidth: 1200,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -112,13 +91,6 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
           ],
         ),
       ),
-      floatingActionButton: compactScreen
-          ? FloatingActionButton.extended(
-              onPressed: viewModel.isLoadingInitial ? null : _openCreateUser,
-              icon: const Icon(Icons.person_add_alt_1_outlined),
-              label: const Text('Registrar'),
-            )
-          : null,
     );
   }
 
@@ -181,6 +153,7 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
                 compact: compact,
                 updating:
                     viewModel.updatingUserId == viewModel.users[userIndex].id,
+                onEditUser: () => _openUserEditor(viewModel.users[userIndex]),
                 onEditRoles: () => _openRoleEditor(viewModel.users[userIndex]),
               );
             },
@@ -224,6 +197,7 @@ class _UsersHeader extends StatelessWidget {
             width: compact ? double.infinity : 240,
             child: DropdownButtonFormField<AdminUserRoleFilter?>(
               initialValue: viewModel.roleFilter,
+              isExpanded: true,
               decoration: const InputDecoration(
                 labelText: 'Filtrar por rol',
                 prefixIcon: Icon(Icons.filter_alt_outlined),
@@ -278,7 +252,7 @@ class _UserTableHeader extends StatelessWidget {
           Expanded(flex: 3, child: Text('ROLES', style: style)),
           Expanded(flex: 2, child: Text('ESTADO', style: style)),
           Expanded(flex: 2, child: Text('AVISOS', style: style)),
-          SizedBox(width: 56, child: Text('ROL', style: style)),
+          SizedBox(width: 96, child: Text('ACCIONES', style: style)),
         ],
       ),
     );
@@ -290,12 +264,14 @@ class _UserItem extends StatelessWidget {
     required this.user,
     required this.compact,
     required this.updating,
+    required this.onEditUser,
     required this.onEditRoles,
   });
 
   final AdminUserSummary user;
   final bool compact;
   final bool updating;
+  final VoidCallback onEditUser;
   final VoidCallback onEditRoles;
 
   bool get _hasProtectedRole =>
@@ -321,10 +297,11 @@ class _UserItem extends StatelessWidget {
                 Expanded(child: _UserIdentity(user: user)),
                 _AccountStatus(enabled: user.enabled),
                 const SizedBox(width: 4),
-                _EditRolesButton(
+                _UserActions(
                   updating: updating,
                   protected: _hasProtectedRole,
-                  onPressed: onEditRoles,
+                  onEditUser: onEditUser,
+                  onEditRoles: onEditRoles,
                 ),
               ],
             ),
@@ -376,11 +353,12 @@ class _UserItem extends StatelessWidget {
             child: _NotificationStatus(enabled: user.notificationsEnabled),
           ),
           SizedBox(
-            width: 56,
-            child: _EditRolesButton(
+            width: 96,
+            child: _UserActions(
               updating: updating,
               protected: _hasProtectedRole,
-              onPressed: onEditRoles,
+              onEditUser: onEditUser,
+              onEditRoles: onEditRoles,
             ),
           ),
         ],
@@ -389,30 +367,46 @@ class _UserItem extends StatelessWidget {
   }
 }
 
-class _EditRolesButton extends StatelessWidget {
-  const _EditRolesButton({
+class _UserActions extends StatelessWidget {
+  const _UserActions({
     required this.updating,
     required this.protected,
-    required this.onPressed,
+    required this.onEditUser,
+    required this.onEditRoles,
   });
 
   final bool updating;
   final bool protected;
-  final VoidCallback onPressed;
+  final VoidCallback onEditUser;
+  final VoidCallback onEditRoles;
 
   @override
   Widget build(BuildContext context) {
-    return IconButton(
-      tooltip: protected
-          ? 'Solo desarrollo puede modificar este usuario'
-          : 'Editar roles',
-      onPressed: protected || updating ? null : onPressed,
-      icon: updating
-          ? const SizedBox.square(
-              dimension: 18,
-              child: CircularProgressIndicator(strokeWidth: 2),
-            )
-          : const Icon(Icons.manage_accounts_outlined),
+    if (updating) {
+      return const Center(
+        child: SizedBox.square(
+          dimension: 18,
+          child: CircularProgressIndicator(strokeWidth: 2),
+        ),
+      );
+    }
+    final tooltip = protected
+        ? 'Solo desarrollo puede modificar este usuario'
+        : null;
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        IconButton(
+          tooltip: tooltip ?? 'Editar información',
+          onPressed: protected ? null : onEditUser,
+          icon: const Icon(Icons.edit_outlined),
+        ),
+        IconButton(
+          tooltip: tooltip ?? 'Editar roles',
+          onPressed: protected ? null : onEditRoles,
+          icon: const Icon(Icons.manage_accounts_outlined),
+        ),
+      ],
     );
   }
 }
@@ -661,40 +655,14 @@ class _EditRolesDialogState extends State<_EditRolesDialog> {
   static const _officerRole = 'OFFICER_SERENO';
 
   final _formKey = GlobalKey<FormState>();
-  final _officerLatitude = TextEditingController();
-  final _officerLongitude = TextEditingController();
-  final _citizenLatitude = TextEditingController();
-  final _citizenLongitude = TextEditingController();
-  late final Set<String> _initialRoles;
   late final Set<String> _selectedRoles;
-
-  bool get _addingOfficer =>
-      _selectedRoles.contains(_officerRole) &&
-      !_initialRoles.contains(_officerRole);
-  bool get _addingCitizen =>
-      _selectedRoles.contains(_citizenRole) &&
-      !_initialRoles.contains(_citizenRole);
 
   @override
   void initState() {
     super.initState();
-    _initialRoles = widget.user.roles.toSet();
-    _selectedRoles = _initialRoles
+    _selectedRoles = widget.user.roles
         .where(const {_citizenRole, _officerRole}.contains)
         .toSet();
-  }
-
-  @override
-  void dispose() {
-    for (final controller in [
-      _officerLatitude,
-      _officerLongitude,
-      _citizenLatitude,
-      _citizenLongitude,
-    ]) {
-      controller.dispose();
-    }
-    super.dispose();
   }
 
   void _toggle(String role, bool selected) {
@@ -712,18 +680,6 @@ class _EditRolesDialogState extends State<_EditRolesDialog> {
       AdminUserRolesUpdateRequest(
         userId: widget.user.id,
         roles: _selectedRoles,
-        officerLatitude: _addingOfficer
-            ? _parseCoordinate(_officerLatitude.text)
-            : null,
-        officerLongitude: _addingOfficer
-            ? _parseCoordinate(_officerLongitude.text)
-            : null,
-        citizenLatitude: _addingCitizen
-            ? _parseCoordinate(_citizenLatitude.text)
-            : null,
-        citizenLongitude: _addingCitizen
-            ? _parseCoordinate(_citizenLongitude.text)
-            : null,
       ),
     );
   }
@@ -766,30 +722,6 @@ class _EditRolesDialogState extends State<_EditRolesDialog> {
                     'Selecciona al menos un rol.',
                     style: TextStyle(color: context.appColors.error),
                   ),
-                if (_addingOfficer) ...[
-                  const SizedBox(height: 16),
-                  const _LocationHeading(
-                    title: 'Ubicación inicial de Serenazgo',
-                    message: 'Se solicita una sola vez para crear su perfil operativo.',
-                  ),
-                  const SizedBox(height: 12),
-                  _CoordinateFields(
-                    latitude: _officerLatitude,
-                    longitude: _officerLongitude,
-                  ),
-                ],
-                if (_addingCitizen) ...[
-                  const SizedBox(height: 16),
-                  const _LocationHeading(
-                    title: 'Ubicación inicial del ciudadano',
-                    message: 'Se solicita una sola vez para crear su perfil ciudadano.',
-                  ),
-                  const SizedBox(height: 12),
-                  _CoordinateFields(
-                    latitude: _citizenLatitude,
-                    longitude: _citizenLongitude,
-                  ),
-                ],
               ],
             ),
           ),
@@ -804,90 +736,6 @@ class _EditRolesDialogState extends State<_EditRolesDialog> {
       ],
     );
   }
-}
-
-class _LocationHeading extends StatelessWidget {
-  const _LocationHeading({required this.title, required this.message});
-
-  final String title;
-  final String message;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(title, style: Theme.of(context).textTheme.titleSmall),
-        const SizedBox(height: 4),
-        Text(message, style: TextStyle(color: context.appColors.textSecondary)),
-      ],
-    );
-  }
-}
-
-class _CoordinateFields extends StatelessWidget {
-  const _CoordinateFields({required this.latitude, required this.longitude});
-
-  final TextEditingController latitude;
-  final TextEditingController longitude;
-
-  @override
-  Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final fields = [
-          TextFormField(
-            controller: latitude,
-            decoration: const InputDecoration(labelText: 'Latitud'),
-            keyboardType: const TextInputType.numberWithOptions(
-              signed: true,
-              decimal: true,
-            ),
-            inputFormatters: [_coordinateFormatter],
-            validator: (value) => _validateCoordinate(value, -90, 90),
-          ),
-          TextFormField(
-            controller: longitude,
-            decoration: const InputDecoration(labelText: 'Longitud'),
-            keyboardType: const TextInputType.numberWithOptions(
-              signed: true,
-              decimal: true,
-            ),
-            inputFormatters: [_coordinateFormatter],
-            validator: (value) => _validateCoordinate(value, -180, 180),
-          ),
-        ];
-        if (constraints.maxWidth < 420) {
-          return Column(
-            children: [fields.first, const SizedBox(height: 12), fields.last],
-          );
-        }
-        return Row(
-          children: [
-            Expanded(child: fields.first),
-            const SizedBox(width: 12),
-            Expanded(child: fields.last),
-          ],
-        );
-      },
-    );
-  }
-}
-
-final _coordinateFormatter = FilteringTextInputFormatter.allow(
-  RegExp(r'^-?\d*[\.,]?\d*'),
-);
-
-double _parseCoordinate(String value) =>
-    double.parse(value.trim().replaceAll(',', '.'));
-
-String? _validateCoordinate(String? value, double min, double max) {
-  final number = value == null
-      ? null
-      : double.tryParse(value.replaceAll(',', '.'));
-  if (number == null) return 'Ingresa un valor válido';
-  if (number < min || number > max) return 'Debe estar entre $min y $max';
-  return null;
 }
 
 String _roleLabel(String role) => switch (role) {

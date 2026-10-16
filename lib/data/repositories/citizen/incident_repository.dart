@@ -16,9 +16,8 @@ class IncidentRepository {
     required IncidentApiService incidentApiService,
     required IncidentLocalDataSource localDataSource,
   }) : _apiService = apiService,
-       _localDataSource = localDataSource, 
-       _incidentApiService=incidentApiService;
-
+       _localDataSource = localDataSource,
+       _incidentApiService = incidentApiService;
 
   final IncidentsApiService _apiService;
   final IncidentApiService _incidentApiService;
@@ -74,6 +73,16 @@ class IncidentRepository {
   int get availableIncidentsNextPage => _availableIncidentsNextPage;
   bool get hasMoreAvailableIncidents =>
       _availableIncidentsNextPage < _availableIncidentsTotalPages;
+
+  Future<void> invalidateCategoriesCache() async {
+    _cachedCategories = null;
+    _categoriesRequest = null;
+    final localDataSource = _localDataSource;
+    if (localDataSource is IncidentCategoryCacheInvalidator) {
+      await (localDataSource as IncidentCategoryCacheInvalidator)
+          .clearCachedCategories();
+    }
+  }
 
   Future<Result<List<IncidentCategory>>> getCategories() async {
     if (_cachedCategories != null) {

@@ -13,6 +13,9 @@ abstract final class RouteNames {
   static const profile = '/profile';
   static const adminUsers = '/admin/users';
   static const adminUserCreate = '/admin/users/new';
+  static const adminCategoryCreate = '/admin/categories/new';
+
+  static String adminUserEdit(String userId) => '/admin/users/$userId/edit';
 
   static String incidentDetail(String incidentId) =>
       '/citizen/incidents/$incidentId';

@@ -1,4 +1,6 @@
 import 'package:dio/dio.dart';
+import 'package:sereno_ya/data/models/admin/admin_category_create_request.dart';
+import 'package:sereno_ya/data/models/admin/admin_category_update_request.dart';
 import 'package:sereno_ya/data/models/officer/officer_incident.dart';
 import 'package:sereno_ya/data/models/auth/api_response_dto.dart';
 import 'package:sereno_ya/data/models/citizen/incident_category.dart';
@@ -80,14 +82,17 @@ class IncidentsApiService {
         (value) => OfficerIncident.fromJson(_asJsonMap(value)),
       );
 
-  Future<ApiResponseDto<PageResponse<IncidentCategory>>> getCategories() async {
+  Future<ApiResponseDto<PageResponse<IncidentCategory>>> getCategories({
+    int page = 0,
+    int size = 100,
+  }) async {
     return _request(
       () => _dio.get<dynamic>(
         '/incidents/categories/list',
-        queryParameters: const {
-          'fields': 'id,name,description',
-          'page': 0,
-          'size': 100,
+        queryParameters: {
+          'fields': 'id,name,description,enabled',
+          'page': page,
+          'size': size,
           'sortBy': 'name',
           'direction': 'ASC',
         },
@@ -98,6 +103,27 @@ class IncidentsApiService {
       ),
     );
   }
+
+  Future<ApiResponseDto<IncidentCategory>> createCategory(
+    AdminCategoryCreateRequest request,
+  ) => _request(
+    () => _dio.post<dynamic>(
+      '/incidents/categories/create',
+      data: request.toJson(),
+    ),
+    (value) => IncidentCategory.fromJson(_asJsonMap(value)),
+  );
+
+  Future<ApiResponseDto<IncidentCategory>> updateCategory(
+    String categoryId,
+    AdminCategoryUpdateRequest request,
+  ) => _request(
+    () => _dio.put<dynamic>(
+      '/incidents/categories/$categoryId',
+      data: request.toJson(),
+    ),
+    (value) => IncidentCategory.fromJson(_asJsonMap(value)),
+  );
 
   Future<ApiResponseDto<Incident>> createIncident(
     IncidentCreateRequest request,

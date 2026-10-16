@@ -1,8 +1,10 @@
 import 'package:dio/dio.dart';
 import 'package:sereno_ya/data/models/admin/admin_created_user.dart';
 import 'package:sereno_ya/data/models/admin/admin_user_create_request.dart';
+import 'package:sereno_ya/data/models/admin/admin_user_detail.dart';
 import 'package:sereno_ya/data/models/admin/admin_user_summary.dart';
 import 'package:sereno_ya/data/models/admin/admin_user_roles_update_request.dart';
+import 'package:sereno_ya/data/models/admin/admin_user_update_request.dart';
 import 'package:sereno_ya/data/models/auth/api_response_dto.dart';
 import 'package:sereno_ya/data/models/page_dto.dart';
 import 'package:sereno_ya/models/auth/auth_failure.dart';
@@ -42,6 +44,23 @@ class AdminUserApiService {
   ) => _request(
     () => _dio.post<dynamic>('/user-role/create', data: request.toJson()),
     (value) => AdminCreatedUser.fromJson(_asJsonMap(value)),
+  );
+
+  Future<ApiResponseDto<AdminUserDetail>> getUser(String userId) => _request(
+    () => _dio.get<dynamic>('/user-role/byId/$userId'),
+    (value) => AdminUserDetail.fromJson(_asJsonMap(value)),
+  );
+
+  Future<ApiResponseDto<String>> updateUser(
+    String userId,
+    AdminUserUpdateRequest request,
+  ) => _request(
+    () => _dio.put<dynamic>(
+      '/user-role/update-admin',
+      queryParameters: {'id': userId},
+      data: request.toJson(),
+    ),
+    (value) => value?.toString() ?? '',
   );
 
   Future<ApiResponseDto<String>> updateRoles(

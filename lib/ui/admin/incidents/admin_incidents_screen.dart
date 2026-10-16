@@ -5,7 +5,6 @@ import 'package:sereno_ya/ui/admin/incidents/view_models/admin_incidents_view_mo
 import 'package:sereno_ya/ui/admin/incidents/widgets/admin_incident_item.dart';
 import 'package:sereno_ya/ui/admin/incidents/widgets/admin_incident_filters.dart';
 import 'package:sereno_ya/ui/core/theme/colors.dart';
-import 'package:sereno_ya/ui/core/widgets/app_drawer.dart';
 import 'package:sereno_ya/ui/core/widgets/responsive_body.dart';
 import 'package:sereno_ya/routing/route_names.dart';
 
@@ -45,27 +44,9 @@ class _AdminIncidentsScreenState extends State<AdminIncidentsScreen> {
   @override
   Widget build(BuildContext context) {
     final viewModel = context.watch<AdminIncidentsViewModel>();
-    return Scaffold(
-      backgroundColor: context.appColors.background,
-      appBar: AppBar(
-        title: const Text('Administración'),
-        actions: [
-          IconButton(
-            tooltip: 'Gestionar usuarios',
-            onPressed: () => context.push(RouteNames.adminUsers),
-            icon: const Icon(Icons.manage_accounts_outlined),
-          ),
-          IconButton(
-            tooltip: 'Actualizar incidencias',
-            onPressed: viewModel.isLoadingInitial
-                ? null
-                : () => viewModel.loadInitial(forceRefresh: true),
-            icon: const Icon(Icons.refresh),
-          ),
-        ],
-      ),
-      drawer: const AppDrawer(),
-      body: ResponsiveBody(
+    return ColoredBox(
+      color: context.appColors.background,
+      child: ResponsiveBody(
         maxWidth: 1200,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,

@@ -94,6 +94,7 @@ class AppDependencies {
       incidentRepository: incidentRepository,
       storageService: imageApiService,
       profileApiService: profileApiService,
+      incidentsApiService: incidentsApiService,
       adminUserApiService: adminUserApiService,
       routerNotifier: dependencies.routerNotifier,
     );

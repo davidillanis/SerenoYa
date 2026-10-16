@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:sereno_ya/data/repositories/auth/auth_repository.dart';
 import 'package:sereno_ya/data/services/api/admin/admin_user_api_service.dart';
+import 'package:sereno_ya/data/services/api/citizen/incidents_api_service.dart';
 import 'package:sereno_ya/data/services/api/file/image_api_service.dart';
 import 'package:sereno_ya/data/services/api/profile/profile_api_service.dart';
 import 'package:sereno_ya/models/auth/auth_state.dart';
@@ -37,11 +38,15 @@ import 'package:sereno_ya/models/auth/user_role.dart';
 import 'package:sereno_ya/ui/officer/officer_home_screen.dart';
 import 'package:sereno_ya/ui/officer/view_models/officer_incidents_view_model.dart';
 import 'package:sereno_ya/ui/admin/incidents/admin_incident_detail_screen.dart';
-import 'package:sereno_ya/ui/admin/incidents/admin_incidents_screen.dart';
+import 'package:sereno_ya/ui/admin/admin_home_screen.dart';
+import 'package:sereno_ya/ui/admin/categories/view_models/admin_categories_view_model.dart';
 import 'package:sereno_ya/ui/admin/incidents/view_models/admin_incidents_view_model.dart';
+import 'package:sereno_ya/ui/admin/categories/admin_category_create_screen.dart';
+import 'package:sereno_ya/ui/admin/categories/view_models/admin_category_create_view_model.dart';
 import 'package:sereno_ya/ui/admin/users/admin_user_create_screen.dart';
-import 'package:sereno_ya/ui/admin/users/admin_users_screen.dart';
+import 'package:sereno_ya/ui/admin/users/admin_user_edit_screen.dart';
 import 'package:sereno_ya/ui/admin/users/view_models/admin_user_create_view_model.dart';
+import 'package:sereno_ya/ui/admin/users/view_models/admin_user_edit_view_model.dart';
 import 'package:sereno_ya/ui/admin/users/view_models/admin_users_view_model.dart';
 
 GoRouter createAppRouter({
@@ -51,6 +56,7 @@ GoRouter createAppRouter({
   required IncidentRepository incidentRepository,
   required OfficerRepository officerRepository,
   required AdminUserApiService adminUserApiService,
+  required IncidentsApiService incidentsApiService,
   required StorageService storageService,
   required ProfileApiService profileApiService,
   required AuthRouterNotifier routerNotifier,
@@ -216,17 +222,30 @@ GoRouter createAppRouter({
       ),
       GoRoute(
         path: RouteNames.admin,
-        builder: (_, _) => ChangeNotifierProvider(
-          create: (context) => AdminIncidentsViewModel(
-            incidentRepository,
-            cacheOwnerId: context
-                .read<SessionViewModel>()
-                .state
-                .session
-                ?.user
-                .id,
-          ),
-          child: const AdminIncidentsScreen(),
+        builder: (_, _) => MultiProvider(
+          providers: [
+            ChangeNotifierProvider(
+              create: (context) => AdminIncidentsViewModel(
+                incidentRepository,
+                cacheOwnerId: context
+                    .read<SessionViewModel>()
+                    .state
+                    .session
+                    ?.user
+                    .id,
+              ),
+            ),
+            ChangeNotifierProvider(
+              create: (_) => AdminCategoriesViewModel(
+                incidentsApiService,
+                incidentRepository,
+              ),
+            ),
+            ChangeNotifierProvider(
+              create: (_) => AdminUsersViewModel(adminUserApiService),
+            ),
+          ],
+          child: const AdminHomeScreen(),
         ),
       ),
       GoRoute(
@@ -248,9 +267,30 @@ GoRouter createAppRouter({
       ),
       GoRoute(
         path: RouteNames.adminUsers,
-        builder: (_, _) => ChangeNotifierProvider(
-          create: (_) => AdminUsersViewModel(adminUserApiService),
-          child: const AdminUsersScreen(),
+        builder: (_, _) => MultiProvider(
+          providers: [
+            ChangeNotifierProvider(
+              create: (context) => AdminIncidentsViewModel(
+                incidentRepository,
+                cacheOwnerId: context
+                    .read<SessionViewModel>()
+                    .state
+                    .session
+                    ?.user
+                    .id,
+              ),
+            ),
+            ChangeNotifierProvider(
+              create: (_) => AdminCategoriesViewModel(
+                incidentsApiService,
+                incidentRepository,
+              ),
+            ),
+            ChangeNotifierProvider(
+              create: (_) => AdminUsersViewModel(adminUserApiService),
+            ),
+          ],
+          child: const AdminHomeScreen(initialIndex: 2),
         ),
       ),
       GoRoute(
@@ -258,6 +298,26 @@ GoRouter createAppRouter({
         builder: (_, _) => ChangeNotifierProvider(
           create: (_) => AdminUserCreateViewModel(adminUserApiService),
           child: const AdminUserCreateScreen(),
+        ),
+      ),
+      GoRoute(
+        path: '${RouteNames.adminUsers}/:userId/edit',
+        builder: (_, state) => ChangeNotifierProvider(
+          create: (_) => AdminUserEditViewModel(
+            adminUserApiService,
+            state.pathParameters['userId']!,
+          ),
+          child: const AdminUserEditScreen(),
+        ),
+      ),
+      GoRoute(
+        path: RouteNames.adminCategoryCreate,
+        builder: (_, _) => ChangeNotifierProvider(
+          create: (_) => AdminCategoryCreateViewModel(
+            incidentsApiService,
+            incidentRepository,
+          ),
+          child: const AdminCategoryCreateScreen(),
         ),
       ),
       GoRoute(
