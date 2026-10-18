@@ -63,7 +63,34 @@ class _OfficerMapScreenState extends State<OfficerMapScreen> {
             if (routeModel != null && widget.item.hasCoordinates)
               ListenableBuilder(
                 listenable: routeModel,
-                builder: (context, _) => _routeSection(context, routeModel),
+                builder: (context, _) => Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _routeSection(context, routeModel),
+                    if (routeModel.arrived)
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                        child: FilledButton.icon(
+                          onPressed: () =>
+                              Navigator.of(context)
+                                  .popUntil((route) => route.isFirst),
+                          icon: const Icon(Icons.home_outlined),
+                          label: const Text('Regresar al inicio'),
+                        ),
+                      )
+                    else if (routeModel.routeEnabled && routeModel.tracking)
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                        child: OutlinedButton.icon(
+                          onPressed: routeModel.markingArrival
+                              ? null
+                              : routeModel.stopTracking,
+                          icon: const Icon(Icons.stop_circle_outlined),
+                          label: const Text('Detener seguimiento'),
+                        ),
+                      ),
+                  ],
+                ),
               ),
             Expanded(
               child: routeModel == null
@@ -103,7 +130,7 @@ class _OfficerMapScreenState extends State<OfficerMapScreen> {
             ),
             const SizedBox(height: 8),
             FilledButton.icon(
-              onPressed: routes.load,
+              onPressed: routes.canStart ? routes.load : null,
               icon: const Icon(Icons.navigation_outlined),
               label: const Text('Iniciar'),
             ),

@@ -35,6 +35,9 @@ class OfficerRouteViewModel extends ChangeNotifier {
   final double arrivalRadiusMeters;
   StreamSubscription<LatLng>? _watch;
   bool _disposed = false;
+  int _session = 0;
+  bool _compareInProgress = false;
+  bool get canStart => !_compareInProgress;
 
   List<RouteOption> _options = [];
   List<RouteOption> get options => List.unmodifiable(_options);
@@ -64,7 +67,9 @@ class OfficerRouteViewModel extends ChangeNotifier {
   /// llamada a la API hasta que el sereno lo pida explícitamente.
   bool _started = false;
   bool _routeStarted = false;
+  bool _tracking = false;
   bool get started => _started;
+  bool get tracking => _tracking;
 
   /// La comparación de rutas solo aplica en aceptados o en curso y solo
   /// después de presionar «Iniciar».
@@ -73,7 +78,7 @@ class OfficerRouteViewModel extends ChangeNotifier {
 
   bool get needsStart =>
       routeEnabled &&
-      !_started &&
+      !_tracking &&
       !loading &&
       error == null &&
       _options.isEmpty;
@@ -84,11 +89,15 @@ class OfficerRouteViewModel extends ChangeNotifier {
       _officerRepository != null &&
       (item.status == OfficerIncidentStatus.attending || _routeStarted) &&
       item.hasCoordinates &&
-      _started;
+      _tracking;
 
   Future<void> load() async {
-    if (loading || _disposed) return;
-    if (routeEnabled) _started = true;
+    if (loading || _disposed || _compareInProgress) return;
+    final session = ++_session;
+    if (routeEnabled) {
+      _started = true;
+      _tracking = true;
+    }
     loading = true;
     error = null;
     _notify();
@@ -96,24 +105,24 @@ class OfficerRouteViewModel extends ChangeNotifier {
     try {
       position = await _locationService.currentLocation();
     } on LocationFailure catch (failure) {
-      if (_disposed) return;
+      if (_disposed || session != _session) return;
       loading = false;
       error = failure.message;
       _notify();
       return;
     } catch (_) {
-      if (_disposed) return;
+      if (_disposed || session != _session) return;
       loading = false;
       error = 'No se pudo obtener tu ubicación. Vuelve a intentar.';
       _notify();
       return;
     }
-    if (_disposed) return;
+    if (_disposed || session != _session) return;
     origin = position;
     // Seguimiento efectivo: el marcador del sereno se mueve con él.
     // La comparación se calculó con el punto de partida y no se repite.
     _watch ??= _locationService.watchLocation().listen((current) {
-      if (_disposed) return;
+      if (_disposed || session != _session) return;
       origin = current;
       _notify();
       unawaited(_checkArrival(current));
@@ -130,6 +139,7 @@ class OfficerRouteViewModel extends ChangeNotifier {
       await _checkArrival(origin!);
       return;
     }
+    _compareInProgress = true;
     final result = await _repository.compare(
       incidentId: item.id,
       origin: RouteCoordinate(
@@ -141,10 +151,17 @@ class OfficerRouteViewModel extends ChangeNotifier {
         longitude: item.incident.longitude,
       ),
     );
+    _compareInProgress = false;
+    // La petición puede haber llegado al servidor aun si se detuvo el GPS.
+    // No se vuelve a iniciar el recorrido en el backend al reanudar.
+    if (result.isSuccess) _routeStarted = true;
     if (_disposed) return;
+    if (session != _session) {
+      _notify();
+      return;
+    }
     loading = false;
     if (result.isSuccess) {
-      _routeStarted = true;
       _options = result.data!;
       _selected = 0;
     } else {
@@ -152,6 +169,22 @@ class OfficerRouteViewModel extends ChangeNotifier {
     }
     _notify();
     if (result.isSuccess) await _checkArrival(origin!);
+  }
+
+  /// Detiene solo el seguimiento local; no cancela el incidente en el servidor.
+  void stopTracking() {
+    if (_disposed || !_tracking || _arrivalInProgress) return;
+    _session++;
+    _tracking = false;
+    _watch?.cancel();
+    _watch = null;
+    origin = null;
+    _options = [];
+    _selected = 0;
+    loading = false;
+    error = null;
+    arrivalError = null;
+    _notify();
   }
 
   void select(int index) {
@@ -181,7 +214,7 @@ class OfficerRouteViewModel extends ChangeNotifier {
     arrivalError = null;
     _notify();
     final result = await _officerRepository!.markOnSite(id: item.id);
-    if (_disposed) return;
+    if (_disposed || !_tracking) return;
     _arrivalInProgress = false;
     if (result.isSuccess) {
       arrived = true;

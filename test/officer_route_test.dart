@@ -58,6 +58,7 @@ OfficerIncident _incident({String status = 'ACCEPTED'}) =>
 class FakeRouteCompareRepository extends RouteCompareRepository {
   FakeRouteCompareRepository() : super(IncidentApiService(Dio()));
   bool fail = false;
+  Completer<void>? pending;
   int compareCalls = 0;
   String? lastIncidentId;
   RouteCoordinate? lastOrigin;
@@ -70,6 +71,7 @@ class FakeRouteCompareRepository extends RouteCompareRepository {
     required RouteCoordinate destination,
   }) async {
     compareCalls++;
+    await pending?.future;
     lastIncidentId = incidentId;
     lastOrigin = origin;
     lastDestination = destination;
@@ -83,7 +85,7 @@ class FakeRouteCompareRepository extends RouteCompareRepository {
 }
 
 class FakeLocationService extends CitizenLocationService {
-  final movements = StreamController<LatLng>();
+  final movements = StreamController<LatLng>.broadcast();
 
   @override
   Future<LatLng> currentLocation() async => const LatLng(-13.63, -73.35);
@@ -363,6 +365,60 @@ void main() {
     expect(repository.compareCalls, 1);
   });
 
+  test('detener el seguimiento limpia la ruta y permite reanudar sin comparar de nuevo', () async {
+    final location = FakeLocationService();
+    addTearDown(location.movements.close);
+    final repository = FakeRouteCompareRepository();
+    final model = OfficerRouteViewModel(
+      repository,
+      _incident(),
+      locationService: location,
+    );
+    addTearDown(model.dispose);
+    await model.load();
+    expect(location.movements.hasListener, isTrue);
+    model.stopTracking();
+    expect(model.tracking, isFalse);
+    expect(model.needsStart, isTrue);
+    expect(model.origin, isNull);
+    expect(model.options, isEmpty);
+    expect(location.movements.hasListener, isFalse);
+    await model.load();
+    expect(model.tracking, isTrue);
+    expect(model.origin, isNotNull);
+    expect(location.movements.hasListener, isTrue);
+    expect(repository.compareCalls, 1);
+  });
+
+  test(
+    'detener durante la comparación ignora la respuesta y evita duplicarla',
+    () async {
+      final repository = FakeRouteCompareRepository()
+        ..pending = Completer<void>();
+      final model = OfficerRouteViewModel(
+        repository,
+        _incident(),
+        locationService: FakeLocationService(),
+      );
+      addTearDown(model.dispose);
+      final loading = model.load();
+      await Future<void>.delayed(Duration.zero);
+      expect(repository.compareCalls, 1);
+      model.stopTracking();
+      expect(model.needsStart, isTrue);
+      expect(model.canStart, isFalse);
+      await model.load();
+      expect(repository.compareCalls, 1);
+      repository.pending!.complete();
+      await loading;
+      expect(model.options, isEmpty);
+      expect(model.canStart, isTrue);
+      await model.load();
+      expect(repository.compareCalls, 1);
+      expect(model.tracking, isTrue);
+    },
+  );
+
   test('en pendiente no se pide iniciar la comparación', () {
     final model = OfficerRouteViewModel(
       FakeRouteCompareRepository(),
@@ -400,6 +456,37 @@ void main() {
     expect(find.text('Iniciar'), findsNothing);
     expect(find.text('Ruta desde tu ubicación'), findsOneWidget);
     expect(find.textContaining('más rápida'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('el mapa permite detener y reanudar el seguimiento', (
+    tester,
+  ) async {
+    final repository = FakeRouteCompareRepository();
+    final model = OfficerRouteViewModel(
+      repository,
+      _incident(),
+      locationService: FakeLocationService(),
+    );
+    addTearDown(model.dispose);
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: buildAppTheme(Brightness.light, ThemeVariant.normal),
+        home: OfficerMapScreen(item: _incident(), routeModel: model),
+      ),
+    );
+    expect(find.text('Detener seguimiento'), findsNothing);
+    await tester.tap(find.text('Iniciar'));
+    await tester.pumpAndSettle();
+    expect(find.text('Detener seguimiento'), findsOneWidget);
+    await tester.tap(find.text('Detener seguimiento'));
+    await tester.pumpAndSettle();
+    expect(find.text('Iniciar'), findsOneWidget);
+    expect(find.text('Ruta desde tu ubicación'), findsNothing);
+    await tester.tap(find.text('Iniciar'));
+    await tester.pumpAndSettle();
+    expect(find.text('Detener seguimiento'), findsOneWidget);
+    expect(repository.compareCalls, 1);
     expect(tester.takeException(), isNull);
   });
 
@@ -633,12 +720,52 @@ void main() {
       find.text('Al llegar al lugar se registrará tu llegada automáticamente.'),
       findsOneWidget,
     );
+    expect(find.text('Regresar al inicio'), findsNothing);
     location.movements.add(const LatLng(-13.65, -73.36));
     await tester.pumpAndSettle();
     expect(find.text('Llegada registrada automáticamente.'), findsOneWidget);
+    expect(find.text('Regresar al inicio'), findsOneWidget);
+    expect(find.text('Detener seguimiento'), findsNothing);
     // No hay botón de confirmación manual para la llegada.
     expect(find.text('Marcar llegada'), findsNothing);
     expect(find.text('Confirmar llegada'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('tras registrar la llegada regresa al inicio desde el detalle', (
+    tester,
+  ) async {
+    final model = OfficerRouteViewModel(
+      FakeRouteCompareRepository(),
+      _incident(),
+      locationService: AtSiteLocationService(),
+      officerRepository: FakeOfficerRepository(),
+    );
+    addTearDown(model.dispose);
+    final navigatorKey = GlobalKey<NavigatorState>();
+    await tester.pumpWidget(
+      MaterialApp(
+        navigatorKey: navigatorKey,
+        theme: buildAppTheme(Brightness.light, ThemeVariant.normal),
+        home: const Scaffold(body: Text('Inicio del sereno')),
+      ),
+    );
+    navigatorKey.currentState!.push<void>(
+      MaterialPageRoute(builder: (_) => const Scaffold(body: Text('Detalle'))),
+    );
+    navigatorKey.currentState!.push<void>(
+      MaterialPageRoute(
+        builder: (_) => OfficerMapScreen(item: _incident(), routeModel: model),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Iniciar'));
+    await tester.pumpAndSettle();
+    expect(find.text('Regresar al inicio'), findsOneWidget);
+    await tester.tap(find.text('Regresar al inicio'));
+    await tester.pumpAndSettle();
+    expect(find.text('Inicio del sereno'), findsOneWidget);
+    expect(find.text('Detalle'), findsNothing);
     expect(tester.takeException(), isNull);
   });
 }
