@@ -7,6 +7,7 @@ import 'package:sereno_ya/ui/core/theme/colors.dart';
 import 'package:sereno_ya/ui/officer/officer_map_screen.dart';
 import 'package:sereno_ya/ui/officer/view_models/officer_incidents_view_model.dart';
 import 'package:sereno_ya/ui/officer/view_models/officer_route_view_model.dart';
+import 'package:sereno_ya/ui/officer/view_models/officer_tracking_view_model.dart';
 
 // Operational cards: action first, 16px inset, 8px rhythm, theme surfaces and
 // semantic status colors. Location and elapsed time remain visible at a glance.
@@ -271,13 +272,17 @@ Future<void> openIncidentMap(
     }
   }
   final repository = routes;
+  final tracking = context.read<OfficerTrackingViewModel?>();
+  final sessionOwned = tracking != null && item.showsRoute;
   OfficerRouteViewModel? routeModel;
   if (repository != null && item.hasCoordinates) {
-    routeModel = OfficerRouteViewModel(
-      repository,
-      item,
-      officerRepository: officerRepo,
-    );
+    routeModel = sessionOwned
+        ? tracking.routeFor(item)
+        : OfficerRouteViewModel(
+            repository,
+            item,
+            officerRepository: officerRepo,
+          );
     // En ACCEPTED / ON_SITE la comparación
     // (`POST /incident/incident-compare/{id}`) y el seguimiento se inician
     // con el botón «Iniciar» del mapa; aquí no se llama a la API. Sin ruta
@@ -294,7 +299,11 @@ Future<void> openIncidentMap(
     );
   } finally {
     final started = routeModel?.started == true;
-    routeModel?.dispose();
+    if (sessionOwned && routeModel != null) {
+      tracking.releaseRoute(routeModel);
+    } else {
+      routeModel?.dispose();
+    }
     if (started && context.mounted) {
       await incidentsModel?.synchronize(null);
     }

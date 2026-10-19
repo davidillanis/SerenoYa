@@ -11,6 +11,7 @@ import 'package:sereno_ya/ui/officer/officer_reports_tab.dart';
 import 'package:sereno_ya/ui/officer/officer_start_tab.dart';
 import 'package:sereno_ya/ui/officer/view_models/officer_detail_view_model.dart';
 import 'package:sereno_ya/ui/officer/view_models/officer_incidents_view_model.dart';
+import 'package:sereno_ya/ui/officer/view_models/officer_tracking_view_model.dart';
 import 'package:sereno_ya/ui/officer/widgets/officer_incident_card.dart';
 
 class OfficerHomeScreen extends StatefulWidget {
@@ -39,11 +40,18 @@ class _OfficerHomeScreenState extends State<OfficerHomeScreen> {
   @override
   Widget build(BuildContext context) {
     final model = context.watch<OfficerIncidentsViewModel>();
+    final activeRoute = context.watch<OfficerTrackingViewModel?>()?.activeRoute;
     return Scaffold(
       backgroundColor: context.appColors.background,
       appBar: AppBar(
         title: Text(_tab == 0 ? 'Serenazgo' : 'Reportes'),
         actions: [
+          if (activeRoute != null)
+            IconButton(
+              tooltip: 'Ver seguimiento activo',
+              onPressed: () => openIncidentMap(context, activeRoute.item),
+              icon: const Icon(Icons.navigation_outlined),
+            ),
           IconButton(
             tooltip: 'Actualizar',
             onPressed: model.isBusy || model.mineBusy

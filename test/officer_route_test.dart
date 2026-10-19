@@ -92,7 +92,18 @@ class FakeLocationService extends CitizenLocationService {
 
   @override
   Stream<LatLng> watchLocation({int distanceFilterMeters = 10}) =>
-      movements.stream;
+      Stream.multi((controller) {
+        final subscription = movements.stream.listen(
+          controller.add,
+          onError: controller.addError,
+          onDone: controller.close,
+        );
+        currentLocation().then(controller.add);
+        controller.onCancel = () {
+          unawaited(subscription.cancel());
+          return Future<void>.value();
+        };
+      });
 }
 
 class FailingLocationService extends CitizenLocationService {
@@ -111,11 +122,13 @@ class FakeOfficerRepository extends OfficerRepository {
   int onSiteCalls = 0;
   String? lastId;
   bool fail = false;
+  Completer<void>? pending;
 
   @override
   Future<Result<bool>> markOnSite({required String id}) async {
     onSiteCalls++;
     lastId = id;
+    await pending?.future;
     if (fail) {
       return Result.failure(
         const AuthFailure(AuthFailureCode.network, 'Sin conexión'),
@@ -126,15 +139,9 @@ class FakeOfficerRepository extends OfficerRepository {
 }
 
 /// GPS fijo en el lugar del incidente (-13.65, -73.36).
-class AtSiteLocationService extends CitizenLocationService {
-  final movements = StreamController<LatLng>();
-
+class AtSiteLocationService extends FakeLocationService {
   @override
   Future<LatLng> currentLocation() async => const LatLng(-13.65, -73.36);
-
-  @override
-  Stream<LatLng> watchLocation({int distanceFilterMeters = 10}) =>
-      movements.stream;
 }
 
 OfficerRouteViewModel _model({bool fail = false, bool noGps = false}) {
@@ -285,6 +292,7 @@ void main() {
     expect(model.error, 'Sin ubicación');
     expect(model.options, isEmpty);
     expect(repository.lastOrigin, isNull);
+    expect(model.tracking, isFalse);
   });
 
   test('un error de red expone el mensaje con reintento', () async {
@@ -298,6 +306,7 @@ void main() {
     await model.load();
     expect(model.error, 'Sin conexión');
     expect(model.options, isEmpty);
+    expect(model.tracking, isFalse);
     repository.fail = false;
     await model.load();
     expect(model.error, isNull);
@@ -378,6 +387,7 @@ void main() {
     await model.load();
     expect(location.movements.hasListener, isTrue);
     model.stopTracking();
+    await Future<void>.delayed(Duration.zero);
     expect(model.tracking, isFalse);
     expect(model.needsStart, isTrue);
     expect(model.origin, isNull);
@@ -448,12 +458,12 @@ void main() {
     );
     await tester.pumpAndSettle();
     expect(repository.compareCalls, 0);
-    expect(find.text('Iniciar'), findsOneWidget);
+    expect(find.text('Iniciar Seguimiento'), findsOneWidget);
     expect(find.text('Ruta desde tu ubicación'), findsNothing);
-    await tester.tap(find.text('Iniciar'));
+    await tester.tap(find.text('Iniciar Seguimiento'));
     await tester.pumpAndSettle();
     expect(repository.compareCalls, 1);
-    expect(find.text('Iniciar'), findsNothing);
+    expect(find.text('Iniciar Seguimiento'), findsNothing);
     expect(find.text('Ruta desde tu ubicación'), findsOneWidget);
     expect(find.textContaining('más rápida'), findsOneWidget);
     expect(tester.takeException(), isNull);
@@ -476,14 +486,14 @@ void main() {
       ),
     );
     expect(find.text('Detener seguimiento'), findsNothing);
-    await tester.tap(find.text('Iniciar'));
+    await tester.tap(find.text('Iniciar Seguimiento'));
     await tester.pumpAndSettle();
     expect(find.text('Detener seguimiento'), findsOneWidget);
     await tester.tap(find.text('Detener seguimiento'));
     await tester.pumpAndSettle();
-    expect(find.text('Iniciar'), findsOneWidget);
+    expect(find.text('Iniciar Seguimiento'), findsOneWidget);
     expect(find.text('Ruta desde tu ubicación'), findsNothing);
-    await tester.tap(find.text('Iniciar'));
+    await tester.tap(find.text('Iniciar Seguimiento'));
     await tester.pumpAndSettle();
     expect(find.text('Detener seguimiento'), findsOneWidget);
     expect(repository.compareCalls, 1);
@@ -615,6 +625,11 @@ void main() {
     await Future<void>.delayed(Duration.zero);
     expect(officerRepository.onSiteCalls, 1);
     expect(model.arrived, isTrue);
+    expect(model.tracking, isFalse);
+    expect(location.movements.hasListener, isFalse);
+    expect(model.needsStart, isFalse);
+    await model.load();
+    expect(location.movements.hasListener, isFalse);
     // No se llama dos veces aunque siga emitiendo posiciones cercanas.
     location.movements.add(const LatLng(-13.65, -73.36));
     await Future<void>.delayed(Duration.zero);
@@ -646,7 +661,9 @@ void main() {
     addTearDown(model.dispose);
     await model.load();
     await Future<void>.delayed(Duration.zero);
-    expect(model.canAutoMarkArrival, isTrue);
+    expect(model.canAutoMarkArrival, isFalse);
+    expect(model.arrived, isTrue);
+    expect(model.tracking, isFalse);
     expect(routes.compareCalls, 0);
     expect(officerRepository.onSiteCalls, 1);
   });
@@ -713,7 +730,7 @@ void main() {
         home: OfficerMapScreen(item: _incident(), routeModel: model),
       ),
     );
-    await tester.tap(find.text('Iniciar'));
+    await tester.tap(find.text('Iniciar Seguimiento'));
     await tester.pumpAndSettle();
     // Lejos del lugar: informa que la llegada será automática, sin botón.
     expect(
@@ -759,7 +776,7 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Iniciar'));
+    await tester.tap(find.text('Iniciar Seguimiento'));
     await tester.pumpAndSettle();
     expect(find.text('Regresar al inicio'), findsOneWidget);
     await tester.tap(find.text('Regresar al inicio'));

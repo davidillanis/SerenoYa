@@ -29,10 +29,10 @@ duplica aunque ya llegue por `list-me-sereno`. Reportes, métricas y filtros
 usan `list-me-sereno`. No se simula el envío de
 mensajes: la respuesta al ciudadano depende de la aceptación del backend.
 GPS abre Google Maps con las coordenadas recibidas mediante `url_launcher`.
-El mapa interno (`OfficerMapScreen`) muestra siempre la ubicación actual del
-sereno con seguimiento en vivo y, solo en incidentes aceptados o en curso
+El mapa interno (`OfficerMapScreen`) obtiene la ubicación actual del
+sereno y, solo en incidentes aceptados o en curso
 (`ACCEPTED`, `ON_SITE`),
-ofrece un botón «Iniciar»: recién al presionarlo compara rutas con
+ofrece un botón «Iniciar Seguimiento»: recién al presionarlo compara rutas con
 `POST /incident/incident-compare/{id}` (origen GPS del sereno, destino del
 incidente), dibuja
 la más rápida, permite
@@ -41,11 +41,42 @@ sereno hasta el lugar. Incluye botones flotantes para ir a la ubicación
 actual del sereno o al lugar del incidente. En pendientes no se consulta
 la comparación.
 
+### Seguimiento en segundo plano (Android)
+
+- `OfficerTrackingViewModel`, provisto en la raíz de la aplicación, conserva el
+  recorrido al salir del mapa. Al volver a abrirlo se reutilizan su ubicación,
+  ruta y estado, sin repetir la comparación. El inicio de Serenazgo ofrece
+  «Ver seguimiento activo» para volver al mapa y detenerlo.
+- Solo puede haber un incidente en seguimiento. Para iniciar otro es necesario
+  detener primero el actual.
+- `CitizenLocationService(backgroundTracking: true)` configura el servicio de
+  ubicación de `geolocator` con una notificación persistente y un wake lock.
+  Continúa al minimizar o bloquear la pantalla. Se solicita alta precisión,
+  actualizaciones cada 5 segundos y un desplazamiento mínimo de 10 metros;
+  Android puede ajustar la frecuencia efectiva. Los mapas sin recorrido hacen
+  una lectura puntual y no mantienen este servicio abierto.
+- Se registra la llegada con `POST /incident/onSite/{id}` dentro de un radio de
+  50 metros, después de iniciar correctamente el recorrido. El GPS y la
+  notificación se detienen cuando el servidor confirma la llegada, al pulsar
+  «Detener seguimiento» o al cerrar/cambiar de sesión. Si falla la llegada, se
+  reintenta con el GPS y cada 15 segundos mientras se permanezca en el radio.
+- El manifiesto incluye `FOREGROUND_SERVICE`, `FOREGROUND_SERVICE_LOCATION` y
+  `WAKE_LOCK`. El servicio de tipo `location` lo declara el plugin. Se inicia
+  desde el botón con la app visible y el permiso de ubicación concedido; no
+  requiere acceso permanente mediante `ACCESS_BACKGROUND_LOCATION`.
+- Este alcance conserva el proceso de la aplicación: no restaura recorridos
+  después de forzar la detención, terminar el proceso o reiniciar el teléfono.
+  iOS y web no tienen habilitada ejecución en segundo plano.
+
+Para verificar en un Android real: iniciar con el GPS habilitado, comprobar la
+notificación, salir del mapa, minimizar/bloquear el dispositivo y acercarse al
+incidente. Confirmar la llegada en el servidor y que desaparezca la notificación.
+Repetir con detención manual, cierre de sesión y un fallo de conexión al llegar.
+
 ## Límites de la API v2 revisada
 
-- No expone avance (llegada/atendido). Solo los pendientes tienen acción;
-  otros estados no muestran botones hasta contar con el endpoint
-  correspondiente.
+- La llegada usa `POST /incident/onSite/{id}`. La finalización como atendido no
+  tiene una acción conectada en este flujo.
 - `IncidentEntity` no tiene prioridad. El modelo Flutter admite alta, media y
   baja (`HIGH`, `MEDIUM`, `LOW`), pero presenta «Prioridad sin informar» cuando
   falta. No solicita un campo inexistente ni deduce prioridad por categoría.

@@ -124,7 +124,8 @@ class _OfficerMapScreenState extends State<OfficerMapScreen> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text(
-              'Obtén la ruta más rápida y activa el seguimiento hasta el lugar.',
+              'Obtén la ruta más rápida y activa el seguimiento hasta el lugar. '
+              'Puedes salir del mapa mientras continúa el seguimiento.',
               style: Theme.of(context).textTheme.bodyMedium
                   ?.copyWith(color: context.appColors.textSecondary),
             ),
@@ -132,7 +133,7 @@ class _OfficerMapScreenState extends State<OfficerMapScreen> {
             FilledButton.icon(
               onPressed: routes.canStart ? routes.load : null,
               icon: const Icon(Icons.navigation_outlined),
-              label: const Text('Iniciar'),
+              label: const Text('Iniciar Seguimiento'),
             ),
           ],
         ),
@@ -406,7 +407,8 @@ class _OfficerMapScreenState extends State<OfficerMapScreen> {
                   : null,
               mapToolbarEnabled: false,
               myLocationButtonEnabled: false,
-              myLocationEnabled: routes?.origin != null,
+              myLocationEnabled:
+                  routes?.tracking == true && routes?.origin != null,
               compassEnabled: true,
               markers: markers,
               polylines: polylines,
@@ -456,7 +458,9 @@ class _OfficerMapScreenState extends State<OfficerMapScreen> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Presiona «Iniciar» para activar tu ubicación.'),
+          content: Text(
+            'Presiona «Iniciar Seguimiento» para activar tu ubicación.',
+          ),
         ),
       );
       return;

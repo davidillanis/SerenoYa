@@ -32,6 +32,7 @@ class AppDependencies {
     required this.authRepository,
     required this.incidentRepository,
     required this.routeCompareRepository,
+    required this.officerRepository,
     required this.storageService,
     required this.deviceTokenService,
   });
@@ -54,6 +55,7 @@ class AppDependencies {
     final incidentApiService = IncidentApiService(apiClient.dio);
     final officerApiService = IncidentApiService(apiClient.dio);
     final routeCompareRepository = RouteCompareRepository(officerApiService);
+    final officerRepository = OfficerRepository(officerApiService);
     final profileApiService = ProfileApiService(apiClient.dio);
     final localDataSource = IncidentLocalDataSourceImpl();
     final incidentRepository = IncidentRepository(
@@ -75,6 +77,7 @@ class AppDependencies {
       authRepository: authRepository,
       incidentRepository: incidentRepository,
       routeCompareRepository: routeCompareRepository,
+      officerRepository: officerRepository,
       storageService: imageApiService,
       deviceTokenService: DeviceTokenService(
         authRepository: authRepository,
@@ -88,7 +91,7 @@ class AppDependencies {
     dependencies.routerNotifier = AuthRouterNotifier(authRepository);
     dependencies.router = createAppRouter(
       onLoginSuccess: NotificationService.instance.synchronizeToken,
-      officerRepository: OfficerRepository(officerApiService),
+      officerRepository: officerRepository,
       googleIdentityService: googleIdentityService,
       authRepository: authRepository,
       incidentRepository: incidentRepository,
@@ -105,6 +108,7 @@ class AppDependencies {
   final AuthRepository authRepository;
   final IncidentRepository incidentRepository;
   final RouteCompareRepository routeCompareRepository;
+  final OfficerRepository officerRepository;
   final StorageService storageService;
 
   late final AuthRouterNotifier routerNotifier;

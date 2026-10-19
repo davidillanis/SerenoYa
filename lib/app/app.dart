@@ -6,6 +6,7 @@ import 'package:sereno_ya/app/app_dependencies.dart';
 import 'package:sereno_ya/data/repositories/auth/auth_repository.dart';
 import 'package:sereno_ya/data/repositories/route/route_compare_repository.dart';
 import 'package:sereno_ya/ui/auth/view_models/session_view_model.dart';
+import 'package:sereno_ya/ui/officer/view_models/officer_tracking_view_model.dart';
 
 class SerenoYaApp extends StatefulWidget {
   const SerenoYaApp({
@@ -22,11 +23,17 @@ class SerenoYaApp extends StatefulWidget {
 
 class _SerenoYaAppState extends State<SerenoYaApp> {
   late final SessionViewModel _sessionViewModel;
+  late final OfficerTrackingViewModel _officerTracking;
 
   @override
   void initState() {
     super.initState();
     _sessionViewModel = SessionViewModel(widget.dependencies.authRepository);
+    _officerTracking = OfficerTrackingViewModel(
+      authRepository: widget.dependencies.authRepository,
+      routeRepository: widget.dependencies.routeCompareRepository,
+      officerRepository: widget.dependencies.officerRepository,
+    );
     _sessionViewModel.initialize();
   }
 
@@ -34,6 +41,7 @@ class _SerenoYaAppState extends State<SerenoYaApp> {
   void dispose() {
     NotificationService.instance.dispose();
     widget.dependencies.deviceTokenService.dispose();
+    _officerTracking.dispose();
     _sessionViewModel.dispose();
     widget.themeController.dispose();
     widget.dependencies.routerNotifier.dispose();
@@ -55,6 +63,9 @@ class _SerenoYaAppState extends State<SerenoYaApp> {
         ),
         ChangeNotifierProvider<SessionViewModel>.value(
           value: _sessionViewModel,
+        ),
+        ChangeNotifierProvider<OfficerTrackingViewModel>.value(
+          value: _officerTracking,
         ),
       ],
       child: Consumer<ThemeController>(

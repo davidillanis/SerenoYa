@@ -20,10 +20,13 @@ class OfficerRouteViewModel extends ChangeNotifier {
     this._repository,
     this.item, {
     CitizenLocationService? locationService,
-    OfficerRepository? officerRepository,
+    this._officerRepository,
+    this._canTrack,
+    this._waitForPreviousStop,
     this.arrivalRadiusMeters = defaultArrivalRadiusMeters,
-  }) : _locationService = locationService ?? CitizenLocationService(),
-       _officerRepository = officerRepository;
+  }) : _locationService =
+           locationService ??
+           CitizenLocationService(backgroundTracking: item.showsRoute);
 
   /// Distancia en metros para considerar que el sereno está en el lugar.
   static const double defaultArrivalRadiusMeters = 50;
@@ -32,12 +35,21 @@ class OfficerRouteViewModel extends ChangeNotifier {
   final OfficerIncident item;
   final CitizenLocationService _locationService;
   final OfficerRepository? _officerRepository;
+  final bool Function()? _canTrack;
+  final Future<void> Function()? _waitForPreviousStop;
   final double arrivalRadiusMeters;
   StreamSubscription<LatLng>? _watch;
+  Completer<LatLng?>? _firstPosition;
+  Timer? _arrivalRetry;
+  Future<void> _watchStopped = Future.value();
+
+  /// Permite que el siguiente incidente espere la liberación del GPS nativo.
+  Future<void> get locationStopped => _watchStopped;
   bool _disposed = false;
   int _session = 0;
   bool _compareInProgress = false;
-  bool get canStart => !_compareInProgress;
+  bool get canStart =>
+      !_disposed && !_compareInProgress && !_arrivalInProgress && !arrived;
 
   List<RouteOption> _options = [];
   List<RouteOption> get options => List.unmodifiable(_options);
@@ -78,6 +90,7 @@ class OfficerRouteViewModel extends ChangeNotifier {
 
   bool get needsStart =>
       routeEnabled &&
+      !arrived &&
       !_tracking &&
       !loading &&
       error == null &&
@@ -92,7 +105,14 @@ class OfficerRouteViewModel extends ChangeNotifier {
       _tracking;
 
   Future<void> load() async {
-    if (loading || _disposed || _compareInProgress) return;
+    if (loading || !canStart || (_tracking && error == null)) return;
+    if (routeEnabled && _canTrack?.call() == false) {
+      error =
+          'Ya hay otro incidente en seguimiento. '
+          'Abre su mapa y detén el seguimiento antes de iniciar este.';
+      _notify();
+      return;
+    }
     final session = ++_session;
     if (routeEnabled) {
       _started = true;
@@ -101,32 +121,21 @@ class OfficerRouteViewModel extends ChangeNotifier {
     loading = true;
     error = null;
     _notify();
-    late final LatLng position;
+    late final LatLng? position;
     try {
-      position = await _locationService.currentLocation();
-    } on LocationFailure catch (failure) {
-      if (_disposed || session != _session) return;
-      loading = false;
-      error = failure.message;
-      _notify();
-      return;
-    } catch (_) {
-      if (_disposed || session != _session) return;
-      loading = false;
-      error = 'No se pudo obtener tu ubicación. Vuelve a intentar.';
-      _notify();
+      // El servicio en primer plano empieza antes de esperar al primer GPS
+      // o a la API, para que minimizar durante la carga no lo suspenda.
+      // Los mapas sin recorrido solo necesitan una lectura puntual; así no
+      // mantienen abierto el stream compartido del seguimiento de Android.
+      position = routeEnabled
+          ? await _startWatch(session)
+          : await _locationService.currentLocation();
+    } catch (failure) {
+      _locationFailed(failure, session);
       return;
     }
-    if (_disposed || session != _session) return;
+    if (_disposed || session != _session || position == null) return;
     origin = position;
-    // Seguimiento efectivo: el marcador del sereno se mueve con él.
-    // La comparación se calculó con el punto de partida y no se repite.
-    _watch ??= _locationService.watchLocation().listen((current) {
-      if (_disposed || session != _session) return;
-      origin = current;
-      _notify();
-      unawaited(_checkArrival(current));
-    }, onError: (_) {});
     if (!routeEnabled) {
       loading = false;
       _notify();
@@ -166,9 +175,79 @@ class OfficerRouteViewModel extends ChangeNotifier {
       _selected = 0;
     } else {
       error = result.failure!.message;
+      _tracking = false;
+      _cancelWatch();
     }
     _notify();
     if (result.isSuccess) await _checkArrival(origin!);
+  }
+
+  Future<LatLng?> _startWatch(int session) async {
+    final previousStop = _waitForPreviousStop?.call();
+    if (previousStop != null) {
+      _watchStopped = Future.wait([_watchStopped, previousStop]).then((_) {});
+    }
+    await _watchStopped;
+    if (_disposed || session != _session) return null;
+    final first = Completer<LatLng?>();
+    _firstPosition = first;
+    _watch = _locationService.watchLocation().listen(
+      (current) {
+        if (_disposed || session != _session) return;
+        origin = current;
+        if (!first.isCompleted) {
+          first.complete(current);
+        } else {
+          _notify();
+          unawaited(_checkArrival(current));
+        }
+      },
+      onError: (Object failure) {
+        if (!first.isCompleted) {
+          first.completeError(failure);
+        } else {
+          _locationFailed(failure, session);
+        }
+      },
+      onDone: () => _locationFailed(
+        const LocationFailure(
+          'El seguimiento se interrumpió. Vuelve a iniciar.',
+        ),
+        session,
+      ),
+    );
+    return first.future.timeout(const Duration(seconds: 20));
+  }
+
+  void _locationFailed(Object failure, int session) {
+    if (_disposed || session != _session) return;
+    _session++;
+    _tracking = false;
+    loading = false;
+    _options = [];
+    error = switch (failure) {
+      LocationFailure() => failure.message,
+      LocationServiceDisabledException() =>
+        'Activa la ubicación del dispositivo y vuelve a iniciar.',
+      PermissionDeniedException() =>
+        'Habilita el permiso de ubicación y vuelve a iniciar.',
+      TimeoutException() =>
+        'No se pudo obtener tu ubicación a tiempo. Vuelve a intentar.',
+      _ => 'No se pudo mantener tu ubicación. Vuelve a iniciar el seguimiento.',
+    };
+    _cancelWatch();
+    _notify();
+  }
+
+  void _cancelWatch() {
+    _arrivalRetry?.cancel();
+    _arrivalRetry = null;
+    final first = _firstPosition;
+    _firstPosition = null;
+    if (first != null && !first.isCompleted) first.complete(null);
+    final watch = _watch;
+    _watch = null;
+    if (watch != null) _watchStopped = watch.cancel();
   }
 
   /// Detiene solo el seguimiento local; no cancela el incidente en el servidor.
@@ -176,8 +255,7 @@ class OfficerRouteViewModel extends ChangeNotifier {
     if (_disposed || !_tracking || _arrivalInProgress) return;
     _session++;
     _tracking = false;
-    _watch?.cancel();
-    _watch = null;
+    _cancelWatch();
     origin = null;
     _options = [];
     _selected = 0;
@@ -211,16 +289,28 @@ class OfficerRouteViewModel extends ChangeNotifier {
       return;
     }
     _arrivalInProgress = true;
+    _arrivalRetry?.cancel();
     arrivalError = null;
+    final session = _session;
     _notify();
     final result = await _officerRepository!.markOnSite(id: item.id);
-    if (_disposed || !_tracking) return;
+    if (_disposed) return;
     _arrivalInProgress = false;
     if (result.isSuccess) {
+      // Una pérdida de GPS no invalida una llegada ya confirmada por la API.
       arrived = true;
       arrivalError = null;
-    } else {
+      error = null;
+      _tracking = false;
+      _session++;
+      _cancelWatch();
+    } else if (session == _session && _tracking) {
       arrivalError = result.failure!.message;
+      // Reintenta también si el sereno permanece quieto en el destino.
+      _arrivalRetry = Timer(const Duration(seconds: 15), () {
+        final current = origin;
+        if (current != null) unawaited(_checkArrival(current));
+      });
     }
     _notify();
   }
@@ -232,7 +322,8 @@ class OfficerRouteViewModel extends ChangeNotifier {
   @override
   void dispose() {
     _disposed = true;
-    _watch?.cancel();
+    _tracking = false;
+    _cancelWatch();
     super.dispose();
   }
 }
