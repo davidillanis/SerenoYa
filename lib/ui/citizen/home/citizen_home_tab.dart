@@ -5,9 +5,49 @@ import 'package:provider/provider.dart';
 import 'package:sereno_ya/routing/route_names.dart';
 import 'package:sereno_ya/ui/auth/view_models/session_view_model.dart';
 import 'package:sereno_ya/ui/citizen/citizen_home_screen.dart'; // Para reutilizar ActionCard temporalmente
+import 'package:sereno_ya/data/services/maps/citizen_location_service.dart';
+import 'package:sereno_ya/data/services/maps/nearby_police_service.dart';
+import 'package:sereno_ya/ui/citizen/home/emergency_numbers_screen.dart';
+import 'package:sereno_ya/ui/citizen/home/safety_tips_screen.dart';
 
-class CitizenHomeTab extends StatelessWidget {
-  const CitizenHomeTab({super.key});
+class CitizenHomeTab extends StatefulWidget {
+  const CitizenHomeTab({super.key, this.nearbyPoliceService});
+
+  final NearbyPoliceService? nearbyPoliceService;
+
+  @override
+  State<CitizenHomeTab> createState() => _CitizenHomeTabState();
+}
+
+class _CitizenHomeTabState extends State<CitizenHomeTab> {
+  bool _openingMaps = false;
+
+  Future<void> _openNearby() async {
+    if (_openingMaps) return;
+    setState(() => _openingMaps = true);
+    String? error;
+    try {
+      final opened = await (widget.nearbyPoliceService ?? NearbyPoliceService())
+          .openNearby();
+      if (!opened) {
+        error = 'No se pudo abrir Google Maps. Revisa si tienes una aplicación de mapas disponible.';
+      }
+    } on LocationFailure catch (failure) {
+      error = failure.message;
+    } catch (_) {
+      error = 'No se pudo buscar comisarías cercanas. Vuelve a intentar.';
+    }
+    if (!mounted) return;
+    setState(() => _openingMaps = false);
+    if (error != null) {
+      final messenger = ScaffoldMessenger.of(context);
+      messenger.removeCurrentSnackBar();
+      messenger.showSnackBar(SnackBar(content: Text(error)));
+    }
+  }
+
+  void _openPage(Widget page) =>
+      Navigator.of(context).push<void>(MaterialPageRoute(builder: (_) => page));
 
   @override
   Widget build(BuildContext context) {
@@ -24,24 +64,28 @@ class CitizenHomeTab extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Bienvenido',
-                      style: Theme.of(context).textTheme.bodyMedium
-                          ?.copyWith(color: context.appColors.textSecondary),
-                    ),
-                    Text(
-                      'Hola, $userName',
-                      style: Theme.of(context).textTheme.headlineMedium
-                          ?.copyWith(
-                            fontWeight: FontWeight.bold,
-                            color: context.appColors.text,
-                            fontSize: 22,
-                          ),
-                    ),
-                  ],
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Bienvenido',
+                        style: Theme.of(context).textTheme.bodyMedium
+                            ?.copyWith(color: context.appColors.textSecondary),
+                      ),
+                      Text(
+                        'Hola, $userName',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.headlineMedium
+                            ?.copyWith(
+                              fontWeight: FontWeight.bold,
+                              color: context.appColors.text,
+                              fontSize: 22,
+                            ),
+                      ),
+                    ],
+                  ),
                 ),
                 Container(
                   padding: const EdgeInsets.all(8),
@@ -173,23 +217,30 @@ class CitizenHomeTab extends StatelessWidget {
             ),
             const SizedBox(height: 16),
 
-            // Action Cards
-            const ActionCard(
-              title: 'Serenazgo San Jerónimo',
-              subtitle: '(084) 272-100 • Radio Base',
-              label: 'LÍNEA DIRECTA 24/7',
+            ActionCard(
+              title: 'Comisarías cercanas',
+              subtitle: _openingMaps
+                  ? 'Buscando tu ubicación…'
+                  : 'Buscar en Google Maps',
+              label: 'CERCA DE TI',
+              icon: Icons.local_police_outlined,
+              onTap: _openingMaps ? null : _openNearby,
             ),
             const SizedBox(height: 12),
-            const ActionCard(
-              title: 'Serenazgo San Jerónimo',
-              subtitle: '(084) 272-100 • Radio Base',
-              label: 'LÍNEA DIRECTA 24/7',
+            ActionCard(
+              title: 'Números de emergencia',
+              subtitle: 'Policía · Bomberos · SAMU',
+              label: 'LLAMADAS',
+              icon: Icons.phone_outlined,
+              onTap: () => _openPage(const EmergencyNumbersScreen()),
             ),
             const SizedBox(height: 12),
-            const ActionCard(
-              title: 'Serenazgo San Jerónimo',
-              subtitle: '(084) 272-100 • Radio Base',
-              label: 'LÍNEA DIRECTA 24/7',
+            ActionCard(
+              title: 'Consejos de seguridad',
+              subtitle: 'Recomendaciones para cuidarte',
+              label: 'PREVENCIÓN',
+              icon: Icons.shield_outlined,
+              onTap: () => _openPage(const SafetyTipsScreen()),
             ),
           ],
         ),
