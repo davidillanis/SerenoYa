@@ -20,7 +20,53 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "725931497267-knc0hdlgc0v5bf1vid3ufcq65i7ruatc.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:725931497267:android:b6907a2ec6cdb1931a9046",
+        "android_client_info": {
+          "package_name": "com.oppsissora.serenoya"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "725931497267-iuu0p3miq2i7162ti1i57a4kjj3skhc0.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.oppsissora.serenoya",
+            "certificate_hash": "ca69f78a3d09aacfef2083ea73146981f9ecec08"
+          }
+        },
+        {
+          "client_id": "725931497267-scnc580r31njh8j0gg8hfg052st2d0i2.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.oppsissora.serenoya",
+            "certificate_hash": "221a12300bcd558cbe005132efed8892d02e989b"
+          }
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyClxmOOpTSCsklH0wRrb14yOOOmY-hxHkw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "725931497267-knc0hdlgc0v5bf1vid3ufcq65i7ruatc.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }

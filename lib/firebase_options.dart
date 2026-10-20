@@ -1,5 +1,6 @@
 import 'package:firebase_core/firebase_core.dart' show FirebaseOptions;
-import 'package:flutter/foundation.dart' show TargetPlatform, defaultTargetPlatform, kIsWeb;
+import 'package:flutter/foundation.dart'
+    show TargetPlatform, defaultTargetPlatform, kIsWeb;
 
 class DefaultFirebaseOptions {
   static FirebaseOptions get currentPlatform {
@@ -37,7 +38,7 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions android = FirebaseOptions(
     apiKey: 'AIzaSyClxmOOpTSCsklH0wRrb14yOOOmY-hxHkw',
-    appId: '1:725931497267:android:83e38def069542211a9046',
+    appId: '1:725931497267:android:b6907a2ec6cdb1931a9046',
     messagingSenderId: '725931497267',
     projectId: 'serenoya-e3583',
     storageBucket: 'serenoya-e3583.firebasestorage.app',

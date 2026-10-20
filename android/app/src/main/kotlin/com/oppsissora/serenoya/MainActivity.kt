@@ -1,4 +1,4 @@
-package com.example.sereno_ya
+package com.oppsissora.serenoya
 
 import io.flutter.embedding.android.FlutterActivity
 

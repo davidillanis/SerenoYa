@@ -48,8 +48,8 @@ utiliza el APK.
 
 ### Antes de publicar
 
-Configura la firma de producción en `android/app/build.gradle.kts`: la
-configuración revisada utiliza la firma debug también para `release`. Registra
+La firma de producción se carga desde el archivo local
+`android/key.properties`; el almacén y sus contraseñas no se versionan. Registra
 en Google OAuth la SHA-1 del certificado que firma la aplicación distribuida.
 Si utilizas Play App Signing, registra la huella del certificado de firma de
 aplicaciones de Google Play, no solamente la de la clave de subida.
@@ -61,7 +61,7 @@ El login nativo incluye «Continuar con Google». El token de identidad se enví
 Cancelar el selector no inicia sesión ni muestra un error. Cerrar sesión también
 cierra la sesión del SDK de Google.
 
-Para Android, registra el paquete `com.example.sereno_ya` y las huellas SHA de
+Para Android, registra el paquete `com.oppsissora.serenoya` y las huellas SHA de
 las firmas utilizadas en Google Cloud. Crea además un cliente OAuth de tipo web
 y usa su Client ID (público, no el secreto):
 
@@ -70,8 +70,8 @@ flutter run --dart-define=GOOGLE_SERVER_CLIENT_ID=TU_CLIENT_ID_WEB.apps.googleus
 ```
 
 El backend debe aceptar ese mismo Client ID como audiencia y validar el token
-de Google. El `google-services.json` actual no contiene clientes OAuth; tener
-Firebase para notificaciones no configura automáticamente este acceso.
+de Google. El `google-services.json` incluye los clientes OAuth configurados,
+pero el backend sigue siendo responsable de validar cada ID token recibido.
 
 En iOS/macOS se requiere además el cliente OAuth de la aplicación y su esquema
 URL invertido en la configuración nativa (`GIDClientID` y `CFBundleURLTypes`).

@@ -70,9 +70,9 @@ solo después de configurar y comprobar sus propias credenciales.
 
 ### 3.2 Identificadores definitivos de la aplicación
 
-El proyecto todavía utiliza identificadores de ejemplo:
+El identificador Android ya está definido; iOS todavía conserva uno de ejemplo:
 
-- Android: `com.example.sereno_ya`.
+- Android: `com.oppsissora.serenoya`.
 - iOS: `com.example.serenoYa`.
 
 Antes de crear los clientes OAuth se deben definir los identificadores de

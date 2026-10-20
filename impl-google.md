@@ -29,7 +29,7 @@ Proyecto: serenoya-e3583
 ```text
 Tipo: Android
 Nombre: SerenoYa Android Debug
-Nombre del paquete: com.example.sereno_ya
+Nombre del paquete: com.oppsissora.serenoya
 SHA-1: TU_SHA1_DEBUG
 ```
 
@@ -116,7 +116,7 @@ flutter run \
 ```text
 ANDROID OAUTH
 Package:
-com.example.sereno_ya
+com.oppsissora.serenoya
 
 SHA-1:
 TU_SHA1_DEBUG
