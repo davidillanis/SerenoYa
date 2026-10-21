@@ -13,8 +13,18 @@ class SessionGateScreen extends StatelessWidget {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.shield_outlined, size: 64),
-                SizedBox(height: 20),
+                ClipRRect(
+                  borderRadius: BorderRadius.all(Radius.circular(24)),
+                  child: Image(
+                    key: Key('sereno-ya-loading-icon'),
+                    image: AssetImage('assets/icon/app_icon.png'),
+                    width: 112,
+                    height: 112,
+                    fit: BoxFit.cover,
+                    semanticLabel: 'SerenoYa',
+                  ),
+                ),
+                SizedBox(height: 24),
                 CircularProgressIndicator(),
                 SizedBox(height: 12),
                 Text('Verificando sesión...'),

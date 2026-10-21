@@ -3,6 +3,9 @@
 Aplicación Flutter para reportar incidentes ciudadanos y coordinar su atención
 por el Serenazgo de San Jerónimo.
 
+La preparación, firma, prueba y publicación de Android se documentan en
+[`docs/android_play_store_release.md`](docs/android_play_store_release.md).
+
 ## Ejecución
 
 ```powershell
