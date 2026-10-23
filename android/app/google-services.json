@@ -38,6 +38,14 @@
       },
       "oauth_client": [
         {
+          "client_id": "725931497267-3aivf1iftfvh5nvubsnev25jkk2bohe5.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.oppsissora.serenoya",
+            "certificate_hash": "73936f781f924ddf38b65373e38cc4ed934080c4"
+          }
+        },
+        {
           "client_id": "725931497267-iuu0p3miq2i7162ti1i57a4kjj3skhc0.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:sereno_ya/data/models/admin/admin_user_roles_update_request.dart';
@@ -656,6 +657,11 @@ class _EditRolesDialogState extends State<_EditRolesDialog> {
 
   final _formKey = GlobalKey<FormState>();
   late final Set<String> _selectedRoles;
+  final _serenoCode = TextEditingController();
+  final _serenoLatitude = TextEditingController();
+  final _serenoLongitude = TextEditingController();
+  final _citizenLatitude = TextEditingController();
+  final _citizenLongitude = TextEditingController();
 
   @override
   void initState() {
@@ -671,6 +677,16 @@ class _EditRolesDialogState extends State<_EditRolesDialog> {
     });
   }
 
+  @override
+  void dispose() {
+    _serenoCode.dispose();
+    _serenoLatitude.dispose();
+    _serenoLongitude.dispose();
+    _citizenLatitude.dispose();
+    _citizenLongitude.dispose();
+    super.dispose();
+  }
+
   void _submit() {
     if (_selectedRoles.isEmpty || _formKey.currentState?.validate() != true) {
       setState(() {});
@@ -679,7 +695,22 @@ class _EditRolesDialogState extends State<_EditRolesDialog> {
     Navigator.of(context).pop(
       AdminUserRolesUpdateRequest(
         userId: widget.user.id,
-        roles: _selectedRoles,
+        roles: Set.of(_selectedRoles),
+        serenoCode: _selectedRoles.contains(_officerRole)
+            ? _serenoCode.text.trim()
+            : null,
+        serenoLatitude: _selectedRoles.contains(_officerRole)
+            ? double.parse(_serenoLatitude.text.trim())
+            : null,
+        serenoLongitude: _selectedRoles.contains(_officerRole)
+            ? double.parse(_serenoLongitude.text.trim())
+            : null,
+        citizenLatitude: _selectedRoles.contains(_citizenRole)
+            ? double.parse(_citizenLatitude.text.trim())
+            : null,
+        citizenLongitude: _selectedRoles.contains(_citizenRole)
+            ? double.parse(_citizenLongitude.text.trim())
+            : null,
       ),
     );
   }
@@ -699,7 +730,7 @@ class _EditRolesDialogState extends State<_EditRolesDialog> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Text(
-                  'Selecciona las funciones que tendrá este usuario.',
+                  'Selecciona las funciones e ingresa los datos de cada perfil activo. Los datos enviados reemplazarán los actuales.',
                   style: TextStyle(color: context.appColors.textSecondary),
                 ),
                 const SizedBox(height: 16),
@@ -710,6 +741,30 @@ class _EditRolesDialogState extends State<_EditRolesDialog> {
                   value: _selectedRoles.contains(_officerRole),
                   onChanged: (value) => _toggle(_officerRole, value ?? false),
                 ),
+                if (_selectedRoles.contains(_officerRole)) ...[
+                  TextFormField(
+                    controller: _serenoCode,
+                    decoration: const InputDecoration(
+                      labelText: 'Código de sereno',
+                    ),
+                    maxLength: 30,
+                    validator: (value) => (value?.trim().isEmpty ?? true)
+                        ? 'Ingresa el código de sereno.'
+                        : null,
+                  ),
+                  _RoleCoordinateField(
+                    controller: _serenoLatitude,
+                    label: 'Latitud operativa',
+                    min: -90,
+                    max: 90,
+                  ),
+                  _RoleCoordinateField(
+                    controller: _serenoLongitude,
+                    label: 'Longitud operativa',
+                    min: -180,
+                    max: 180,
+                  ),
+                ],
                 CheckboxListTile(
                   contentPadding: EdgeInsets.zero,
                   title: const Text('Ciudadano'),
@@ -717,6 +772,20 @@ class _EditRolesDialogState extends State<_EditRolesDialog> {
                   value: _selectedRoles.contains(_citizenRole),
                   onChanged: (value) => _toggle(_citizenRole, value ?? false),
                 ),
+                if (_selectedRoles.contains(_citizenRole)) ...[
+                  _RoleCoordinateField(
+                    controller: _citizenLatitude,
+                    label: 'Latitud del domicilio',
+                    min: -90,
+                    max: 90,
+                  ),
+                  _RoleCoordinateField(
+                    controller: _citizenLongitude,
+                    label: 'Longitud del domicilio',
+                    min: -180,
+                    max: 180,
+                  ),
+                ],
                 if (_selectedRoles.isEmpty)
                   Text(
                     'Selecciona al menos un rol.',
@@ -736,6 +805,44 @@ class _EditRolesDialogState extends State<_EditRolesDialog> {
       ],
     );
   }
+}
+
+class _RoleCoordinateField extends StatelessWidget {
+  const _RoleCoordinateField({
+    required this.controller,
+    required this.label,
+    required this.min,
+    required this.max,
+  });
+
+  final TextEditingController controller;
+  final String label;
+  final double min;
+  final double max;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(bottom: 12),
+    child: TextFormField(
+      controller: controller,
+      decoration: InputDecoration(labelText: label, hintText: '-13.6512'),
+      keyboardType: const TextInputType.numberWithOptions(
+        decimal: true,
+        signed: true,
+      ),
+      inputFormatters: [
+        FilteringTextInputFormatter.allow(RegExp(r'^-?\d{0,3}([.]\d{0,6})?')),
+      ],
+      validator: (value) {
+        final coordinate = double.tryParse(value?.trim() ?? '');
+        if (coordinate == null) return 'Ingresa una coordenada válida.';
+        if (coordinate < min || coordinate > max) {
+          return 'Debe estar entre $min y $max.';
+        }
+        return null;
+      },
+    ),
+  );
 }
 
 String _roleLabel(String role) => switch (role) {
