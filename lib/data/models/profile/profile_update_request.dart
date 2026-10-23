@@ -3,6 +3,7 @@ class UserProfileUpdateRequest {
     this.name,
     this.lastName,
     this.phone,
+    this.dni,
     this.address,
     this.notificationsEnabled,
   });
@@ -10,6 +11,7 @@ class UserProfileUpdateRequest {
   final String? name;
   final String? lastName;
   final String? phone;
+  final String? dni;
   final String? address;
   final bool? notificationsEnabled;
 
@@ -18,6 +20,7 @@ class UserProfileUpdateRequest {
       if (name != null) 'name': name,
       if (lastName != null) 'lastName': lastName,
       if (phone != null) 'phone': phone,
+      if (dni != null) 'dni': dni,
       if (address != null) 'address': address,
       if (notificationsEnabled != null)
         'notificationsEnabled': notificationsEnabled,

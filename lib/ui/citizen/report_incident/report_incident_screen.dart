@@ -8,6 +8,7 @@ import 'package:provider/provider.dart';
 import 'package:sereno_ya/ui/core/theme/colors.dart';
 import 'package:sereno_ya/ui/core/widgets/responsive_body.dart';
 import 'package:sereno_ya/ui/citizen/report_incident/view_models/report_incident_view_model.dart';
+import 'package:sereno_ya/ui/profile/view_models/profile_view_model.dart';
 
 class ReportIncidentScreen extends StatefulWidget {
   const ReportIncidentScreen({super.key});
@@ -21,15 +22,9 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
   final _descriptionController = TextEditingController();
   final _referenceController = TextEditingController();
   bool _isChoosingLocation = false;
+  bool _identityDialogOpen = false;
+  bool _locationRequested = false;
   LatLng? _location;
-
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) _locateCitizen();
-    });
-  }
 
   Future<void> _locateCitizen() async {
     final viewModel = context.read<ReportIncidentViewModel>();
@@ -94,6 +89,7 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
 
   void _submit(BuildContext context, ReportIncidentViewModel viewModel) async {
     if (_isChoosingLocation || viewModel.isSubmitting) return;
+    if (!context.read<ProfileViewModel>().hasReportIdentity) return;
     final description = _descriptionController.text.trim().isEmpty
         ? 'Reporte desde la app ciudadana'
         : _descriptionController.text.trim();
@@ -143,6 +139,20 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
       );
       Navigator.of(context).pop();
     }
+  }
+
+  Future<void> _requestIdentity(ProfileViewModel profile) async {
+    _identityDialogOpen = true;
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => ChangeNotifierProvider.value(
+        value: profile,
+        child: const _ReportIdentityDialog(),
+      ),
+    );
+    _identityDialogOpen = false;
+    if (mounted && !profile.hasReportIdentity) Navigator.of(context).pop();
   }
 
   Widget _buildCategoryIcon(String name) {
@@ -272,6 +282,45 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final profile = context.watch<ProfileViewModel>();
+    if (!profile.isLoading && profile.userProfile != null) {
+      if (!profile.hasReportIdentity && !_identityDialogOpen) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted && !_identityDialogOpen && !profile.hasReportIdentity) {
+            _requestIdentity(profile);
+          }
+        });
+      } else if (profile.hasReportIdentity && !_locationRequested) {
+        _locationRequested = true;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) _locateCitizen();
+        });
+      }
+    }
+    if (!profile.hasReportIdentity) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Nuevo reporte')),
+        body: Center(
+          child: profile.isLoading
+              ? const CircularProgressIndicator()
+              : profile.userProfile != null
+              ? const Text('Completa tus datos para continuar con el reporte.')
+              : Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      profile.errorMessage ?? 'No se pudo cargar tu perfil.',
+                    ),
+                    const SizedBox(height: 16),
+                    FilledButton(
+                      onPressed: () => profile.load(forceRefresh: true),
+                      child: const Text('Reintentar'),
+                    ),
+                  ],
+                ),
+        ),
+      );
+    }
     return Scaffold(
       backgroundColor: context.appColors.background,
       appBar: AppBar(
@@ -808,6 +857,115 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
             );
           },
         ),
+      ),
+    );
+  }
+}
+
+class _ReportIdentityDialog extends StatefulWidget {
+  const _ReportIdentityDialog();
+
+  @override
+  State<_ReportIdentityDialog> createState() => _ReportIdentityDialogState();
+}
+
+class _ReportIdentityDialogState extends State<_ReportIdentityDialog> {
+  final _formKey = GlobalKey<FormState>();
+  late final TextEditingController _dni;
+  late final TextEditingController _phone;
+
+  @override
+  void initState() {
+    super.initState();
+    final user = context.read<ProfileViewModel>().userProfile!;
+    _dni = TextEditingController(text: user.dni);
+    _phone = TextEditingController(text: user.phone);
+  }
+
+  @override
+  void dispose() {
+    _dni.dispose();
+    _phone.dispose();
+    super.dispose();
+  }
+
+  Future<void> _save() async {
+    if (!_formKey.currentState!.validate()) return;
+    final profile = context.read<ProfileViewModel>();
+    final saved = await profile.completeReportIdentity(
+      dni: _dni.text,
+      phone: _phone.text,
+    );
+    if (saved && mounted) Navigator.of(context).pop();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final profile = context.watch<ProfileViewModel>();
+    return PopScope(
+      canPop: false,
+      child: AlertDialog(
+        title: const Text('Completa tus datos'),
+        content: SingleChildScrollView(
+          child: Form(
+            key: _formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Para reportar un incidente necesitamos tu DNI y celular de contacto.',
+                ),
+                const SizedBox(height: 20),
+                TextFormField(
+                  controller: _dni,
+                  keyboardType: TextInputType.number,
+                  textInputAction: TextInputAction.next,
+                  decoration: const InputDecoration(labelText: 'DNI'),
+                  validator: (value) =>
+                      RegExp(r'^\d{8}$').hasMatch(value?.trim() ?? '')
+                      ? null
+                      : 'Ingresa un DNI de 8 dígitos.',
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: _phone,
+                  keyboardType: TextInputType.phone,
+                  textInputAction: TextInputAction.done,
+                  decoration: const InputDecoration(labelText: 'Celular'),
+                  validator: (value) =>
+                      RegExp(r'^(?:\+51)?9\d{8}$').hasMatch(value?.trim() ?? '')
+                      ? null
+                      : 'Ingresa un celular peruano válido.',
+                ),
+                if (profile.errorMessage != null) ...[
+                  const SizedBox(height: 12),
+                  Text(
+                    profile.errorMessage!,
+                    style: TextStyle(color: context.appColors.error),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: profile.isSaving
+                ? null
+                : () => Navigator.of(context).pop(),
+            child: const Text('Cancelar reporte'),
+          ),
+          FilledButton(
+            onPressed: profile.isSaving ? null : _save,
+            child: profile.isSaving
+                ? const SizedBox.square(
+                    dimension: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Text('Guardar y continuar'),
+          ),
+        ],
       ),
     );
   }

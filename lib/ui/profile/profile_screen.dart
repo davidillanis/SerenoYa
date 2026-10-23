@@ -206,6 +206,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         title: Text(switch (variant) {
                           ThemeVariant.normal => 'Normal (verde)',
                           ThemeVariant.pink => 'Pink (rosa)',
+                          ThemeVariant.blue => 'Azul',
                         }),
                         secondary: Icon(
                           Icons.circle,
@@ -213,6 +214,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           semanticLabel: switch (variant) {
                             ThemeVariant.normal => 'Verde',
                             ThemeVariant.pink => 'Rosa',
+                            ThemeVariant.blue => 'Azul',
                           },
                         ),
                       ),

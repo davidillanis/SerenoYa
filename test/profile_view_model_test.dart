@@ -4,6 +4,85 @@ import 'package:sereno_ya/data/services/api/profile/profile_api_service.dart';
 import 'package:sereno_ya/ui/profile/view_models/profile_view_model.dart';
 
 void main() {
+  test(
+    'exige DNI y celular y confirma los datos guardados antes del reporte',
+    () async {
+      var dni = '';
+      var phone = '';
+      var rejectUpdate = false;
+      final updates = <Map<String, dynamic>>[];
+      final dio = Dio(BaseOptions(baseUrl: 'http://localhost/api/v1'));
+      dio.interceptors.add(
+        InterceptorsWrapper(
+          onRequest: (options, handler) {
+            if (options.path == '/user-role/update-me') {
+              final data = Map<String, dynamic>.from(options.data as Map);
+              updates.add(data);
+              if (!rejectUpdate) {
+                dni = data['dni'] as String? ?? dni;
+                phone = data['phone'] as String? ?? phone;
+              }
+            }
+            handler.resolve(
+              Response<dynamic>(
+                requestOptions: options,
+                statusCode: 200,
+                data: {
+                  'isSuccess': !rejectUpdate,
+                  'data': options.path == '/user-role/me'
+                      ? {
+                          'id': 'user-1',
+                          'name': 'Ana',
+                          'lastName': 'Quispe',
+                          'email': 'ana@example.com',
+                          'dni': dni,
+                          'phone': phone,
+                          'address': '',
+                          'enabled': true,
+                          'emailVerified': true,
+                        }
+                      : 'Actualizado',
+                },
+              ),
+            );
+          },
+        ),
+      );
+      final viewModel = ProfileViewModel(
+        ProfileApiService(dio),
+        userId: 'user-1',
+        includeCitizenProfile: false,
+      );
+      addTearDown(viewModel.dispose);
+      await _waitUntil(() => !viewModel.isLoading);
+      expect(viewModel.hasReportIdentity, isFalse);
+      expect(
+        await viewModel.completeReportIdentity(dni: '123', phone: '987654321'),
+        isFalse,
+      );
+      expect(updates, isEmpty);
+      rejectUpdate = true;
+      expect(
+        await viewModel.completeReportIdentity(
+          dni: '12345678',
+          phone: '987654321',
+        ),
+        isFalse,
+      );
+      expect(viewModel.hasReportIdentity, isFalse);
+      rejectUpdate = false;
+      expect(
+        await viewModel.completeReportIdentity(
+          dni: '12345678',
+          phone: '987654321',
+        ),
+        isTrue,
+      );
+      expect(updates.last, {'dni': '12345678', 'phone': '987654321'});
+      expect(viewModel.hasReportIdentity, isTrue);
+    },
+  );
+
   test('carga y actualiza el perfil sin una capa de repositorio', () async {
     final requestedPaths = <String>[];
     var name = 'Ana';

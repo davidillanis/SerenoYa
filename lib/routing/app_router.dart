@@ -192,9 +192,30 @@ GoRouter createAppRouter({
         routes: [
           GoRoute(
             path: 'report',
-            builder: (_, _) => ChangeNotifierProvider(
-              create: (_) =>
-                  ReportIncidentViewModel(incidentRepository, storageService),
+            builder: (_, _) => MultiProvider(
+              providers: [
+                ChangeNotifierProvider(
+                  create: (_) => ReportIncidentViewModel(
+                    incidentRepository,
+                    storageService,
+                  ),
+                ),
+                ChangeNotifierProvider(
+                  create: (context) => ProfileViewModel(
+                    profileApiService,
+                    userId:
+                        context
+                            .read<SessionViewModel>()
+                            .state
+                            .session
+                            ?.user
+                            .id ??
+                        '',
+                    includeCitizenProfile: false,
+                    forceRefresh: true,
+                  ),
+                ),
+              ],
               child: const ReportIncidentScreen(),
             ),
           ),

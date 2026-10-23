@@ -60,6 +60,7 @@ class UserProfile {
     String? name,
     String? lastName,
     String? phone,
+    String? dni,
     String? address,
   }) {
     return UserProfile(
@@ -67,7 +68,7 @@ class UserProfile {
       name: name ?? this.name,
       lastName: lastName ?? this.lastName,
       email: email,
-      dni: dni,
+      dni: dni ?? this.dni,
       phone: phone ?? this.phone,
       address: address ?? this.address,
       enabled: enabled,

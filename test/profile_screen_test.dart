@@ -117,6 +117,26 @@ void main() {
         const Color(0xFFEA044E),
       );
       expect(tester.takeException(), isNull);
+      await tester.scrollUntilVisible(find.text('Azul'), 200);
+      final blueTile = find.ancestor(
+        of: find.text('Azul'),
+        matching: find.byType(RadioListTile<ThemeVariant>),
+      );
+      expect(
+        tester
+            .widget<Icon>(
+              find.descendant(
+                of: blueTile,
+                matching: find.byIcon(Icons.circle),
+              ),
+            )
+            .semanticLabel,
+        'Azul',
+      );
+      await tester.tap(find.text('Azul'));
+      await tester.pumpAndSettle();
+      expect(controller.variant, ThemeVariant.blue);
+      expect(preferences.getString('@user_theme_variant'), 'blue');
       await tester.tap(find.text('Normal (verde)'));
       await tester.pumpAndSettle();
       expect(preferences.getString('@user_theme_variant'), 'normal');

@@ -410,10 +410,117 @@ const darkThemePink = AppTheme(
   fonts: appFonts,
 );
 
+const lightThemeBlue = AppTheme(
+  colors: AppThemeColors(
+    primary: Color(0xFF2563EB),
+    primaryLight: Color(0xFF60A5FA),
+    primaryDark: Color(0xFF1D4ED8),
+
+    secondary: Color(0xFFF59E0B),
+    secondaryLight: Color(0xFFFBBF24),
+    secondaryDark: Color(0xFFB45309),
+
+    tertiary: Color(0xFF64748B),
+    tertiaryLight: Color(0xFFCBD5E1),
+    tertiaryDark: Color(0xFF334155),
+
+    background: Color(0xFFEFF6FF),
+    surface: Color(0xFFFFFFFF),
+    surfaceVariant: Color(0xFFDBEAFE),
+
+    text: Color(0xFF0B1B3A),
+    textSecondary: Color(0xFF1E40AF),
+    textTertiary: Color(0xFF64748B),
+    textInverse: Color(0xFFFFFFFF),
+
+    border: Color(0xFFBFDBFE),
+    borderVariant: Color(0xFFDBEAFE),
+
+    success: Color(0xFF16A34A),
+    successLight: Color(0xFFDCFCE7),
+
+    warning: Color(0xFFF59E0B),
+    warningLight: Color(0xFFFEF3C7),
+
+    error: Color(0xFFDC2626),
+    errorLight: Color(0xFFFEE2E2),
+
+    info: Color(0xFF0891B2),
+    infoLight: Color(0xFFCFFAFE),
+
+    card: Color(0xFFFFFFFF),
+    modal: Color(0xFFF0F7FF),
+    row: Color(0xFFDBEAFE),
+    gradient: Color(0xFF1E3A8A),
+
+    button: Color(0xFF2563EB),
+    buttonSecondary: Color(0xFFF59E0B),
+
+    icon: Color(0xFF1E40AF),
+    tabIcon: Color(0xFF64748B),
+    tabIconSelected: Color(0xFF2563EB),
+  ),
+  fonts: appFonts,
+);
+
+const darkThemeBlue = AppTheme(
+  colors: AppThemeColors(
+    primary: Color(0xFF3B82F6),
+    primaryLight: Color(0xFF93C5FD),
+    primaryDark: Color(0xFF1D4ED8),
+
+    secondary: Color(0xFFF59E0B),
+    secondaryLight: Color(0xFFFCD34D),
+    secondaryDark: Color(0xFFB45309),
+
+    tertiary: Color(0xFF0D1A33),
+    tertiaryLight: Color(0xFF1E3A8A),
+    tertiaryDark: Color(0xFF070D1A),
+
+    background: Color(0xFF070D1A),
+    surface: Color(0xFF0D1A33),
+    surfaceVariant: Color(0xFF1E3A8A),
+
+    text: Color(0xFFEFF6FF),
+    textSecondary: Color(0xFFBFDBFE),
+    textTertiary: Color(0xFF60A5FA),
+    textInverse: Color(0xFFFFFFFF),
+
+    border: Color(0xFF3B82F6),
+    borderVariant: Color(0xFF1E3A8A),
+
+    success: Color(0xFF22C55E),
+    successLight: Color(0xFF14532D),
+
+    warning: Color(0xFFFBBF24),
+    warningLight: Color(0xFF451A03),
+
+    error: Color(0xFFF87171),
+    errorLight: Color(0xFF450A0A),
+
+    info: Color(0xFF22D3EE),
+    infoLight: Color(0xFF164E63),
+
+    card: Color(0xFF0D1A33),
+    modal: Color(0xFF172554),
+    row: Color(0xFF11224A),
+    gradient: Color(0xFF1E40AF),
+
+    button: Color(0xFF2563EB),
+    buttonSecondary: Color(0xFFF59E0B),
+
+    icon: Color(0xFFBFDBFE),
+    tabIcon: Color(0xFF60A5FA),
+    tabIconSelected: Color(0xFF3B82F6),
+  ),
+  fonts: appFonts,
+);
+
 /// Add each new variant and its light/dark palettes here.
 const themeVariants = <ThemeVariant, ({AppTheme light, AppTheme dark})>{
   ThemeVariant.normal: (light: lightTheme, dark: darkTheme),
   ThemeVariant.pink: (light: lightThemePink, dark: darkThemePink),
+  ThemeVariant.blue: (light: lightThemeBlue, dark: darkThemeBlue),
 };
 
 AppTheme getTheme(

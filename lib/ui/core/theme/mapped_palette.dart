@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-enum ThemeVariant { normal, pink }
+enum ThemeVariant { normal, pink, blue }
 
 class MappedPalette extends ThemeExtension<MappedPalette> {
   final Color text;

@@ -11,13 +11,14 @@ class ProfileViewModel extends ChangeNotifier {
     this._service, {
     required String userId,
     required this.includeCitizenProfile,
+    bool forceRefresh = false,
   }) {
     _service.useCacheForUser(userId);
     _userProfile = _service.cachedUserProfile;
     _citizenProfile = includeCitizenProfile
         ? _service.cachedCitizenProfile
         : null;
-    load();
+    load(forceRefresh: forceRefresh);
   }
 
   final ProfileApiService _service;
@@ -93,6 +94,68 @@ class ProfileViewModel extends ChangeNotifier {
     _errorMessage = null;
     _successMessage = null;
     _notifyListeners();
+  }
+
+  bool get hasReportIdentity {
+    final user = _userProfile;
+    return user != null &&
+        RegExp(r'^\d{8}$').hasMatch(user.dni.trim()) &&
+        RegExp(r'^(?:\+51)?9\d{8}$').hasMatch(user.phone.trim());
+  }
+
+  Future<bool> completeReportIdentity({
+    required String dni,
+    required String phone,
+  }) async {
+    if (_userProfile == null || _isLoading || _isSaving || _disposed) {
+      return false;
+    }
+    final normalizedDni = dni.trim();
+    final normalizedPhone = phone.trim();
+    _errorMessage = null;
+    if (!RegExp(r'^\d{8}$').hasMatch(normalizedDni)) {
+      _errorMessage = 'El DNI debe contener 8 dígitos.';
+    } else if (!RegExp(r'^(?:\+51)?9\d{8}$').hasMatch(normalizedPhone)) {
+      _errorMessage = 'Ingresa un celular peruano válido.';
+    }
+    if (_errorMessage != null) {
+      _notifyListeners();
+      return false;
+    }
+
+    _isSaving = true;
+    _notifyListeners();
+    try {
+      await _updateUser(
+        UserProfileUpdateRequest(
+          dni: normalizedDni == _userProfile!.dni ? null : normalizedDni,
+          phone: normalizedPhone == _userProfile!.phone
+              ? null
+              : normalizedPhone,
+        ),
+      );
+      final response = await _service.getUserProfile();
+      if (!response.isSuccess || response.data == null) {
+        throw AuthFailure(AuthFailureCode.server, response.errorMessage);
+      }
+      _userProfile = response.data;
+      if (!hasReportIdentity) {
+        _errorMessage =
+            'No se pudieron confirmar el DNI y el celular guardados.';
+        return false;
+      }
+      _successMessage = 'Datos actualizados correctamente.';
+      return true;
+    } on AuthFailure catch (failure) {
+      _errorMessage = failure.message;
+      return false;
+    } on Object {
+      _errorMessage = 'No se pudieron guardar tus datos. Inténtalo de nuevo.';
+      return false;
+    } finally {
+      _isSaving = false;
+      _notifyListeners();
+    }
   }
 
   Future<bool> save({
