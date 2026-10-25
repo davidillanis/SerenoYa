@@ -49,9 +49,77 @@ void main() {
       expect(tester.takeException(), isNull);
     });
   }
+  for (final status in [
+    'REQUESTED',
+    'ATTENDED',
+    'EXPIRED',
+    'CANCELLED_BY_CITIZEN',
+  ]) {
+    testWidgets('seguimiento de $status en pantalla estrecha y texto grande', (
+      tester,
+    ) async {
+      await tester.binding.setSurfaceSize(const Size(320, 720));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      final dio = _detailDio(status: status);
+      final repository = IncidentRepository(
+        apiService: IncidentsApiService(dio),
+        localDataSource: _NoopIncidentLocalDataSource(),
+        incidentApiService: IncidentApiService(dio),
+      );
+      await tester.pumpWidget(
+        ChangeNotifierProvider(
+          create: (_) => IncidentDetailViewModel(repository, 'incident-1'),
+          child: MaterialApp(
+            theme: buildAppTheme(Brightness.light, ThemeVariant.normal),
+            builder: (context, child) => MediaQuery(
+              data: MediaQuery.of(context)
+                  .copyWith(textScaler: const TextScaler.linear(1.5)),
+              child: child!,
+            ),
+            home: const IncidentDetailScreen(),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.scrollUntilVisible(
+        find.text('Seguimiento'),
+        200,
+        scrollable: find
+            .descendant(
+              of: find.byType(ListView),
+              matching: find.byType(Scrollable),
+            )
+            .first,
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('Reporte creado'), findsOneWidget);
+      if (status == 'REQUESTED') {
+        expect(find.text('Pendiente'), findsNWidgets(3));
+        expect(find.text('Plazo para aceptar el reporte'), findsOneWidget);
+        expect(find.text('Incidencia expirada'), findsNothing);
+      } else if (status == 'ATTENDED') {
+        expect(find.text('Aceptado por el sereno'), findsOneWidget);
+        expect(find.text('Sereno en camino'), findsOneWidget);
+        expect(find.text('Sereno llegó al lugar'), findsOneWidget);
+        expect(find.text('Plazo para aceptar el reporte'), findsNothing);
+        expect(find.text('Incidencia expirada'), findsNothing);
+      } else {
+        expect(
+          find.text(
+            status == 'EXPIRED'
+                ? 'Incidencia expirada'
+                : 'Incidencia cancelada',
+          ),
+          findsOneWidget,
+        );
+        expect(find.text('Pendiente'), findsNothing);
+      }
+      expect(tester.takeException(), isNull);
+    });
+  }
 }
 
-Dio _detailDio() {
+Dio _detailDio({String status = 'REQUESTED'}) {
   final dio = Dio(BaseOptions(baseUrl: 'http://localhost/api/v1'));
   dio.interceptors.add(
     InterceptorsWrapper(
@@ -67,11 +135,19 @@ Dio _detailDio() {
               'data': {
                 'id': 'incident-1',
                 'description': 'Incendio en vivienda',
-                'status': 'REQUESTED',
+                'status': status,
                 'latitude': -13.6519,
                 'longitude': -73.365,
                 'referenceAddress': 'Av. Principal',
                 'createdAt': '2026-09-28T10:00:00',
+                'expiredAt': '2026-09-28T10:30:00',
+                if (status == 'ATTENDED') ...{
+                  'acceptedAt': '2026-09-28T10:05:00',
+                  'arrivedAt': '2026-09-28T10:10:00',
+                  'attendedAt': '2026-09-28T10:20:00',
+                },
+                if (status == 'CANCELLED_BY_CITIZEN')
+                  'cancelledAt': '2026-09-28T10:03:00',
                 'category': {'name': 'Incendio'},
               },
             },

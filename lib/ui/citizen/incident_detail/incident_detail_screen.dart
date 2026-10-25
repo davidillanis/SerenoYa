@@ -1,5 +1,5 @@
+import 'package:sereno_ya/ui/core/widgets/incident_timeline_card.dart';
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:sereno_ya/data/models/citizen/incident.dart';
 import 'package:sereno_ya/ui/citizen/incident_detail/view_models/incident_detail_view_model.dart';
@@ -102,7 +102,7 @@ class IncidentDetailScreen extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 16),
-        _TimelineCard(incident: incident),
+        IncidentTimelineCard(incident: incident),
       ],
     );
   }
@@ -235,73 +235,6 @@ class _InformationRow extends StatelessWidget {
               ),
             ],
           ),
-        ),
-      ],
-    );
-  }
-}
-
-class _TimelineCard extends StatelessWidget {
-  const _TimelineCard({required this.incident});
-
-  final Incident incident;
-
-  @override
-  Widget build(BuildContext context) {
-    final entries = <(String, DateTime?)>[
-      ('Reporte creado', incident.createdAt),
-      ('Sereno asignado', incident.acceptedAt),
-      ('Sereno en el lugar', incident.arrivedAt),
-      ('Incidencia atendida', incident.attendedAt),
-      ('Incidencia cancelada', incident.cancelledAt),
-    ].where((entry) => entry.$2 != null).toList(growable: false);
-
-    return _InformationCard(
-      children: [
-        Align(
-          alignment: Alignment.centerLeft,
-          child: Text(
-            'Seguimiento',
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-              color: context.appColors.text,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ),
-        const SizedBox(height: 16),
-        for (var index = 0; index < entries.length; index++) ...[
-          _TimelineEntry(label: entries[index].$1, date: entries[index].$2!),
-          if (index != entries.length - 1) const SizedBox(height: 12),
-        ],
-      ],
-    );
-  }
-}
-
-class _TimelineEntry extends StatelessWidget {
-  const _TimelineEntry({required this.label, required this.date});
-
-  final String label;
-  final DateTime date;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Icon(Icons.check_circle, size: 18, color: context.appColors.success),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Text(
-            label,
-            style: TextStyle(
-              color: context.appColors.text,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ),
-        Text(
-          DateFormat('dd/MM/yyyy HH:mm').format(date),
-          style: TextStyle(color: context.appColors.textTertiary, fontSize: 12),
         ),
       ],
     );

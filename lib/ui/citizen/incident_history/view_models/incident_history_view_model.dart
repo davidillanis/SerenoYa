@@ -3,11 +3,22 @@ import 'package:sereno_ya/data/models/citizen/incident.dart';
 import 'package:sereno_ya/data/repositories/citizen/incident_repository.dart';
 import 'package:sereno_ya/models/auth/auth_session.dart';
 
-enum IncidentHistoryFilter { all, attended, cancelled, expired }
+enum IncidentHistoryFilter {
+  all,
+  requested,
+  accepted,
+  onSite,
+  attended,
+  cancelled,
+  expired,
+}
 
 extension IncidentHistoryFilterPresentation on IncidentHistoryFilter {
   String get label => switch (this) {
     IncidentHistoryFilter.all => 'Todas',
+    IncidentHistoryFilter.requested => 'Solicitadas',
+    IncidentHistoryFilter.accepted => 'Aceptadas',
+    IncidentHistoryFilter.onSite => 'En recorrido',
     IncidentHistoryFilter.attended => 'Atendidas',
     IncidentHistoryFilter.cancelled => 'Canceladas',
     IncidentHistoryFilter.expired => 'Expiradas',
@@ -15,6 +26,9 @@ extension IncidentHistoryFilterPresentation on IncidentHistoryFilter {
 
   String? get status => switch (this) {
     IncidentHistoryFilter.all => null,
+    IncidentHistoryFilter.requested => 'REQUESTED',
+    IncidentHistoryFilter.accepted => 'ACCEPTED',
+    IncidentHistoryFilter.onSite => 'ON_SITE',
     IncidentHistoryFilter.attended => 'ATTENDED',
     IncidentHistoryFilter.cancelled => 'CANCELLED_BY_CITIZEN',
     IncidentHistoryFilter.expired => 'EXPIRED',
@@ -31,14 +45,6 @@ class IncidentHistoryViewModel extends ChangeNotifier {
   }
 
   static const pageSize = 15;
-
-  /// El backend solo filtra por un `status`; "Todas" se pide sin filtro y
-  /// se reduce localmente a estados terminales del historial.
-  static const terminalStatuses = {
-    'ATTENDED',
-    'CANCELLED_BY_CITIZEN',
-    'EXPIRED',
-  };
 
   final IncidentRepository _repository;
   final AuthSession? _session;
@@ -97,7 +103,7 @@ class IncidentHistoryViewModel extends ChangeNotifier {
 
     if (result.isSuccess && result.data != null) {
       final page = result.data!;
-      state.incidents = _applyFilter(page.content);
+      state.incidents = List<Incident>.of(page.content);
       state.nextPage = page.page + 1;
       state.hasMore = state.nextPage < page.totalPages;
       state.hasLoaded = true;
@@ -137,7 +143,7 @@ class IncidentHistoryViewModel extends ChangeNotifier {
       final knownIds = state.incidents.map((incident) => incident.id).toSet();
       state.incidents = [
         ...state.incidents,
-        ..._applyFilter(page.content)
+        ...List<Incident>.of(page.content)
             .where((incident) => knownIds.add(incident.id)),
       ];
       state.nextPage = page.page + 1;
@@ -155,13 +161,6 @@ class IncidentHistoryViewModel extends ChangeNotifier {
   Future<void> retryLoadMore() async {
     _currentState.loadMoreError = null;
     await loadMore();
-  }
-
-  List<Incident> _applyFilter(List<Incident> incidents) {
-    if (_selectedFilter != IncidentHistoryFilter.all) return List.of(incidents);
-    return incidents
-        .where((incident) => terminalStatuses.contains(incident.status))
-        .toList(growable: false);
   }
 
   void _synchronizeCacheRevision() {

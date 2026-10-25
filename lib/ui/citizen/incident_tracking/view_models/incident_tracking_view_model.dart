@@ -13,7 +13,7 @@ class IncidentTrackingViewModel extends ChangeNotifier {
     if (userId != null) {
       _repository.useCacheForUser(userId);
     }
-    final cachedIncidents = _repository.getCachedRequestedIncidents();
+    final cachedIncidents = _repository.getCachedActiveIncidents();
     if (cachedIncidents == null) {
       loadActiveIncidents();
     } else {
@@ -45,8 +45,7 @@ class IncidentTrackingViewModel extends ChangeNotifier {
     _errorMessage = null;
     _notifyListeners();
 
-    final result = await _repository.listMyIncidents(
-      status: 'REQUESTED',
+    final result = await _repository.listActiveIncidents(
       forceRefresh: forceRefresh,
     );
 
@@ -61,7 +60,7 @@ class IncidentTrackingViewModel extends ChangeNotifier {
   }
 
   void syncFromCache() {
-    final cachedIncidents = _repository.getCachedRequestedIncidents();
+    final cachedIncidents = _repository.getCachedActiveIncidents();
     if (cachedIncidents == null) return;
     _incidents = cachedIncidents;
     _errorMessage = null;

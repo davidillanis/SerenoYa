@@ -43,13 +43,13 @@ class IncidentStatusBadge extends StatelessWidget {
       ),
       'ACCEPTED' => _StatusPresentation(
         context.appColors.info,
-        'Sereno en camino',
-        Icons.directions_run,
+        'Aceptada',
+        Icons.assignment_turned_in_outlined,
       ),
       'ON_SITE' => _StatusPresentation(
         context.appColors.success,
-        'Sereno en el lugar',
-        Icons.where_to_vote,
+        'En recorrido',
+        Icons.directions_run,
       ),
       'ATTENDED' => _StatusPresentation(
         context.appColors.success,

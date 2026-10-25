@@ -26,10 +26,10 @@ class IncidentRepository {
   List<IncidentCategory>? _cachedCategories;
   Future<Result<List<IncidentCategory>>>? _categoriesRequest;
   String? _cacheOwnerId;
-  List<Incident>? _cachedRequestedIncidents;
+  List<Incident>? _cachedActiveIncidents;
   final Map<String, Incident> _incidentDetailCache = {};
   final Map<String, Future<Result<Incident>>> _incidentDetailRequests = {};
-  Future<Result<List<Incident>>>? _requestedIncidentsRequest;
+  Future<Result<List<Incident>>>? _activeIncidentsRequest;
   List<Incident>? _cachedAvailableIncidents;
   int _availableIncidentsNextPage = 0;
   int _availableIncidentsTotalPages = 1;
@@ -40,17 +40,17 @@ class IncidentRepository {
   void useCacheForUser(String userId) {
     if (_cacheOwnerId == userId) return;
     _cacheOwnerId = userId;
-    _cachedRequestedIncidents = null;
+    _cachedActiveIncidents = null;
     _incidentDetailCache.clear();
     _incidentDetailRequests.clear();
-    _requestedIncidentsRequest = null;
+    _activeIncidentsRequest = null;
     _cachedAvailableIncidents = null;
     _availableIncidentsNextPage = 0;
     _availableIncidentsTotalPages = 1;
   }
 
-  List<Incident>? getCachedRequestedIncidents() {
-    final incidents = _cachedRequestedIncidents;
+  List<Incident>? getCachedActiveIncidents() {
+    final incidents = _cachedActiveIncidents;
     return incidents == null ? null : List<Incident>.unmodifiable(incidents);
   }
 
@@ -148,10 +148,11 @@ class IncidentRepository {
         final incident = response.data!;
         if (_cacheOwnerId == cacheOwnerId) {
           _incidentDetailCache[incident.id] = incident;
-          final requestedIncidents = _cachedRequestedIncidents;
-          if (incident.status == 'REQUESTED' && requestedIncidents != null) {
-            requestedIncidents.removeWhere((item) => item.id == incident.id);
-            requestedIncidents.insert(0, incident);
+          final activeIncidents = _cachedActiveIncidents;
+          if (_activeStatuses.contains(incident.status) &&
+              activeIncidents != null) {
+            activeIncidents.removeWhere((item) => item.id == incident.id);
+            activeIncidents.insert(0, incident);
           }
         }
         return Result.success(incident);
@@ -166,42 +167,41 @@ class IncidentRepository {
     }
   }
 
-  Future<Result<List<Incident>>> listMyIncidents({
-    String? status,
+  static const _activeStatuses = {'REQUESTED', 'ACCEPTED', 'ON_SITE'};
+
+  Future<Result<List<Incident>>> listActiveIncidents({
     bool forceRefresh = false,
   }) async {
-    if (status == 'REQUESTED') {
-      final cachedIncidents = _cachedRequestedIncidents;
-      if (!forceRefresh && cachedIncidents != null) {
-        return Result.success(List<Incident>.unmodifiable(cachedIncidents));
-      }
-
-      final pendingRequest = _requestedIncidentsRequest;
-      if (pendingRequest != null) return pendingRequest;
-
-      final cacheOwnerId = _cacheOwnerId;
-      final request = _fetchMyIncidents(status: status).then((result) {
-        if (_cacheOwnerId == cacheOwnerId &&
-            result.isSuccess &&
-            result.data != null) {
-          _cachedRequestedIncidents = List<Incident>.of(result.data!);
-          return Result.success(
-            List<Incident>.unmodifiable(_cachedRequestedIncidents!),
-          );
-        }
-        return result;
-      });
-      _requestedIncidentsRequest = request;
-      try {
-        return await request;
-      } finally {
-        if (identical(_requestedIncidentsRequest, request)) {
-          _requestedIncidentsRequest = null;
-        }
-      }
+    final cachedIncidents = _cachedActiveIncidents;
+    if (!forceRefresh && cachedIncidents != null) {
+      return Result.success(List<Incident>.unmodifiable(cachedIncidents));
     }
 
-    return _fetchMyIncidents(status: status);
+    final pendingRequest = _activeIncidentsRequest;
+    if (pendingRequest != null) return pendingRequest;
+
+    final cacheOwnerId = _cacheOwnerId;
+    final request = _fetchMyIncidents().then((result) {
+      if (_cacheOwnerId == cacheOwnerId &&
+          result.isSuccess &&
+          result.data != null) {
+        _cachedActiveIncidents = result.data!
+            .where((incident) => _activeStatuses.contains(incident.status))
+            .toList();
+        return Result.success(
+          List<Incident>.unmodifiable(_cachedActiveIncidents!),
+        );
+      }
+      return result;
+    });
+    _activeIncidentsRequest = request;
+    try {
+      return await request;
+    } finally {
+      if (identical(_activeIncidentsRequest, request)) {
+        _activeIncidentsRequest = null;
+      }
+    }
   }
 
   Future<Result<List<Incident>>> _fetchMyIncidents({String? status}) async {
@@ -436,7 +436,7 @@ class IncidentRepository {
         if (_cacheOwnerId == cacheOwnerId) {
           _historyRevision++;
           _incidentDetailCache.remove(incidentId);
-          _cachedRequestedIncidents?.removeWhere(
+          _cachedActiveIncidents?.removeWhere(
             (incident) => incident.id == incidentId,
           );
         }

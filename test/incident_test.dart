@@ -3,6 +3,32 @@ import 'package:sereno_ya/data/models/citizen/incident.dart';
 
 void main() {
   group('Incident.fromJson', () {
+    test('deserializa las seis fechas del seguimiento', () {
+      final json = _incidentJson(createdAt: '2026-09-28T10:00:00');
+      for (final field in [
+        'acceptedAt',
+        'arrivedAt',
+        'attendedAt',
+        'expiredAt',
+        'cancelledAt',
+      ]) {
+        json[field] = '2026-09-28T10:30:00';
+      }
+      final incident = Incident.fromJson(json);
+      expect(incident.createdAt, DateTime(2026, 9, 28, 10));
+      for (final date in [
+        incident.acceptedAt,
+        incident.arrivedAt,
+        incident.attendedAt,
+        incident.expiredAt,
+        incident.cancelledAt,
+      ]) {
+        expect(date, DateTime(2026, 9, 28, 10, 30));
+      }
+      expect(Incident.fromJson({'expiredAt': 'inválida'}).expiredAt, isNull);
+      expect(Incident.fromJson({}).expiredAt, isNull);
+    });
+
     test('convierte createdAt UTC a la zona horaria del dispositivo', () {
       const utcValue = '2026-09-26T23:57:00Z';
 

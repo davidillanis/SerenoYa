@@ -1,3 +1,4 @@
+import 'package:sereno_ya/ui/core/widgets/incident_timeline_card.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
@@ -263,28 +264,15 @@ class _TimelinePanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (incident.adminDetailsIncluded) {
-      return _AdministrativeTimeline(history: incident.statusHistory);
-    }
-
-    final entries = <(String, DateTime?)>[
-      ('Reporte creado', incident.createdAt),
-      ('Incidencia aceptada', incident.acceptedAt),
-      ('Sereno en el lugar', incident.arrivedAt),
-      ('Incidencia atendida', incident.attendedAt),
-      ('Incidencia cancelada', incident.cancelledAt),
-    ].where((entry) => entry.$2 != null).toList(growable: false);
-
-    return _SectionCard(
-      title: 'Cronología',
-      child: Column(
-        children: [
-          for (var index = 0; index < entries.length; index++) ...[
-            _TimelineEntry(label: entries[index].$1, date: entries[index].$2!),
-            if (index != entries.length - 1) const SizedBox(height: 14),
-          ],
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        IncidentTimelineCard(incident: incident),
+        if (incident.adminDetailsIncluded) ...[
+          const SizedBox(height: 16),
+          _AdministrativeTimeline(history: incident.statusHistory),
         ],
-      ),
+      ],
     );
   }
 }
@@ -549,42 +537,6 @@ class _DetailField extends StatelessWidget {
               ),
             ],
           ),
-        ),
-      ],
-    );
-  }
-}
-
-class _TimelineEntry extends StatelessWidget {
-  const _TimelineEntry({required this.label, required this.date});
-
-  final String label;
-  final DateTime date;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.only(top: 2),
-          child: Icon(
-            Icons.check_circle_outline,
-            size: 18,
-            color: context.appColors.success,
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Text(
-            label,
-            style: const TextStyle(fontWeight: FontWeight.w600),
-          ),
-        ),
-        const SizedBox(width: 12),
-        Text(
-          DateFormat('dd/MM/yyyy HH:mm').format(date),
-          style: TextStyle(color: context.appColors.textTertiary, fontSize: 12),
         ),
       ],
     );

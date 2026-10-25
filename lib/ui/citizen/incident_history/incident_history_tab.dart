@@ -163,7 +163,7 @@ class _EmptyState extends StatelessWidget {
             const SizedBox(height: 16),
             Text(
               filter == IncidentHistoryFilter.all
-                  ? 'Aún no tienes incidencias finalizadas'
+                  ? 'Aún no tienes incidencias reportadas'
                   : 'No tienes incidencias ${filter.label.toLowerCase()}',
               textAlign: TextAlign.center,
               style: TextStyle(
@@ -174,7 +174,7 @@ class _EmptyState extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              'Aquí aparecerán tus reportes atendidos, cancelados o expirados.',
+              'Aquí aparecerán todos tus reportes y su estado actual.',
               textAlign: TextAlign.center,
               style: TextStyle(color: context.appColors.textTertiary),
             ),

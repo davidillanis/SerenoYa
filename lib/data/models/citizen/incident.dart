@@ -16,6 +16,7 @@ class Incident {
   final DateTime? acceptedAt;
   final DateTime? arrivedAt;
   final DateTime? attendedAt;
+  final DateTime? expiredAt;
   final DateTime? cancelledAt;
   final IncidentCategory? category;
   final List<IncidentEvidence> evidences;
@@ -36,6 +37,7 @@ class Incident {
     this.acceptedAt,
     this.arrivedAt,
     this.attendedAt,
+    this.expiredAt,
     this.cancelledAt,
     this.category,
     this.evidences = const [],
@@ -61,6 +63,7 @@ class Incident {
       acceptedAt: _parseLocalDateTime(json['acceptedAt']),
       arrivedAt: _parseLocalDateTime(json['arrivedAt']),
       attendedAt: _parseLocalDateTime(json['attendedAt']),
+      expiredAt: _parseLocalDateTime(json['expiredAt']),
       cancelledAt: _parseLocalDateTime(json['cancelledAt']),
       category: json['category'] != null
           ? IncidentCategory.fromJson(json['category'] as Map<String, dynamic>)

@@ -38,7 +38,17 @@ void main() {
                 'message': 'Successful operation',
                 'errors': null,
                 'data': {
-                  'content': <Object>[],
+                  'content': [
+                    for (final status in [
+                      'REQUESTED',
+                      'ACCEPTED',
+                      'ON_SITE',
+                      'ATTENDED',
+                      'CANCELLED_BY_CITIZEN',
+                      'EXPIRED',
+                    ])
+                      {'id': status, 'status': status, 'description': status},
+                  ],
                   'page': 0,
                   'size': 100,
                   'totalElements': 0,
@@ -53,7 +63,7 @@ void main() {
     final repository = IncidentRepository(
       apiService: IncidentsApiService(dio),
       localDataSource: _NoopIncidentLocalDataSource(),
-      incidentApiService:IncidentApiService(dio)
+      incidentApiService: IncidentApiService(dio),
     );
     final sessionViewModel = SessionViewModel(_AuthenticatedAuthRepository());
     final trackingViewModel = IncidentTrackingViewModel(
@@ -85,6 +95,19 @@ void main() {
     await tester.tap(find.text('Seguimiento'));
     await tester.pumpAndSettle();
     expect(listRequestCount, 1);
+    expect(trackingViewModel.incidents.map((incident) => incident.status), [
+      'REQUESTED',
+      'ACCEPTED',
+      'ON_SITE',
+    ]);
+    expect(find.text('Solicitada'), findsOneWidget);
+    expect(find.text('Aceptada'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.text('En recorrido'),
+      200,
+      scrollable: find.byType(Scrollable).last,
+    );
+    expect(find.text('En recorrido'), findsOneWidget);
 
     await tester.tap(find.text('Inicio'));
     await tester.pumpAndSettle();

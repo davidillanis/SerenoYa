@@ -23,7 +23,7 @@ class IncidentsApiService {
 
   static const adminIncidentFields =
       'id,status,latitude,longitude,description,referenceAddress,createdAt,'
-      'acceptedAt,arrivedAt,attendedAt,cancelledAt,category.name';
+      'acceptedAt,arrivedAt,attendedAt,expiredAt,cancelledAt,category.name';
 
   Future<ApiResponseDto<PageResponse<Incident>>> listIncidents({
     required int page,
@@ -144,7 +144,7 @@ class IncidentsApiService {
     int size = 100,
     String fields =
         'id,status,latitude,longitude,description,referenceAddress,createdAt,'
-        'acceptedAt,arrivedAt,attendedAt,cancelledAt,category.name',
+        'acceptedAt,arrivedAt,attendedAt,expiredAt,cancelledAt,category.name',
   }) async {
     return _request(
       () => _dio.get<dynamic>(
@@ -204,7 +204,7 @@ class IncidentsApiService {
         queryParameters: const {
           'fields':
               'id,status,latitude,longitude,description,referenceAddress,'
-              'createdAt,acceptedAt,arrivedAt,attendedAt,cancelledAt,'
+              'createdAt,acceptedAt,arrivedAt,attendedAt,expiredAt,cancelledAt,'
               'category.name',
         },
       ),
