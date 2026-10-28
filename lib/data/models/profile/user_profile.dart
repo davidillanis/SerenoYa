@@ -4,7 +4,6 @@ class UserProfile {
     required this.name,
     required this.lastName,
     required this.email,
-    required this.dni,
     required this.phone,
     required this.address,
     required this.enabled,
@@ -26,7 +25,6 @@ class UserProfile {
       name: json['name']?.toString() ?? '',
       lastName: json['lastName']?.toString() ?? '',
       email: json['email']?.toString() ?? '',
-      dni: json['dni']?.toString() ?? '',
       phone: localPhone.isNotEmpty ? localPhone : remotePhone,
       address: json['address']?.toString() ?? '',
       enabled: json['enabled'] == true,
@@ -41,7 +39,6 @@ class UserProfile {
   final String name;
   final String lastName;
   final String email;
-  final String dni;
   final String phone;
   final String address;
   final bool enabled;
@@ -60,22 +57,22 @@ class UserProfile {
     String? name,
     String? lastName,
     String? phone,
-    String? dni,
     String? address,
+    String? imageUrl,
+    bool? enabled,
   }) {
     return UserProfile(
       id: id,
       name: name ?? this.name,
       lastName: lastName ?? this.lastName,
       email: email,
-      dni: dni ?? this.dni,
       phone: phone ?? this.phone,
       address: address ?? this.address,
-      enabled: enabled,
+      enabled: enabled ?? this.enabled,
       notificationsEnabled: notificationsEnabled ?? this.notificationsEnabled,
       emailVerified: emailVerified,
       birthDate: birthDate,
-      imageUrl: imageUrl,
+      imageUrl: imageUrl ?? this.imageUrl,
     );
   }
 

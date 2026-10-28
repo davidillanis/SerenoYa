@@ -167,9 +167,7 @@ class AuthRepositoryImpl implements AuthRepository {
   Future<Result<void>> registerCitizen({
     required String firstName,
     required String lastName,
-    required String dni,
     required String phone,
-    required String address,
     required String email,
     required String password,
   }) async {
@@ -177,9 +175,7 @@ class AuthRepositoryImpl implements AuthRepository {
       final response = await _apiService.registerCitizen(
         firstName: firstName,
         lastName: lastName,
-        dni: dni,
         phone: phone,
-        address: address,
         email: email,
         password: password,
       );

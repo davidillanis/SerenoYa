@@ -79,9 +79,7 @@ class AuthApiService {
   Future<ApiResponseDto<Object?>> registerCitizen({
     required String firstName,
     required String lastName,
-    required String dni,
     required String phone,
-    required String address,
     required String email,
     required String password,
   }) => _request(
@@ -90,10 +88,7 @@ class AuthApiService {
       data: {
         'name': firstName,
         'lastName': lastName,
-        'dni': dni,
         'phone': phone,
-        'address': address,
-        'imageUrl': '',
         'email': email,
         'password': password,
       },

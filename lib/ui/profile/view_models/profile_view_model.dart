@@ -96,52 +96,38 @@ class ProfileViewModel extends ChangeNotifier {
     _notifyListeners();
   }
 
-  bool get hasReportIdentity {
+  bool get hasReportContact {
     final user = _userProfile;
     return user != null &&
-        RegExp(r'^\d{8}$').hasMatch(user.dni.trim()) &&
         RegExp(r'^(?:\+51)?9\d{8}$').hasMatch(user.phone.trim());
   }
 
-  Future<bool> completeReportIdentity({
-    required String dni,
-    required String phone,
-  }) async {
+  Future<bool> completeReportContact({required String phone}) async {
     if (_userProfile == null || _isLoading || _isSaving || _disposed) {
       return false;
     }
-    final normalizedDni = dni.trim();
     final normalizedPhone = phone.trim();
     _errorMessage = null;
-    if (!RegExp(r'^\d{8}$').hasMatch(normalizedDni)) {
-      _errorMessage = 'El DNI debe contener 8 dígitos.';
-    } else if (!RegExp(r'^(?:\+51)?9\d{8}$').hasMatch(normalizedPhone)) {
+    if (!RegExp(r'^(?:\+51)?9[0-9]{8}$').hasMatch(normalizedPhone)) {
       _errorMessage = 'Ingresa un celular peruano válido.';
     }
     if (_errorMessage != null) {
       _notifyListeners();
       return false;
     }
+    if (normalizedPhone == _userProfile!.phone) return true;
 
     _isSaving = true;
     _notifyListeners();
     try {
-      await _updateUser(
-        UserProfileUpdateRequest(
-          dni: normalizedDni == _userProfile!.dni ? null : normalizedDni,
-          phone: normalizedPhone == _userProfile!.phone
-              ? null
-              : normalizedPhone,
-        ),
-      );
+      await _updateUser(UserProfileUpdateRequest(phone: normalizedPhone));
       final response = await _service.getUserProfile();
       if (!response.isSuccess || response.data == null) {
         throw AuthFailure(AuthFailureCode.server, response.errorMessage);
       }
       _userProfile = response.data;
-      if (!hasReportIdentity) {
-        _errorMessage =
-            'No se pudieron confirmar el DNI y el celular guardados.';
+      if (!hasReportContact) {
+        _errorMessage = 'No se pudo confirmar el celular guardado.';
         return false;
       }
       _successMessage = 'Datos actualizados correctamente.';
@@ -162,7 +148,7 @@ class ProfileViewModel extends ChangeNotifier {
     required String name,
     required String lastName,
     required String phone,
-    required String address,
+    String? imageUrl,
     String? homeLatitude,
     String? homeLongitude,
   }) async {
@@ -171,15 +157,21 @@ class ProfileViewModel extends ChangeNotifier {
       return false;
     }
 
-    final normalizedName = name.trim();
-    final normalizedLastName = lastName.trim();
-    final normalizedPhone = phone.trim();
-    final normalizedAddress = address.trim();
+    final normalizedName = _changedText(name, currentUser.name);
+    final normalizedLastName = _changedText(lastName, currentUser.lastName);
+    final normalizedPhone = _changedText(phone, currentUser.phone);
+    final normalizedImageUrl = _changedText(imageUrl, currentUser.imageUrl);
+    final request = UserProfileUpdateRequest(
+      name: normalizedName,
+      lastName: normalizedLastName,
+      phone: normalizedPhone,
+      imageUrl: normalizedImageUrl,
+    );
     final validationError = _validateUserFields(
       name: normalizedName,
       lastName: normalizedLastName,
       phone: normalizedPhone,
-      address: normalizedAddress,
+      imageUrl: normalizedImageUrl,
     );
     if (validationError != null) {
       _errorMessage = validationError;
@@ -202,11 +194,7 @@ class ProfileViewModel extends ChangeNotifier {
       longitude = coordinateResult.longitude;
     }
 
-    final userChanged =
-        normalizedName != currentUser.name ||
-        normalizedLastName != currentUser.lastName ||
-        normalizedPhone != currentUser.phone ||
-        normalizedAddress != currentUser.address;
+    final userChanged = request.toJson().isNotEmpty;
     final currentCitizen = _citizenProfile;
     final citizenChanged =
         includeCitizenProfile &&
@@ -229,20 +217,12 @@ class ProfileViewModel extends ChangeNotifier {
 
     try {
       if (userChanged) {
-        await _updateUser(
-          UserProfileUpdateRequest(
-            name: normalizedName,
-            lastName: normalizedLastName,
-            phone: normalizedPhone,
-            address: normalizedAddress,
-            notificationsEnabled: currentUser.notificationsEnabled,
-          ),
-        );
+        await _updateUser(request);
         _userProfile = currentUser.copyWith(
           name: normalizedName,
           lastName: normalizedLastName,
           phone: normalizedPhone,
-          address: normalizedAddress,
+          imageUrl: normalizedImageUrl,
         );
         _service.cacheUserProfile(_userProfile!);
       }
@@ -332,24 +312,31 @@ class ProfileViewModel extends ChangeNotifier {
   }
 
   String? _validateUserFields({
-    required String name,
-    required String lastName,
-    required String phone,
-    required String address,
+    String? name,
+    String? lastName,
+    String? phone,
+    String? imageUrl,
   }) {
-    if (name.isEmpty || lastName.isEmpty) {
-      return 'Ingresa tus nombres y apellidos.';
-    }
-    if (name.length > 60 || lastName.length > 60) {
+    if ((name?.length ?? 0) > 60 || (lastName?.length ?? 0) > 60) {
       return 'Los nombres y apellidos no deben superar 60 caracteres.';
     }
-    if (!RegExp(r'^(?:\+51)?9\d{8}$').hasMatch(phone)) {
+    if (phone != null && !RegExp(r'^(?:\+51)?9[0-9]{8}$').hasMatch(phone)) {
       return 'Ingresa un celular peruano válido.';
     }
-    if (address.isEmpty || address.length > 250) {
-      return 'Ingresa una dirección de hasta 250 caracteres.';
+    if (imageUrl != null) {
+      final uri = Uri.tryParse(imageUrl);
+      if (uri == null ||
+          (uri.scheme != 'http' && uri.scheme != 'https') ||
+          uri.host.isEmpty) {
+        return 'Ingresa una URL de imagen HTTP o HTTPS válida.';
+      }
     }
     return null;
+  }
+
+  static String? _changedText(String? value, String? current) {
+    final text = value?.trim();
+    return text == null || text.isEmpty || text == current ? null : text;
   }
 
   ({double? latitude, double? longitude, String? error}) _parseCoordinates(

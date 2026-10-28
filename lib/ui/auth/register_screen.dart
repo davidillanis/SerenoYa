@@ -16,9 +16,7 @@ class RegisterScreen extends StatefulWidget {
 class _RegisterScreenState extends State<RegisterScreen> {
   final _firstName = TextEditingController();
   final _lastName = TextEditingController();
-  final _dni = TextEditingController();
   final _phone = TextEditingController();
-  final _address = TextEditingController(text: 'San Jerónimo');
   final _email = TextEditingController();
   final _password = TextEditingController();
   final _confirmation = TextEditingController();
@@ -28,9 +26,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     for (final controller in [
       _firstName,
       _lastName,
-      _dni,
       _phone,
-      _address,
       _email,
       _password,
       _confirmation,
@@ -44,9 +40,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     final success = await context.read<RegisterViewModel>().register(
       firstName: _firstName.text,
       lastName: _lastName.text,
-      dni: _dni.text,
       phone: _phone.text,
-      address: _address.text,
       email: _email.text,
       password: _password.text,
       passwordConfirmation: _confirmation.text,
@@ -66,23 +60,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
       subtitle: 'Registra tus datos para reportar y seguir incidentes.',
       child: Column(
         children: [
-          AuthTextField(controller: _firstName, label: 'Nombres'),
+          AuthTextField(controller: _firstName, label: 'Nombres (opcional)'),
           const SizedBox(height: 12),
-          AuthTextField(controller: _lastName, label: 'Apellidos'),
-          const SizedBox(height: 12),
-          AuthTextField(
-            controller: _dni,
-            label: 'DNI',
-            keyboardType: TextInputType.number,
-          ),
+          AuthTextField(controller: _lastName, label: 'Apellidos (opcional)'),
           const SizedBox(height: 12),
           AuthTextField(
             controller: _phone,
-            label: 'Teléfono',
+            label: 'Celular',
+            hintText: '987654321 o +51987654321',
             keyboardType: TextInputType.phone,
           ),
-          const SizedBox(height: 12),
-          AuthTextField(controller: _address, label: 'Dirección'),
           const SizedBox(height: 12),
           AuthTextField(
             controller: _email,
@@ -93,6 +80,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           AuthTextField(
             controller: _password,
             label: 'Contraseña',
+            hintText: 'Mínimo 8 caracteres',
             obscureText: true,
           ),
           const SizedBox(height: 12),

@@ -17,24 +17,18 @@ class AdminUserCreateRequest {
   const AdminUserCreateRequest({
     required this.firstName,
     required this.lastName,
-    required this.dni,
     required this.phone,
-    required this.address,
     required this.email,
     required this.password,
     required this.role,
     this.latitude,
     this.longitude,
-    this.birthDate,
     this.imageUrl,
   });
 
   final String firstName;
   final String lastName;
-  final String dni;
   final String phone;
-  final DateTime? birthDate;
-  final String address;
   final String email;
   final String password;
   final String? imageUrl;
@@ -46,10 +40,7 @@ class AdminUserCreateRequest {
     'userDTO': {
       'name': firstName,
       'lastName': lastName,
-      'dni': dni,
       'phone': phone,
-      'birthDate': birthDate == null ? null : _dateOnly(birthDate!),
-      'address': address,
       'email': email,
       'password': password,
       if (imageUrl != null && imageUrl!.trim().isNotEmpty)
@@ -64,10 +55,4 @@ class AdminUserCreateRequest {
         ? {'homeLatitude': latitude, 'homeLongitude': longitude}
         : null,
   };
-
-  static String _dateOnly(DateTime value) {
-    final month = value.month.toString().padLeft(2, '0');
-    final day = value.day.toString().padLeft(2, '0');
-    return '${value.year}-$month-$day';
-  }
 }

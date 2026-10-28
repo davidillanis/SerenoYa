@@ -3,16 +3,16 @@ class UserProfileUpdateRequest {
     this.name,
     this.lastName,
     this.phone,
-    this.dni,
-    this.address,
+    this.imageUrl,
+    this.enabled,
     this.notificationsEnabled,
   });
 
   final String? name;
   final String? lastName;
   final String? phone;
-  final String? dni;
-  final String? address;
+  final String? imageUrl;
+  final bool? enabled;
   final bool? notificationsEnabled;
 
   Map<String, dynamic> toJson() {
@@ -20,8 +20,8 @@ class UserProfileUpdateRequest {
       if (name != null) 'name': name,
       if (lastName != null) 'lastName': lastName,
       if (phone != null) 'phone': phone,
-      if (dni != null) 'dni': dni,
-      if (address != null) 'address': address,
+      if (imageUrl != null) 'imageUrl': imageUrl,
+      if (enabled != null) 'enabled': enabled,
       if (notificationsEnabled != null)
         'notificationsEnabled': notificationsEnabled,
     };

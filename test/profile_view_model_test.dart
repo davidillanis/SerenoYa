@@ -1,13 +1,108 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:sereno_ya/data/models/profile/user_profile.dart';
 import 'package:sereno_ya/data/services/api/profile/profile_api_service.dart';
 import 'package:sereno_ya/ui/profile/view_models/profile_view_model.dart';
 
 void main() {
   test(
-    'exige DNI y celular y confirma los datos guardados antes del reporte',
+    'omite campos vacíos y conserva los valores del perfil y caché',
     () async {
-      var dni = '';
+      final updates = <Map<String, dynamic>>[];
+      final service = _cachedService(updates);
+      final viewModel = ProfileViewModel(
+        service,
+        userId: 'user-1',
+        includeCitizenProfile: false,
+      );
+      addTearDown(viewModel.dispose);
+
+      expect(
+        await viewModel.save(name: ' ', lastName: '', phone: '', imageUrl: ''),
+        isTrue,
+      );
+      expect(updates, isEmpty);
+      expect(viewModel.successMessage, 'No hay cambios para guardar.');
+
+      expect(
+        await viewModel.save(
+          name: '',
+          lastName: '',
+          phone: ' +51987654321 ',
+          imageUrl: '',
+        ),
+        isTrue,
+      );
+      expect(updates.single, {'phone': '+51987654321'});
+      expect(viewModel.userProfile!.name, 'Ana');
+      expect(viewModel.userProfile!.lastName, 'Quispe');
+      expect(
+        viewModel.userProfile!.imageUrl,
+        'https://example.com/anterior.jpg',
+      );
+      expect(service.cachedUserProfile!.phone, '+51987654321');
+      expect(service.cachedUserProfile!.enabled, isTrue);
+      expect(service.cachedUserProfile!.notificationsEnabled, isFalse);
+
+      expect(
+        await viewModel.save(
+          name: '',
+          lastName: '',
+          phone: '',
+          imageUrl: ' https://example.com/nueva.jpg ',
+        ),
+        isTrue,
+      );
+      expect(updates.last, {'imageUrl': 'https://example.com/nueva.jpg'});
+      expect(
+        service.cachedUserProfile!.imageUrl,
+        'https://example.com/nueva.jpg',
+      );
+      expect(service.cachedUserProfile!.phone, '+51987654321');
+    },
+  );
+
+  test('valida solo los datos nuevos antes de enviarlos', () async {
+    final updates = <Map<String, dynamic>>[];
+    final service = _cachedService(updates);
+    final viewModel = ProfileViewModel(
+      service,
+      userId: 'user-1',
+      includeCitizenProfile: false,
+    );
+    addTearDown(viewModel.dispose);
+    for (final values in [
+      {'name': 'a' * 61},
+      {'lastName': 'a' * 61},
+      {'phone': '887654321'},
+      {'phone': '+51 987654321'},
+      {'imageUrl': 'ftp://example.com/image.jpg'},
+      {'imageUrl': 'https://'},
+    ]) {
+      expect(
+        await viewModel.save(
+          name: values['name'] ?? '',
+          lastName: values['lastName'] ?? '',
+          phone: values['phone'] ?? '',
+          imageUrl: values['imageUrl'],
+        ),
+        isFalse,
+      );
+      expect(viewModel.errorMessage, isNotEmpty);
+      expect(updates, isEmpty);
+      expect(service.cachedUserProfile!.name, 'Ana');
+    }
+    expect(
+      await viewModel.save(name: 'a' * 60, lastName: 'b' * 60, phone: ''),
+      isTrue,
+    );
+    expect(updates.single, {'name': 'a' * 60, 'lastName': 'b' * 60});
+  });
+
+  test(
+    'exige solo celular y confirma el dato guardado antes del reporte',
+    () async {
+      var persistUpdate = true;
       var phone = '';
       var rejectUpdate = false;
       final updates = <Map<String, dynamic>>[];
@@ -18,8 +113,7 @@ void main() {
             if (options.path == '/user-role/update-me') {
               final data = Map<String, dynamic>.from(options.data as Map);
               updates.add(data);
-              if (!rejectUpdate) {
-                dni = data['dni'] as String? ?? dni;
+              if (!rejectUpdate && persistUpdate) {
                 phone = data['phone'] as String? ?? phone;
               }
             }
@@ -35,7 +129,6 @@ void main() {
                           'name': 'Ana',
                           'lastName': 'Quispe',
                           'email': 'ana@example.com',
-                          'dni': dni,
                           'phone': phone,
                           'address': '',
                           'enabled': true,
@@ -55,31 +148,33 @@ void main() {
       );
       addTearDown(viewModel.dispose);
       await _waitUntil(() => !viewModel.isLoading);
-      expect(viewModel.hasReportIdentity, isFalse);
-      expect(
-        await viewModel.completeReportIdentity(dni: '123', phone: '987654321'),
-        isFalse,
-      );
+      expect(viewModel.hasReportContact, isFalse);
+      expect(await viewModel.completeReportContact(phone: '123'), isFalse);
       expect(updates, isEmpty);
       rejectUpdate = true;
       expect(
-        await viewModel.completeReportIdentity(
-          dni: '12345678',
-          phone: '987654321',
-        ),
+        await viewModel.completeReportContact(phone: '987654321'),
         isFalse,
       );
-      expect(viewModel.hasReportIdentity, isFalse);
+      expect(viewModel.hasReportContact, isFalse);
       rejectUpdate = false;
+      persistUpdate = false;
       expect(
-        await viewModel.completeReportIdentity(
-          dni: '12345678',
-          phone: '987654321',
-        ),
-        isTrue,
+        await viewModel.completeReportContact(phone: '987654321'),
+        isFalse,
       );
-      expect(updates.last, {'dni': '12345678', 'phone': '987654321'});
-      expect(viewModel.hasReportIdentity, isTrue);
+      expect(viewModel.hasReportContact, isFalse);
+      expect(
+        viewModel.errorMessage,
+        'No se pudo confirmar el celular guardado.',
+      );
+      persistUpdate = true;
+      expect(await viewModel.completeReportContact(phone: '987654321'), isTrue);
+      expect(updates.last, {'phone': '987654321'});
+      expect(viewModel.hasReportContact, isTrue);
+      final updateCount = updates.length;
+      expect(await viewModel.completeReportContact(phone: '987654321'), isTrue);
+      expect(updates, hasLength(updateCount));
     },
   );
 
@@ -89,7 +184,7 @@ void main() {
     var notificationsEnabled = true;
     var rejectUpdate = false;
     final updates = <Map<String, dynamic>>[];
-    var address = 'San Jerónimo';
+    const address = 'San Jerónimo';
     var latitude = -13.6519;
     var longitude = -73.365;
     final dio = Dio(BaseOptions(baseUrl: 'http://localhost/api/v1'));
@@ -102,7 +197,6 @@ void main() {
             updates.add(data);
             if (!rejectUpdate) {
               name = data['name'] as String? ?? name;
-              address = data['address'] as String? ?? address;
               notificationsEnabled =
                   data['notificationsEnabled'] as bool? ?? notificationsEnabled;
             }
@@ -119,7 +213,6 @@ void main() {
               'name': name,
               'lastName': 'Quispe',
               'email': 'ana@example.com',
-              'dni': '12345678',
               'phone': '987654321',
               'address': address,
               'enabled': true,
@@ -189,17 +282,18 @@ void main() {
       name: 'Ana María',
       lastName: 'Quispe',
       phone: '987654321',
-      address: 'Av. Principal',
       homeLatitude: '-13.652',
       homeLongitude: '-73.366',
     );
 
     expect(updated, isTrue);
-    expect(updates.last['notificationsEnabled'], isFalse);
+    expect(updates.last.containsKey('notificationsEnabled'), isFalse);
     expect(viewModel.userProfile!.notificationsEnabled, isFalse);
     expect(requestedPaths, contains('/user-role/update-me'));
     expect(requestedPaths, contains('/citizens/update'));
     expect(viewModel.userProfile?.name, 'Ana María');
+    expect(updates.last, {'name': 'Ana María'});
+    expect(viewModel.userProfile?.address, 'San Jerónimo');
     expect(viewModel.citizenProfile?.homeLatitude, -13.652);
     expect(viewModel.successMessage, 'Perfil actualizado correctamente.');
 
@@ -208,7 +302,6 @@ void main() {
       name: 'Ana María',
       lastName: 'Quispe',
       phone: '123',
-      address: 'Av. Principal',
       homeLatitude: '-13.652',
       homeLongitude: '-73.366',
     );
@@ -227,4 +320,37 @@ Future<void> _waitUntil(bool Function() condition) async {
     await Future<void>.delayed(Duration.zero);
   }
   fail('La operación asíncrona no terminó a tiempo.');
+}
+
+ProfileApiService _cachedService(List<Map<String, dynamic>> updates) {
+  final dio = Dio(BaseOptions(baseUrl: 'http://localhost/api/v1'));
+  dio.interceptors.add(
+    InterceptorsWrapper(
+      onRequest: (options, handler) {
+        updates.add(Map<String, dynamic>.from(options.data as Map));
+        handler.resolve(
+          Response<dynamic>(
+            requestOptions: options,
+            statusCode: 200,
+            data: {'isSuccess': true, 'data': 'Actualizado'},
+          ),
+        );
+      },
+    ),
+  );
+  final service = ProfileApiService(dio);
+  service.useCacheForUser('user-1');
+  service.cacheUserProfile(
+    UserProfile.fromJson({
+      'id': 'user-1',
+      'name': 'Ana',
+      'lastName': 'Quispe',
+      'email': 'ana@example.com',
+      'phone': '987654321',
+      'enabled': true,
+      'notificationsEnabled': false,
+      'imageUrl': 'https://example.com/anterior.jpg',
+    }),
+  );
+  return service;
 }

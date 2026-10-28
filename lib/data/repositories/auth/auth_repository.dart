@@ -18,9 +18,7 @@ abstract interface class AuthRepository {
   Future<Result<void>> registerCitizen({
     required String firstName,
     required String lastName,
-    required String dni,
     required String phone,
-    required String address,
     required String email,
     required String password,
   });

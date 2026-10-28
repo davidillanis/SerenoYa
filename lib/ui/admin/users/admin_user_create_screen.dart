@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:sereno_ya/data/models/admin/admin_user_create_request.dart';
 import 'package:sereno_ya/models/auth/user_role.dart';
@@ -21,16 +20,12 @@ class _AdminUserCreateScreenState extends State<AdminUserCreateScreen> {
   final _formKey = GlobalKey<FormState>();
   final _firstName = TextEditingController();
   final _lastName = TextEditingController();
-  final _dni = TextEditingController();
   final _phone = TextEditingController();
-  final _birthDate = TextEditingController();
-  final _address = TextEditingController(text: 'San Jerónimo');
   final _email = TextEditingController();
   final _password = TextEditingController();
   final _latitude = TextEditingController();
   final _longitude = TextEditingController();
 
-  DateTime? _selectedBirthDate;
   AdminAssignableRole _selectedRole = AdminAssignableRole.officer;
   bool _obscurePassword = true;
 
@@ -39,10 +34,7 @@ class _AdminUserCreateScreenState extends State<AdminUserCreateScreen> {
     for (final controller in [
       _firstName,
       _lastName,
-      _dni,
       _phone,
-      _birthDate,
-      _address,
       _email,
       _password,
       _latitude,
@@ -53,26 +45,6 @@ class _AdminUserCreateScreenState extends State<AdminUserCreateScreen> {
     super.dispose();
   }
 
-  Future<void> _pickBirthDate() async {
-    final now = DateTime.now();
-    final selected = await showDatePicker(
-      context: context,
-      initialDate: _selectedBirthDate ?? DateTime(now.year - 25),
-      firstDate: DateTime(1940),
-      lastDate: DateTime(
-        now.year,
-        now.month,
-        now.day,
-      ).subtract(const Duration(days: 1)),
-      helpText: 'Fecha de nacimiento',
-    );
-    if (!mounted || selected == null) return;
-    setState(() {
-      _selectedBirthDate = selected;
-      _birthDate.text = DateFormat('dd/MM/yyyy').format(selected);
-    });
-  }
-
   Future<void> _submit() async {
     FocusScope.of(context).unfocus();
     if (_formKey.currentState?.validate() != true) return;
@@ -81,10 +53,7 @@ class _AdminUserCreateScreenState extends State<AdminUserCreateScreen> {
     final request = AdminUserCreateRequest(
       firstName: _firstName.text.trim(),
       lastName: _lastName.text.trim(),
-      dni: _dni.text.trim(),
       phone: _phone.text.trim(),
-      birthDate: _selectedBirthDate,
-      address: _address.text.trim(),
       email: _email.text.trim(),
       password: _password.text,
       role: _selectedRole,
@@ -96,9 +65,11 @@ class _AdminUserCreateScreenState extends State<AdminUserCreateScreen> {
     );
     if (!mounted || created == null) return;
 
-    final name = created.displayName.isEmpty
+    final name = created.displayName.isNotEmpty
+        ? created.displayName
+        : request.firstName.isNotEmpty
         ? request.firstName
-        : created.displayName;
+        : request.email;
     final code = created.serenoCode;
     final detail = code == null || code.isEmpty ? '' : ' Código: $code.';
     ScaffoldMessenger.of(context).showSnackBar(
@@ -151,73 +122,39 @@ class _AdminUserCreateScreenState extends State<AdminUserCreateScreen> {
                 const SizedBox(height: 24),
                 _FormSection(
                   title: 'Información personal',
-                  subtitle: 'Datos de identificación del nuevo usuario.',
+                  subtitle: 'Nombre y celular del nuevo usuario.',
                   icon: Icons.badge_outlined,
                   child: _FieldGrid(
                     children: [
                       TextFormField(
                         controller: _firstName,
-                        decoration: const InputDecoration(labelText: 'Nombres'),
+                        decoration: const InputDecoration(
+                          labelText: 'Nombres (opcional)',
+                        ),
                         textCapitalization: TextCapitalization.words,
-                        validator: (value) => _required(value, 'los nombres'),
+                        validator: _validateName,
                       ),
                       TextFormField(
                         controller: _lastName,
                         decoration: const InputDecoration(
-                          labelText: 'Apellidos',
+                          labelText: 'Apellidos (opcional)',
                         ),
                         textCapitalization: TextCapitalization.words,
-                        validator: (value) => _required(value, 'los apellidos'),
-                      ),
-                      TextFormField(
-                        controller: _dni,
-                        decoration: const InputDecoration(labelText: 'DNI'),
-                        keyboardType: TextInputType.number,
-                        inputFormatters: [
-                          FilteringTextInputFormatter.digitsOnly,
-                          LengthLimitingTextInputFormatter(8),
-                        ],
-                        validator: (value) {
-                          return RegExp(r'^\d{8}$')
-                                  .hasMatch(value?.trim() ?? '')
-                              ? null
-                              : 'Ingresa un DNI de 8 dígitos.';
-                        },
+                        validator: _validateName,
                       ),
                       TextFormField(
                         controller: _phone,
                         decoration: const InputDecoration(
-                          labelText: 'Teléfono',
-                          prefixText: '+51 ',
+                          labelText: 'Celular',
+                          hintText: '987654321 o +51987654321',
                         ),
                         keyboardType: TextInputType.phone,
-                        inputFormatters: [
-                          FilteringTextInputFormatter.digitsOnly,
-                          LengthLimitingTextInputFormatter(9),
-                        ],
                         validator: (value) {
-                          return RegExp(r'^9\d{8}$')
+                          return RegExp(r'^(?:\+51)?9[0-9]{8}$')
                                   .hasMatch(value?.trim() ?? '')
                               ? null
-                              : 'Debe comenzar con 9 y tener 9 dígitos.';
+                              : 'Ingresa 9 dígitos comenzando con 9; puedes incluir +51, sin espacios.';
                         },
-                      ),
-                      TextFormField(
-                        controller: _birthDate,
-                        readOnly: true,
-                        onTap: _pickBirthDate,
-                        decoration: const InputDecoration(
-                          labelText: 'Fecha de nacimiento',
-                          suffixIcon: Icon(Icons.calendar_today_outlined),
-                        ),
-                      ),
-                      TextFormField(
-                        controller: _address,
-                        decoration: const InputDecoration(
-                          labelText: 'Dirección',
-                        ),
-                        textCapitalization: TextCapitalization.words,
-                        validator: (value) => _required(value, 'la dirección'),
                       ),
                     ],
                   ),
@@ -542,11 +479,15 @@ final _decimalFormatter = FilteringTextInputFormatter.allow(
   RegExp(r'^-?\d{0,3}([.]\d{0,6})?'),
 );
 
-String? _required(String? value, String fieldName) =>
-    value == null || value.trim().isEmpty ? 'Ingresa $fieldName.' : null;
+String? _validateName(String? value) => (value?.trim().length ?? 0) > 60
+    ? 'No debe superar los 60 caracteres.'
+    : null;
 
 String? _validateEmail(String? value) {
   final email = value?.trim() ?? '';
+  if (email.length > 60) {
+    return 'El correo electrónico no debe superar los 60 caracteres.';
+  }
   return RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(email)
       ? null
       : 'Ingresa un correo válido.';

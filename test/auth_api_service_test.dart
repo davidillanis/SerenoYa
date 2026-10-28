@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sereno_ya/data/services/api/auth/auth_api_service.dart';
+import 'package:sereno_ya/data/services/api/auth/auth_interceptor.dart';
 import 'package:sereno_ya/models/auth/auth_failure.dart';
 
 void main() {
@@ -88,16 +89,24 @@ void main() {
     final response = await AuthApiService(dio).registerCitizen(
       firstName: 'Ana',
       lastName: 'Quispe',
-      dni: '12345678',
       phone: '987654321',
-      address: 'San Jerónimo',
       email: 'ana@example.com',
-      password: 'secret1',
+      password: 'secret12',
     );
 
     expect(response.isSuccess, isTrue);
     expect(capturedRequest.path, '/user-role/create-citizen');
-    expect(capturedRequest.data, isNot(contains('roles')));
+    expect(capturedRequest.data, {
+      'name': 'Ana',
+      'lastName': 'Quispe',
+      'phone': '987654321',
+      'email': 'ana@example.com',
+      'password': 'secret12',
+    });
+    expect(
+      capturedRequest.extra[AuthInterceptor.skipAuthenticationKey],
+      isTrue,
+    );
   });
 }
 

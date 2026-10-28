@@ -5,6 +5,39 @@ import 'package:sereno_ya/data/models/profile/user_profile.dart';
 import 'package:sereno_ya/data/services/api/profile/profile_api_service.dart';
 
 void main() {
+  test('serializa enabled sin confundirlo con las notificaciones', () {
+    expect(const UserProfileUpdateRequest().toJson(), isEmpty);
+    for (final enabled in [true, false]) {
+      expect(UserProfileUpdateRequest(enabled: enabled).toJson(), {
+        'enabled': enabled,
+      });
+    }
+  });
+
+  test('serializa los seis campos y omite valores null', () {
+    expect(
+      const UserProfileUpdateRequest(
+        name: 'Ana',
+        lastName: 'Quispe',
+        phone: '+51987654321',
+        imageUrl: 'https://example.com/avatar.jpg',
+        enabled: false,
+        notificationsEnabled: false,
+      ).toJson(),
+      {
+        'name': 'Ana',
+        'lastName': 'Quispe',
+        'phone': '+51987654321',
+        'imageUrl': 'https://example.com/avatar.jpg',
+        'enabled': false,
+        'notificationsEnabled': false,
+      },
+    );
+    expect(const UserProfileUpdateRequest(phone: '987654321').toJson(), {
+      'phone': '987654321',
+    });
+  });
+
   test('interpreta y conserva la preferencia de notificaciones', () {
     expect(UserProfile.fromJson({}).notificationsEnabled, isTrue);
     for (final enabled in [true, false]) {
@@ -64,7 +97,6 @@ void main() {
         name: 'Ana',
         lastName: 'Quispe',
         phone: '987654321',
-        address: 'San Jerónimo',
       ),
     );
     await service.updateCitizenProfile(
@@ -79,7 +111,6 @@ void main() {
       'name': 'Ana',
       'lastName': 'Quispe',
       'phone': '987654321',
-      'address': 'San Jerónimo',
     });
     expect(requests[1].path, '/citizens/update');
     expect(requests[1].data, {
@@ -101,7 +132,6 @@ Dio _profileDio(void Function(RequestOptions request) onRequest) {
             'name': 'Ana',
             'lastName': 'Quispe',
             'email': 'ana@example.com',
-            'dni': '12345678',
             'phone': '987654321',
             'address': 'San Jerónimo',
             'enabled': true,

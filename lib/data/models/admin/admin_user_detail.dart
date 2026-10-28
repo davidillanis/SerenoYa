@@ -4,7 +4,6 @@ class AdminUserDetail {
     required this.name,
     required this.lastName,
     required this.email,
-    required this.dni,
     required this.address,
     required this.enabled,
     required this.notificationsEnabled,
@@ -18,7 +17,6 @@ class AdminUserDetail {
   final String name;
   final String lastName;
   final String email;
-  final String dni;
   final String address;
   final bool enabled;
   final bool notificationsEnabled;
@@ -33,7 +31,6 @@ class AdminUserDetail {
       name: json['name']?.toString() ?? '',
       lastName: json['lastName']?.toString() ?? '',
       email: json['email']?.toString() ?? '',
-      dni: json['dni']?.toString() ?? '',
       address: json['address']?.toString() ?? '',
       enabled: _readBool(json['enabled'], fallback: true),
       notificationsEnabled: _readBool(

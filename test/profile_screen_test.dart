@@ -24,6 +24,7 @@ void main() {
       final preferences = await SharedPreferences.getInstance();
       final controller = ThemeController(preferences: preferences);
       final session = SessionViewModel(RecordingAuthRepository());
+      final updates = <Map<String, dynamic>>[];
       final router = GoRouter(
         routes: [
           GoRoute(
@@ -37,7 +38,7 @@ void main() {
             path: RouteNames.profile,
             builder: (_, _) => ChangeNotifierProvider(
               create: (_) => ProfileViewModel(
-                ProfileApiService(_profileDio()),
+                ProfileApiService(_profileDio(updates)),
                 userId: 'user-1',
                 includeCitizenProfile: false,
               ),
@@ -76,15 +77,33 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.byType(ProfileScreen), findsOneWidget);
       expect(find.text('Datos personales'), findsOneWidget);
+      expect(find.text('DNI'), findsNothing);
       await tester.tap(find.text('Editar perfil'));
       await tester.pumpAndSettle();
       expect(find.text('Guardar cambios'), findsOneWidget);
-      expect(tester.takeException(), isNull);
-      final sheetTitle = find.descendant(
-        of: find.byType(BottomSheet),
-        matching: find.text('Editar perfil'),
+      expect(
+        find.descendant(
+          of: find.byType(BottomSheet),
+          matching: find.widgetWithText(TextField, 'Dirección'),
+        ),
+        findsNothing,
       );
-      Navigator.of(tester.element(sheetTitle)).pop();
+      expect(tester.takeException(), isNull);
+      expect(find.widgetWithText(TextField, 'URL de imagen'), findsOneWidget);
+      final nameField = find.widgetWithText(TextField, 'Nombres');
+      await tester.ensureVisible(nameField);
+      await tester.enterText(nameField, '');
+      final phoneField = find.widgetWithText(TextField, 'Celular');
+      await tester.ensureVisible(phoneField);
+      await tester.enterText(phoneField, '+51987654321');
+      final save = find.widgetWithText(FilledButton, 'Guardar cambios');
+      await tester.ensureVisible(save);
+      await tester.tap(save);
+      await tester.pumpAndSettle();
+      expect(find.byType(BottomSheet), findsNothing);
+      expect(updates.single, {'phone': '+51987654321'});
+      expect(find.text('Perfil actualizado correctamente.'), findsOneWidget);
+      await tester.pump(const Duration(seconds: 4));
       await tester.pumpAndSettle();
       await tester.scrollUntilVisible(find.text('Recibir notificaciones'), 100);
       expect(
@@ -98,12 +117,16 @@ void main() {
         isFalse,
       );
       expect(find.text('Notificaciones desactivadas.'), findsOneWidget);
+      expect(updates.last, {'notificationsEnabled': false});
+      await tester.pump(const Duration(seconds: 4));
+      await tester.pumpAndSettle();
       await tester.tap(find.byType(SwitchListTile));
       await tester.pumpAndSettle();
       expect(
         tester.widget<SwitchListTile>(find.byType(SwitchListTile)).value,
         isTrue,
       );
+      expect(updates.last, {'notificationsEnabled': true});
       await tester.scrollUntilVisible(find.text('Pink (rosa)'), 200);
       expect(find.text('Cambiar tema'), findsOneWidget);
       await tester.tap(find.text('Pink (rosa)'));
@@ -149,11 +172,14 @@ void main() {
   }
 }
 
-Dio _profileDio() {
+Dio _profileDio(List<Map<String, dynamic>> updates) {
   final dio = Dio(BaseOptions(baseUrl: 'http://localhost/api/v1'));
   dio.interceptors.add(
     InterceptorsWrapper(
       onRequest: (options, handler) {
+        if (options.method == 'PUT') {
+          updates.add(Map<String, dynamic>.from(options.data as Map));
+        }
         handler.resolve(
           Response<dynamic>(
             requestOptions: options,
@@ -169,7 +195,6 @@ Dio _profileDio() {
                       'name': 'Ana',
                       'lastName': 'Quispe',
                       'email': 'ana@example.com',
-                      'dni': '12345678',
                       'phone': '987654321',
                       'address': 'San Jerónimo',
                       'enabled': true,

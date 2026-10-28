@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:sereno_ya/data/models/admin/admin_user_detail.dart';
 import 'package:sereno_ya/data/models/admin/admin_user_update_request.dart';
@@ -20,28 +18,16 @@ class _AdminUserEditScreenState extends State<AdminUserEditScreen> {
   final _formKey = GlobalKey<FormState>();
   final _name = TextEditingController();
   final _lastName = TextEditingController();
-  final _dni = TextEditingController();
   final _phone = TextEditingController();
-  final _birthDate = TextEditingController();
-  final _address = TextEditingController();
   final _imageUrl = TextEditingController();
 
   String? _hydratedUserId;
-  DateTime? _selectedBirthDate;
   bool _enabled = true;
   bool _notificationsEnabled = true;
 
   @override
   void dispose() {
-    for (final controller in [
-      _name,
-      _lastName,
-      _dni,
-      _phone,
-      _birthDate,
-      _address,
-      _imageUrl,
-    ]) {
+    for (final controller in [_name, _lastName, _phone, _imageUrl]) {
       controller.dispose();
     }
     super.dispose();
@@ -52,54 +38,35 @@ class _AdminUserEditScreenState extends State<AdminUserEditScreen> {
     _hydratedUserId = user.id;
     _name.text = user.name;
     _lastName.text = user.lastName;
-    _dni.text = user.dni;
     _phone.text = user.phone ?? '';
-    _selectedBirthDate = user.birthDate;
-    _birthDate.text = user.birthDate == null
-        ? ''
-        : DateFormat('dd/MM/yyyy').format(user.birthDate!);
-    _address.text = user.address;
     _imageUrl.text = user.imageUrl ?? '';
     _enabled = user.enabled;
     _notificationsEnabled = user.notificationsEnabled;
   }
 
-  Future<void> _pickBirthDate() async {
-    final now = DateTime.now();
-    final selected = await showDatePicker(
-      context: context,
-      initialDate: _selectedBirthDate ?? DateTime(now.year - 25),
-      firstDate: DateTime(1940),
-      lastDate: DateTime(
-        now.year,
-        now.month,
-        now.day,
-      ).subtract(const Duration(days: 1)),
-      helpText: 'Fecha de nacimiento',
-    );
-    if (!mounted || selected == null) return;
-    setState(() {
-      _selectedBirthDate = selected;
-      _birthDate.text = DateFormat('dd/MM/yyyy').format(selected);
-    });
-  }
-
   Future<void> _submit() async {
     FocusScope.of(context).unfocus();
     if (_formKey.currentState?.validate() != true) return;
-    final updated = await context.read<AdminUserEditViewModel>().update(
-      AdminUserUpdateRequest(
-        name: _name.text,
-        lastName: _lastName.text,
-        dni: _dni.text,
-        phone: _phone.text,
-        birthDate: _selectedBirthDate,
-        address: _address.text,
-        imageUrl: _imageUrl.text.trim().isEmpty ? null : _imageUrl.text,
-        enabled: _enabled,
-        notificationsEnabled: _notificationsEnabled,
-      ),
+    final viewModel = context.read<AdminUserEditViewModel>();
+    final user = viewModel.user;
+    if (user == null) return;
+    final request = AdminUserUpdateRequest(
+      name: _changedText(_name.text, user.name),
+      lastName: _changedText(_lastName.text, user.lastName),
+      phone: _changedText(_phone.text, user.phone),
+      imageUrl: _changedText(_imageUrl.text, user.imageUrl),
+      enabled: _enabled == user.enabled ? null : _enabled,
+      notificationsEnabled: _notificationsEnabled == user.notificationsEnabled
+          ? null
+          : _notificationsEnabled,
     );
+    if (request.toJson().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No hay cambios para guardar.')),
+      );
+      return;
+    }
+    final updated = await viewModel.update(request);
     if (!mounted || !updated) return;
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
@@ -151,7 +118,7 @@ class _AdminUserEditScreenState extends State<AdminUserEditScreen> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Actualiza los datos permitidos. Los roles se administran por separado.',
+                  'Solo se guardan los cambios. Deja un campo vacío para conservar su valor actual.',
                   style: TextStyle(
                     color: context.appColors.textSecondary,
                     height: 1.45,
@@ -187,44 +154,13 @@ class _AdminUserEditScreenState extends State<AdminUserEditScreen> {
                         ),
                       ),
                       TextFormField(
-                        controller: _dni,
-                        decoration: const InputDecoration(labelText: 'DNI'),
-                        keyboardType: TextInputType.number,
-                        inputFormatters: [
-                          FilteringTextInputFormatter.digitsOnly,
-                          LengthLimitingTextInputFormatter(8),
-                        ],
-                        validator: _validateDni,
-                      ),
-                      TextFormField(
                         controller: _phone,
                         decoration: const InputDecoration(
-                          labelText: 'Teléfono',
-                          prefixText: '+51 ',
+                          labelText: 'Celular',
+                          hintText: '987654321 o +51987654321',
                         ),
                         keyboardType: TextInputType.phone,
-                        inputFormatters: [
-                          FilteringTextInputFormatter.digitsOnly,
-                          LengthLimitingTextInputFormatter(9),
-                        ],
                         validator: _validatePhone,
-                      ),
-                      TextFormField(
-                        controller: _birthDate,
-                        readOnly: true,
-                        onTap: viewModel.isSubmitting ? null : _pickBirthDate,
-                        decoration: const InputDecoration(
-                          labelText: 'Fecha de nacimiento',
-                          suffixIcon: Icon(Icons.calendar_today_outlined),
-                        ),
-                      ),
-                      TextFormField(
-                        controller: _address,
-                        decoration: const InputDecoration(
-                          labelText: 'Dirección',
-                        ),
-                        textCapitalization: TextCapitalization.words,
-                        validator: (value) => _optionalLength(value, 250),
                       ),
                       TextFormField(
                         controller: _imageUrl,
@@ -341,39 +277,42 @@ class _FormSection extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: context.appColors.borderVariant),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Icon(icon, color: context.appColors.primary),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: Theme.of(context).textTheme.titleMedium
-                          ?.copyWith(fontWeight: FontWeight.w700),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      subtitle,
-                      style: TextStyle(
-                        color: context.appColors.textSecondary,
-                        height: 1.4,
+      child: Material(
+        type: MaterialType.transparency,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(icon, color: context.appColors.primary),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(fontWeight: FontWeight.w700),
                       ),
-                    ),
-                  ],
+                      const SizedBox(height: 4),
+                      Text(
+                        subtitle,
+                        style: TextStyle(
+                          color: context.appColors.textSecondary,
+                          height: 1.4,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
-          child,
-        ],
+              ],
+            ),
+            const SizedBox(height: 20),
+            child,
+          ],
+        ),
       ),
     );
   }
@@ -469,20 +408,12 @@ String? _optionalLength(String? value, int max) {
   return text.length <= max ? null : 'No debe superar los $max caracteres.';
 }
 
-String? _validateDni(String? value) {
-  final text = value?.trim() ?? '';
-  if (text.isEmpty) return null;
-  return RegExp(r'^\d{8}$').hasMatch(text)
-      ? null
-      : 'Ingresa un DNI de 8 dígitos.';
-}
-
 String? _validatePhone(String? value) {
   final text = value?.trim() ?? '';
   if (text.isEmpty) return null;
-  return RegExp(r'^9\d{8}$').hasMatch(text)
+  return RegExp(r'^(?:\+51)?9[0-9]{8}$').hasMatch(text)
       ? null
-      : 'Debe comenzar con 9 y tener 9 dígitos.';
+      : 'Ingresa 9 dígitos comenzando con 9; puedes incluir +51, sin espacios.';
 }
 
 String? _validateImageUrl(String? value) {
@@ -494,4 +425,9 @@ String? _validateImageUrl(String? value) {
           uri.host.isNotEmpty
       ? null
       : 'Ingresa una URL válida.';
+}
+
+String? _changedText(String value, String? current) {
+  final text = value.trim();
+  return text.isEmpty || text == current ? null : text;
 }

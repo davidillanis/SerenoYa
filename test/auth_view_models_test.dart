@@ -76,24 +76,100 @@ void main() {
       final success = await viewModel.register(
         firstName: '  Dani ',
         lastName: ' Quispe  ',
-        dni: ' 12345678 ',
         phone: ' 999999999 ',
-        address: '',
         email: ' citizen@example.com ',
-        password: 'secret',
-        passwordConfirmation: 'secret',
+        password: 'secret12',
+        passwordConfirmation: 'secret12',
       );
 
       expect(success, isTrue);
       expect(repository.registration, {
         'firstName': 'Dani',
         'lastName': 'Quispe',
-        'dni': '12345678',
         'phone': '999999999',
-        'address': 'San Jerónimo',
         'email': 'citizen@example.com',
-        'password': 'secret',
+        'password': 'secret12',
       });
+    });
+
+    test('el registro permite nombres vacíos y el prefijo +51', () async {
+      final repository = RecordingAuthRepository();
+      final viewModel = RegisterViewModel(repository);
+      addTearDown(viewModel.dispose);
+
+      expect(
+        await viewModel.register(
+          firstName: '',
+          lastName: '',
+          phone: '+51987654321',
+          email: 'citizen@example.com',
+          password: 'secret12',
+          passwordConfirmation: 'secret12',
+        ),
+        isTrue,
+      );
+      expect(repository.registration?['phone'], '+51987654321');
+      expect(repository.registration?['firstName'], '');
+    });
+
+    test('el registro rechaza datos fuera del nuevo contrato', () async {
+      final cases = <Map<String, String>>[
+        {'firstName': 'a' * 61},
+        {'lastName': 'a' * 61},
+        {'phone': '887654321'},
+        {'phone': '+51 987654321'},
+        {'phone': '98765432'},
+        {'email': '${'a' * 49}@example.com'},
+        {'email': 'correo-invalido'},
+        {'password': '1234567', 'passwordConfirmation': '1234567'},
+        {'password': '        ', 'passwordConfirmation': '        '},
+        {'passwordConfirmation': 'otra-clave'},
+      ];
+      for (final overrides in cases) {
+        final repository = RecordingAuthRepository();
+        final viewModel = RegisterViewModel(repository);
+        addTearDown(viewModel.dispose);
+        final values = {
+          'firstName': 'Ana',
+          'lastName': 'Quispe',
+          'phone': '987654321',
+          'email': 'citizen@example.com',
+          'password': 'secret12',
+          'passwordConfirmation': 'secret12',
+          ...overrides,
+        };
+        expect(
+          await viewModel.register(
+            firstName: values['firstName']!,
+            lastName: values['lastName']!,
+            phone: values['phone']!,
+            email: values['email']!,
+            password: values['password']!,
+            passwordConfirmation: values['passwordConfirmation']!,
+          ),
+          isFalse,
+          reason: 'Campo inválido: ${overrides.keys.join(', ')}',
+        );
+        expect(repository.registration, isNull);
+        expect(viewModel.errorMessage, isNotEmpty);
+      }
+    });
+
+    test('el registro admite nombres y correo de 60 caracteres', () async {
+      final repository = RecordingAuthRepository();
+      final viewModel = RegisterViewModel(repository);
+      addTearDown(viewModel.dispose);
+      expect(
+        await viewModel.register(
+          firstName: 'a' * 60,
+          lastName: 'b' * 60,
+          phone: '987654321',
+          email: '${'a' * 48}@example.com',
+          password: 'secret12',
+          passwordConfirmation: 'secret12',
+        ),
+        isTrue,
+      );
     });
 
     test('password ViewModels trim identifiers before delegation', () async {
@@ -185,18 +261,14 @@ class RecordingAuthRepository implements AuthRepository {
   Future<Result<void>> registerCitizen({
     required String firstName,
     required String lastName,
-    required String dni,
     required String phone,
-    required String address,
     required String email,
     required String password,
   }) async {
     registration = {
       'firstName': firstName,
       'lastName': lastName,
-      'dni': dni,
       'phone': phone,
-      'address': address,
       'email': email,
       'password': password,
     };

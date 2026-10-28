@@ -11,17 +11,15 @@ class RegisterViewModel extends ChangeNotifier {
   Future<bool> register({
     required String firstName,
     required String lastName,
-    required String dni,
     required String phone,
-    required String address,
     required String email,
     required String password,
     required String passwordConfirmation,
   }) async {
+    if (isLoading) return false;
     errorMessage = _validate(
       firstName: firstName,
       lastName: lastName,
-      dni: dni,
       phone: phone,
       email: email,
       password: password,
@@ -38,9 +36,7 @@ class RegisterViewModel extends ChangeNotifier {
     final result = await _repository.registerCitizen(
       firstName: firstName.trim(),
       lastName: lastName.trim(),
-      dni: dni.trim(),
       phone: phone.trim(),
-      address: (address.isEmpty ? 'San Jerónimo' : address).trim(),
       email: email.trim(),
       password: password,
     );
@@ -53,26 +49,28 @@ class RegisterViewModel extends ChangeNotifier {
   String? _validate({
     required String firstName,
     required String lastName,
-    required String dni,
     required String phone,
     required String email,
     required String password,
     required String passwordConfirmation,
   }) {
-    if (firstName.trim().isEmpty || lastName.trim().isEmpty) {
-      return 'Ingresa tus nombres y apellidos.';
+    if (firstName.trim().length > 60 || lastName.trim().length > 60) {
+      return 'Los nombres y apellidos no deben superar los 60 caracteres.';
     }
-    if (!RegExp(r'^\d{8}$').hasMatch(dni.trim())) {
-      return 'El DNI debe contener 8 dígitos.';
+    if (!RegExp(r'^(?:\+51)?9[0-9]{8}$').hasMatch(phone.trim())) {
+      return 'El celular debe tener 9 dígitos y comenzar con 9; puede incluir +51, sin espacios.';
     }
-    if (!RegExp(r'^\d{9}$').hasMatch(phone.trim())) {
-      return 'El teléfono debe contener 9 dígitos.';
+    if (email.trim().length > 60) {
+      return 'El correo electrónico no debe superar los 60 caracteres.';
     }
     if (!RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(email.trim())) {
       return 'Ingresa un correo válido.';
     }
-    if (password.length < 6) {
-      return 'La contraseña debe tener al menos 6 caracteres.';
+    if (password.trim().isEmpty) {
+      return 'La contraseña es obligatoria.';
+    }
+    if (password.length < 8) {
+      return 'La contraseña debe tener al menos 8 caracteres.';
     }
     if (password != passwordConfirmation) {
       return 'Las contraseñas no coinciden.';

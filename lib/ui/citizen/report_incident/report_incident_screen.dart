@@ -22,7 +22,7 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
   final _descriptionController = TextEditingController();
   final _referenceController = TextEditingController();
   bool _isChoosingLocation = false;
-  bool _identityDialogOpen = false;
+  bool _contactDialogOpen = false;
   bool _locationRequested = false;
   LatLng? _location;
 
@@ -89,7 +89,7 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
 
   void _submit(BuildContext context, ReportIncidentViewModel viewModel) async {
     if (_isChoosingLocation || viewModel.isSubmitting) return;
-    if (!context.read<ProfileViewModel>().hasReportIdentity) return;
+    if (!context.read<ProfileViewModel>().hasReportContact) return;
     final description = _descriptionController.text.trim().isEmpty
         ? 'Reporte desde la app ciudadana'
         : _descriptionController.text.trim();
@@ -141,18 +141,18 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
     }
   }
 
-  Future<void> _requestIdentity(ProfileViewModel profile) async {
-    _identityDialogOpen = true;
+  Future<void> _requestContact(ProfileViewModel profile) async {
+    _contactDialogOpen = true;
     await showDialog<void>(
       context: context,
       barrierDismissible: false,
       builder: (dialogContext) => ChangeNotifierProvider.value(
         value: profile,
-        child: const _ReportIdentityDialog(),
+        child: const _ReportContactDialog(),
       ),
     );
-    _identityDialogOpen = false;
-    if (mounted && !profile.hasReportIdentity) Navigator.of(context).pop();
+    _contactDialogOpen = false;
+    if (mounted && !profile.hasReportContact) Navigator.of(context).pop();
   }
 
   Widget _buildCategoryIcon(String name) {
@@ -284,20 +284,20 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
   Widget build(BuildContext context) {
     final profile = context.watch<ProfileViewModel>();
     if (!profile.isLoading && profile.userProfile != null) {
-      if (!profile.hasReportIdentity && !_identityDialogOpen) {
+      if (!profile.hasReportContact && !_contactDialogOpen) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted && !_identityDialogOpen && !profile.hasReportIdentity) {
-            _requestIdentity(profile);
+          if (mounted && !_contactDialogOpen && !profile.hasReportContact) {
+            _requestContact(profile);
           }
         });
-      } else if (profile.hasReportIdentity && !_locationRequested) {
+      } else if (profile.hasReportContact && !_locationRequested) {
         _locationRequested = true;
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (mounted) _locateCitizen();
         });
       }
     }
-    if (!profile.hasReportIdentity) {
+    if (!profile.hasReportContact) {
       return Scaffold(
         appBar: AppBar(title: const Text('Nuevo reporte')),
         body: Center(
@@ -862,29 +862,26 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
   }
 }
 
-class _ReportIdentityDialog extends StatefulWidget {
-  const _ReportIdentityDialog();
+class _ReportContactDialog extends StatefulWidget {
+  const _ReportContactDialog();
 
   @override
-  State<_ReportIdentityDialog> createState() => _ReportIdentityDialogState();
+  State<_ReportContactDialog> createState() => _ReportContactDialogState();
 }
 
-class _ReportIdentityDialogState extends State<_ReportIdentityDialog> {
+class _ReportContactDialogState extends State<_ReportContactDialog> {
   final _formKey = GlobalKey<FormState>();
-  late final TextEditingController _dni;
   late final TextEditingController _phone;
 
   @override
   void initState() {
     super.initState();
     final user = context.read<ProfileViewModel>().userProfile!;
-    _dni = TextEditingController(text: user.dni);
     _phone = TextEditingController(text: user.phone);
   }
 
   @override
   void dispose() {
-    _dni.dispose();
     _phone.dispose();
     super.dispose();
   }
@@ -892,10 +889,7 @@ class _ReportIdentityDialogState extends State<_ReportIdentityDialog> {
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
     final profile = context.read<ProfileViewModel>();
-    final saved = await profile.completeReportIdentity(
-      dni: _dni.text,
-      phone: _phone.text,
-    );
+    final saved = await profile.completeReportContact(phone: _phone.text);
     if (saved && mounted) Navigator.of(context).pop();
   }
 
@@ -914,25 +908,17 @@ class _ReportIdentityDialogState extends State<_ReportIdentityDialog> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  'Para reportar un incidente necesitamos tu DNI y celular de contacto.',
+                  'Para reportar un incidente necesitamos tu celular de contacto.',
                 ),
                 const SizedBox(height: 20),
-                TextFormField(
-                  controller: _dni,
-                  keyboardType: TextInputType.number,
-                  textInputAction: TextInputAction.next,
-                  decoration: const InputDecoration(labelText: 'DNI'),
-                  validator: (value) =>
-                      RegExp(r'^\d{8}$').hasMatch(value?.trim() ?? '')
-                      ? null
-                      : 'Ingresa un DNI de 8 dígitos.',
-                ),
-                const SizedBox(height: 12),
                 TextFormField(
                   controller: _phone,
                   keyboardType: TextInputType.phone,
                   textInputAction: TextInputAction.done,
-                  decoration: const InputDecoration(labelText: 'Celular'),
+                  decoration: const InputDecoration(
+                    labelText: 'Celular',
+                    hintText: '987654321 o +51987654321',
+                  ),
                   validator: (value) =>
                       RegExp(r'^(?:\+51)?9\d{8}$').hasMatch(value?.trim() ?? '')
                       ? null

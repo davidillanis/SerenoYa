@@ -329,11 +329,6 @@ class _ProfileInformation extends StatelessWidget {
           title: 'Datos personales',
           children: [
             _InformationRow(
-              icon: Icons.badge_outlined,
-              label: 'DNI',
-              value: user.dni,
-            ),
-            _InformationRow(
               icon: Icons.phone_outlined,
               label: 'Celular',
               value: user.phone,
@@ -510,7 +505,7 @@ class _ProfileEditSheetState extends State<_ProfileEditSheet> {
   late final TextEditingController _name;
   late final TextEditingController _lastName;
   late final TextEditingController _phone;
-  late final TextEditingController _address;
+  late final TextEditingController _imageUrl;
   late final TextEditingController _latitude;
   late final TextEditingController _longitude;
 
@@ -520,7 +515,7 @@ class _ProfileEditSheetState extends State<_ProfileEditSheet> {
     _name = TextEditingController(text: widget.user.name);
     _lastName = TextEditingController(text: widget.user.lastName);
     _phone = TextEditingController(text: widget.user.phone);
-    _address = TextEditingController(text: widget.user.address);
+    _imageUrl = TextEditingController(text: widget.user.imageUrl ?? '');
     _latitude = TextEditingController(
       text: widget.citizen?.homeLatitude?.toString() ?? '',
     );
@@ -534,7 +529,7 @@ class _ProfileEditSheetState extends State<_ProfileEditSheet> {
     _name.dispose();
     _lastName.dispose();
     _phone.dispose();
-    _address.dispose();
+    _imageUrl.dispose();
     _latitude.dispose();
     _longitude.dispose();
     super.dispose();
@@ -546,7 +541,7 @@ class _ProfileEditSheetState extends State<_ProfileEditSheet> {
       name: _name.text,
       lastName: _lastName.text,
       phone: _phone.text,
-      address: _address.text,
+      imageUrl: _imageUrl.text,
       homeLatitude: _latitude.text,
       homeLongitude: _longitude.text,
     );
@@ -585,6 +580,10 @@ class _ProfileEditSheetState extends State<_ProfileEditSheet> {
                 fontWeight: FontWeight.bold,
               ),
             ),
+            const SizedBox(height: 8),
+            const Text(
+              'Solo se guardan los cambios. Deja un campo vacío para conservar su valor actual.',
+            ),
             const SizedBox(height: 24),
             TextField(
               controller: _name,
@@ -602,15 +601,23 @@ class _ProfileEditSheetState extends State<_ProfileEditSheet> {
               controller: _phone,
               keyboardType: TextInputType.phone,
               textInputAction: TextInputAction.next,
-              decoration: const InputDecoration(labelText: 'Celular'),
+              decoration: const InputDecoration(
+                labelText: 'Celular',
+                hintText: '987654321 o +51987654321',
+              ),
             ),
             const SizedBox(height: 12),
             TextField(
-              controller: _address,
+              controller: _imageUrl,
+              keyboardType: TextInputType.url,
+              autocorrect: false,
               textInputAction: widget.includeCitizenProfile
                   ? TextInputAction.next
                   : TextInputAction.done,
-              decoration: const InputDecoration(labelText: 'Dirección'),
+              decoration: const InputDecoration(
+                labelText: 'URL de imagen',
+                hintText: 'https://example.com/imagen.jpg',
+              ),
             ),
             if (widget.includeCitizenProfile) ...[
               const SizedBox(height: 24),

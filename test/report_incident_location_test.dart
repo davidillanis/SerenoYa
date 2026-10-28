@@ -37,7 +37,7 @@ void main() {
         locationService: service,
       );
       addTearDown(model.dispose);
-      final profile = _profile(dni: '12345678', phone: '987654321');
+      final profile = _profile(phone: '987654321');
       addTearDown(profile.dispose);
       await tester.pumpWidget(
         MultiProvider(
@@ -52,6 +52,8 @@ void main() {
         ),
       );
       await tester.pump();
+      expect(find.text('DNI'), findsNothing);
+      expect(find.text('Completa tus datos'), findsNothing);
       expect(service.calls, 1);
       expect(
         find.text('Obteniendo tu ubicación mientras completas el reporte...'),
@@ -74,7 +76,7 @@ void main() {
       await tester.pumpWidget(const SizedBox.shrink());
     });
   }
-  testWidgets('solicita DNI y celular antes de iniciar el reporte', (
+  testWidgets('solicita solo celular antes de iniciar el reporte', (
     tester,
   ) async {
     final service = _LocationService();
@@ -83,7 +85,7 @@ void main() {
       _Storage(),
       locationService: service,
     );
-    final profile = _profile(dni: '', phone: '');
+    final profile = _profile(phone: '');
     addTearDown(model.dispose);
     addTearDown(profile.dispose);
     await tester.pumpWidget(
@@ -104,10 +106,55 @@ void main() {
     expect(service.calls, 0);
     await tester.tap(find.text('Guardar y continuar'));
     await tester.pump();
-    expect(find.text('Ingresa un DNI de 8 dígitos.'), findsOneWidget);
+    expect(find.text('Ingresa un celular peruano válido.'), findsOneWidget);
+    expect(find.text('DNI'), findsNothing);
     await tester.tap(find.text('Cancelar reporte'));
     await tester.pump();
   });
+  testWidgets('guarda solo el celular y continúa el reporte sin DNI', (
+    tester,
+  ) async {
+    final location = _LocationService();
+    location.result.complete(const LatLng(-13.65, -73.36));
+    final model = ReportIncidentViewModel(
+      _Repository(),
+      _Storage(),
+      locationService: location,
+    );
+    Map<String, dynamic>? update;
+    final profile = _profile(phone: '', onUpdate: (value) => update = value);
+    addTearDown(model.dispose);
+    addTearDown(profile.dispose);
+    await tester.pumpWidget(
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider.value(value: model),
+          ChangeNotifierProvider.value(value: profile),
+        ],
+        child: MaterialApp(
+          theme: buildAppTheme(Brightness.light, ThemeVariant.normal),
+          home: const ReportIncidentScreen(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(location.calls, 0);
+    expect(find.text('DNI'), findsNothing);
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Celular'),
+      '+51987654321',
+    );
+    await tester.tap(find.text('Guardar y continuar'));
+    await tester.pumpAndSettle();
+    expect(update, {'phone': '+51987654321'});
+    expect(find.byType(AlertDialog), findsNothing);
+    expect(profile.hasReportContact, isTrue);
+    expect(location.calls, 1);
+    expect(find.text('Ajustar ubicación en el mapa'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
   test('envía el punto elegido en lugar del GPS inicial', () async {
     const channel = MethodChannel('plugins.flutter.io/image_picker');
     File('/tmp/evidence.jpg').writeAsBytesSync(const [0xFF, 0xD8, 0xFF, 0x00]);
@@ -241,8 +288,43 @@ void main() {
   });
 }
 
-ProfileViewModel _profile({required String dni, required String phone}) {
-  final service = ProfileApiService(Dio());
+ProfileViewModel _profile({
+  required String phone,
+  void Function(Map<String, dynamic>)? onUpdate,
+}) {
+  var storedPhone = phone;
+  final dio = Dio(BaseOptions(baseUrl: 'http://localhost/api/v1'));
+  dio.interceptors.add(
+    InterceptorsWrapper(
+      onRequest: (options, handler) {
+        if (options.method == 'PUT') {
+          final data = Map<String, dynamic>.from(options.data as Map);
+          onUpdate?.call(data);
+          storedPhone = data['phone'] as String? ?? storedPhone;
+        }
+        handler.resolve(
+          Response<dynamic>(
+            requestOptions: options,
+            statusCode: 200,
+            data: {
+              'isSuccess': true,
+              'data': options.method == 'PUT'
+                  ? 'Actualizado'
+                  : {
+                      'id': 'user-1',
+                      'name': 'Ana',
+                      'lastName': 'Quispe',
+                      'email': 'ana@example.com',
+                      'phone': storedPhone,
+                      'enabled': true,
+                    },
+            },
+          ),
+        );
+      },
+    ),
+  );
+  final service = ProfileApiService(dio);
   service.useCacheForUser('user-1');
   service.cacheUserProfile(
     UserProfile(
@@ -250,7 +332,6 @@ ProfileViewModel _profile({required String dni, required String phone}) {
       name: 'Ana',
       lastName: 'Quispe',
       email: 'ana@example.com',
-      dni: dni,
       phone: phone,
       address: '',
       enabled: true,
