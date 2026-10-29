@@ -5,6 +5,7 @@ import 'package:sereno_ya/data/models/citizen/incident_create_request.dart';
 import 'package:sereno_ya/data/models/incident_assignment.dart';
 import 'package:sereno_ya/data/models/incident_status.dart';
 import 'package:sereno_ya/data/models/officer/incident_acceptance.dart';
+import 'package:sereno_ya/data/models/officer/incident_citizen.dart';
 import 'package:sereno_ya/data/models/officer/officer_incident.dart';
 import 'package:sereno_ya/data/models/page_dto.dart';
 import 'package:sereno_ya/data/models/route/route_compare.dart';
@@ -32,6 +33,11 @@ class IncidentApiService {
   Future<ApiResponseDto<OfficerIncident>> byIdSereno({required String fields,required String id,}) => _request(
     () => _dio.get<dynamic>('/incident/byId-sereno/$id',queryParameters: {'fields': fields},),
     (value) => OfficerIncident.fromJson(_asJsonMap(value)),
+  );
+
+  Future<ApiResponseDto<IncidentCitizen>> citizenByIncidentId(String id) => _request(
+    () => _dio.get<dynamic>('/incident/$id/citizen'),
+    (value) => IncidentCitizen.fromJson(_asJsonMap(value)),
   );
 
   Future<ApiResponseDto<Incident>> createIncident(IncidentCreateRequest request,) async {

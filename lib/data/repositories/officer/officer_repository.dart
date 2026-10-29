@@ -2,6 +2,7 @@ import 'package:sereno_ya/data/models/auth/api_response_dto.dart';
 import 'package:sereno_ya/data/models/incident_assignment.dart';
 import 'package:sereno_ya/data/models/incident_status.dart';
 import 'package:sereno_ya/data/models/officer/officer_incident.dart';
+import 'package:sereno_ya/data/models/officer/incident_citizen.dart';
 import 'package:sereno_ya/data/models/page_dto.dart';
 import 'package:sereno_ya/data/services/api/incident_api_service.dart';
 import 'package:sereno_ya/models/auth/auth_failure.dart';
@@ -59,6 +60,9 @@ class OfficerRepository {
   /// Detalle del sereno (`GET /incident/byId-sereno/{id}`).
   Future<Result<OfficerIncident>> detail(String id) =>
       _run(() => _service.byIdSereno(fields: officerFields, id: id));
+
+  Future<Result<IncidentCitizen>> citizenByIncidentId(String id) =>
+      _run(() => _service.citizenByIncidentId(id));
 
   /// Acepta con la ubicación del sereno (`POST /incident/accept`).
   Future<Result<bool>> accept({

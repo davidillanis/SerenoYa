@@ -140,6 +140,7 @@ class _OfficerHomeScreenState extends State<OfficerHomeScreen> {
         ),
       ),
     );
+    if (error == null) await _open(model, item);
   }
 
   Future<void> _open(

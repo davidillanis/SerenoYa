@@ -10,6 +10,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:provider/provider.dart';
 import 'package:sereno_ya/data/models/officer/officer_incident.dart';
+import 'package:sereno_ya/data/models/officer/incident_citizen.dart';
 import 'package:sereno_ya/data/models/page_dto.dart';
 import 'package:sereno_ya/data/repositories/officer/officer_repository.dart';
 import 'package:sereno_ya/data/services/api/incident_api_service.dart';
@@ -338,6 +339,14 @@ void main() {
                 'serenoId': 'test-officer',
                 'status': 'ACCEPTED',
               };
+            } else if (request.path == '/incident/incident-test/citizen') {
+              data = {
+                'citizenId': 'citizen-test',
+                'name': 'Ana',
+                'lastName': 'Quispe',
+                'phone': '987654321',
+                'imageUrl': null,
+              };
             } else if (request.path.contains('/byId-sereno/')) {
               data = incidentJson('ACCEPTED');
             } else {
@@ -378,10 +387,17 @@ void main() {
         requests.last.queryParameters['fields'],
         contains('evidences.fileUrl'),
       );
+
       expect(
         requests.last.queryParameters['fields'],
         isNot(contains('priority')),
       );
+
+      final citizen = await repository.citizenByIncidentId('incident-test');
+      expect(citizen.data!.fullName, 'Ana Quispe');
+      expect(citizen.data!.phone, '987654321');
+      expect(requests.last.path, '/incident/incident-test/citizen');
+      expect(requests.last.method, 'GET');
 
       await repository.listMine(status: OfficerIncidentStatus.attended);
       expect(requests.last.path, '/incident/list-me-sereno');
@@ -493,13 +509,68 @@ void main() {
       locationService: FakeLocationService(),
     );
     await Future<void>.delayed(Duration.zero);
+    expect(repository.citizenRequests, 0);
+    expect(model.citizen, isNull);
     expect(await model.act(), isNull);
     expect(model.item!.status, OfficerIncidentStatus.enRoute);
+    expect(model.citizen!.fullName, 'Ana Quispe');
+    expect(repository.citizenRequests, 1);
     expect(model.acceptedHere, isTrue);
     // La API v2 no expone llegada/atendido: no hay más acciones.
     expect(await model.act(), isNotNull);
     expect(repository.acceptCount, 1);
     model.dispose();
+  });
+
+  test(
+    'detalle mantiene el incidente visible si falla la consulta del ciudadano',
+    () async {
+      final repository = FakeRepository()
+        ..currentStatus = 'ACCEPTED'
+        ..citizenFails = true;
+      final model = OfficerDetailViewModel(repository, 'incident-test');
+      await Future<void>.delayed(Duration.zero);
+      expect(model.item, isNotNull);
+      expect(model.citizen, isNull);
+      expect(model.citizenError, 'Sin conexión');
+      repository.citizenFails = false;
+      await model.load();
+      expect(model.citizen!.phone, '987654321');
+      expect(model.citizenError, isNull);
+      model.dispose();
+    },
+  );
+
+  testWidgets('detalle oculta datos antes de aceptar y los muestra después', (
+    tester,
+  ) async {
+    final repository = FakeRepository();
+    final model = OfficerDetailViewModel(
+      repository,
+      'incident-test',
+      locationService: FakeLocationService(),
+    );
+    addTearDown(model.dispose);
+    await tester.pumpWidget(
+      ChangeNotifierProvider.value(
+        value: model,
+        child: MaterialApp(
+          theme: buildAppTheme(Brightness.light, ThemeVariant.normal),
+          home: const OfficerDetailScreen(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(
+      find.text('Disponible una vez aceptado el incidente.'),
+      findsOneWidget,
+    );
+    expect(find.text('Ana Quispe'), findsNothing);
+    await model.act();
+    await tester.pumpAndSettle();
+    expect(find.text('Ana Quispe'), findsOneWidget);
+    expect(find.text('Teléfono: 987654321'), findsOneWidget);
+    expect(find.text('Llamar'), findsOneWidget);
   });
 
   test('detalle sin GPS informa el error sin aceptar', () async {
@@ -615,6 +686,8 @@ class FakeRepository extends OfficerRepository {
   bool holdMine = false;
   bool detailFails = false;
   int acceptCount = 0;
+  int citizenRequests = 0;
+  bool citizenFails = false;
   OfficerIncidentStatus? lastMineStatus;
   final pending = <Completer<Result<PageResponse<OfficerIncident>>>>[];
   @override
@@ -674,6 +747,23 @@ class FakeRepository extends OfficerRepository {
           const AuthFailure(AuthFailureCode.network, 'Sin conexión'),
         )
       : Result.success(item(currentStatus));
+  @override
+  Future<Result<IncidentCitizen>> citizenByIncidentId(String id) async {
+    citizenRequests++;
+    return citizenFails
+        ? Result.failure(
+            const AuthFailure(AuthFailureCode.network, 'Sin conexión'),
+          )
+        : Result.success(
+            const IncidentCitizen(
+              citizenId: 'citizen-test',
+              name: 'Ana',
+              lastName: 'Quispe',
+              phone: '987654321',
+            ),
+          );
+  }
+
   @override
   Future<Result<bool>> accept({
     required String id,

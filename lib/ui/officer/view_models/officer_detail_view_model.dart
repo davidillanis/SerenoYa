@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:sereno_ya/data/models/officer/officer_incident.dart';
+import 'package:sereno_ya/data/models/officer/incident_citizen.dart';
 import 'package:sereno_ya/data/repositories/officer/officer_repository.dart';
 import 'package:sereno_ya/data/services/maps/citizen_location_service.dart';
 
@@ -16,6 +17,8 @@ class OfficerDetailViewModel extends ChangeNotifier {
   final CitizenLocationService _locationService;
   final String id;
   OfficerIncident? item;
+  IncidentCitizen? citizen;
+  String? citizenError;
   bool loading = false;
   bool saving = false;
   bool acceptedHere = false;
@@ -31,11 +34,22 @@ class OfficerDetailViewModel extends ChangeNotifier {
     if (loading || _disposed) return;
     loading = true;
     error = null;
+    citizen = null;
+    citizenError = null;
     _notify();
     final result = await _repository.detail(id);
     if (_disposed) return;
     if (result.isSuccess) {
       item = result.data;
+      if (item!.showsCitizenInfo) {
+        final citizenResult = await _repository.citizenByIncidentId(id);
+        if (_disposed) return;
+        if (citizenResult.isSuccess) {
+          citizen = citizenResult.data;
+        } else {
+          citizenError = citizenResult.failure!.message;
+        }
+      }
     } else {
       error = result.failure!.message;
     }

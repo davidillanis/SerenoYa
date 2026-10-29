@@ -63,18 +63,12 @@ class OfficerDetailScreen extends StatelessWidget {
                             ? 'Sin descripción'
                             : item.incident.description,
                       ),
-                      _section(
-                        context,
-                        'Ciudadano',
-                        item.showsCitizenInfo
-                            ? [
-                                'Identificador: ${item.citizenId ?? 'No disponible'}',
-                                'Teléfono: ${item.citizenPhone ?? 'No disponible'}',
-                              ].join('\n')
-                            : 'Disponible una vez aceptado el incidente.',
-                      ),
-                      if (item.showsCitizenInfo)
-                        _CitizenContactButtons(item: item),
+                      _citizenSection(context, model),
+                      if (item.showsCitizenInfo && model.citizen != null)
+                        _CitizenContactButtons(
+                          item: item,
+                          phone: model.citizen!.phone,
+                        ),
                       _section(
                         context,
                         'Ubicación',
@@ -164,6 +158,76 @@ class OfficerDetailScreen extends StatelessWidget {
     ),
   );
 
+  Widget _citizenSection(BuildContext context, OfficerDetailViewModel model) {
+    final citizen = model.citizen;
+    final imageUrl = citizen?.imageUrl?.trim();
+    final imageUri = imageUrl == null ? null : Uri.tryParse(imageUrl);
+    final hasImage =
+        imageUri != null &&
+        (imageUri.scheme == 'https' || imageUri.scheme == 'http') &&
+        imageUri.host.isNotEmpty;
+    return Card(
+      margin: const EdgeInsets.only(bottom: 16),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Ciudadano', style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: 12),
+            if (!model.item!.showsCitizenInfo)
+              const Text('Disponible una vez aceptado el incidente.')
+            else if (model.citizenError != null) ...[
+              Text(
+                model.citizenError!,
+                style: TextStyle(color: context.appColors.error),
+              ),
+              TextButton(
+                onPressed: model.load,
+                child: const Text('Reintentar'),
+              ),
+            ] else if (citizen == null)
+              const Text('Información del ciudadano no disponible.')
+            else ...[
+              Row(
+                children: [
+                  CircleAvatar(
+                    radius: 28,
+                    child: hasImage
+                        ? ClipOval(
+                            child: Image.network(
+                              imageUrl!,
+                              width: 56,
+                              height: 56,
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, _, _) =>
+                                  const Icon(Icons.person_outline),
+                            ),
+                          )
+                        : const Icon(Icons.person_outline),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      citizen.fullName.isEmpty
+                          ? 'Nombre no disponible'
+                          : citizen.fullName,
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              SelectableText(
+                'Teléfono: ${citizen.phone?.trim().isNotEmpty == true ? citizen.phone!.trim() : 'No disponible'}',
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
   String? _actionLabel(OfficerIncidentStatus status) => switch (status) {
     OfficerIncidentStatus.pending => 'Aceptar y enviar respuesta',
     _ => null,
@@ -203,12 +267,12 @@ class OfficerDetailScreen extends StatelessWidget {
 /// disponible. Sin teléfono no hay acción que lanzar y los botones se
 /// deshabilitan.
 class _CitizenContactButtons extends StatelessWidget {
-  const _CitizenContactButtons({required this.item});
+  const _CitizenContactButtons({required this.item, required this.phone});
   final OfficerIncident item;
+  final String? phone;
 
   @override
   Widget build(BuildContext context) {
-    final phone = item.citizenPhone;
     final hasPhone = telUri(phone ?? '') != null;
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
