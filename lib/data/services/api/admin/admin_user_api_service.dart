@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:sereno_ya/data/models/admin/admin_created_user.dart';
+import 'package:sereno_ya/data/models/admin/admin_sereno_update_request.dart';
 import 'package:sereno_ya/data/models/admin/admin_user_create_request.dart';
 import 'package:sereno_ya/data/models/admin/admin_user_detail.dart';
 import 'package:sereno_ya/data/models/admin/admin_user_summary.dart';
@@ -67,6 +68,17 @@ class AdminUserApiService {
     AdminUserRolesUpdateRequest request,
   ) => _request(
     () => _dio.put<dynamic>('/user-role/update-roles', data: request.toJson()),
+    (value) => value?.toString() ?? '',
+  );
+
+  Future<ApiResponseDto<String>> updateSereno(
+    String userId,
+    AdminSerenoUpdateRequest request,
+  ) => _request(
+    () => _dio.put<dynamic>(
+      '/user-role/sereno-update/$userId',
+      data: request.toJson(),
+    ),
     (value) => value?.toString() ?? '',
   );
 

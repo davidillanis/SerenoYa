@@ -15,8 +15,6 @@ void main() {
       userId: 'user-1',
       roles: {'CITIZEN', 'OFFICER_SERENO'},
       serenoCode: 'SER-01',
-      serenoLatitude: -13.65,
-      serenoLongitude: -71.67,
       citizenLatitude: -13.66,
       citizenLongitude: -71.68,
     );
@@ -24,16 +22,12 @@ void main() {
     expect(request.toJson(), {
       'userId': 'user-1',
       'roles': ['CITIZEN', 'OFFICER_SERENO'],
-      'serenoDTO': {
-        'codeSereno': 'SER-01',
-        'currentLatitude': -13.65,
-        'currentLongitude': -71.67,
-      },
+      'serenoDTO': {'codeSereno': 'SER-01'},
       'citizenDTO': {'homeLatitude': -13.66, 'homeLongitude': -71.68},
     });
   });
 
-  testWidgets('exige ubicación al asignar ciudadano y envía citizenDTO', (
+  testWidgets('exige datos de ambos perfiles y envía el nuevo DTO', (
     tester,
   ) async {
     Map<String, dynamic>? sentBody;
@@ -53,10 +47,7 @@ void main() {
                       'isSuccess': true,
                       'data': {
                         'content': [
-                          {
-                            'id': 'user-1',
-                            'roles': [],
-                          },
+                          {'id': 'user-1', 'roles': []},
                         ],
                         'page': 0,
                         'totalElements': 1,
@@ -85,6 +76,10 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Ciudadano'));
     await tester.pumpAndSettle();
+    await tester.tap(find.text('Serenazgo'));
+    await tester.pumpAndSettle();
+    expect(find.text('Latitud operativa'), findsNothing);
+    expect(find.text('Longitud operativa'), findsNothing);
     await tester.tap(find.text('Guardar'));
     await tester.pumpAndSettle();
     expect(sentBody, isNull);
@@ -97,11 +92,16 @@ void main() {
       find.widgetWithText(TextFormField, 'Longitud del domicilio'),
       '-71.67',
     );
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Código de sereno'),
+      'SER-01',
+    );
     await tester.tap(find.text('Guardar'));
     await tester.pumpAndSettle();
     expect(sentBody, {
       'userId': 'user-1',
-      'roles': ['CITIZEN'],
+      'roles': ['CITIZEN', 'OFFICER_SERENO'],
+      'serenoDTO': {'codeSereno': 'SER-01'},
       'citizenDTO': {'homeLatitude': -13.65, 'homeLongitude': -71.67},
     });
   });

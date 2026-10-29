@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+import 'package:sereno_ya/data/models/admin/admin_sereno_update_request.dart';
 import 'package:sereno_ya/data/models/admin/admin_user_roles_update_request.dart';
 import 'package:sereno_ya/data/models/admin/admin_user_summary.dart';
 import 'package:sereno_ya/routing/route_names.dart';
@@ -60,6 +61,28 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
     final updated = await context.push<bool>(RouteNames.adminUserEdit(user.id));
     if (!mounted || updated != true) return;
     await context.read<AdminUsersViewModel>().loadInitial(forceRefresh: true);
+  }
+
+  Future<void> _openSerenoEditor(AdminUserSummary user) async {
+    final request = await showDialog<AdminSerenoUpdateRequest>(
+      context: context,
+      builder: (_) => const _EditSerenoDialog(),
+    );
+    if (!mounted || request == null) return;
+
+    final viewModel = context.read<AdminUsersViewModel>();
+    final updated = await viewModel.updateSereno(user.id, request);
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          updated
+              ? 'El perfil del sereno se actualizó correctamente.'
+              : viewModel.updateSerenoError ??
+                    'No se pudo actualizar el perfil del sereno.',
+        ),
+      ),
+    );
   }
 
   @override
@@ -156,6 +179,8 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
                     viewModel.updatingUserId == viewModel.users[userIndex].id,
                 onEditUser: () => _openUserEditor(viewModel.users[userIndex]),
                 onEditRoles: () => _openRoleEditor(viewModel.users[userIndex]),
+                onEditSereno: () =>
+                    _openSerenoEditor(viewModel.users[userIndex]),
               );
             },
           ),
@@ -267,6 +292,7 @@ class _UserItem extends StatelessWidget {
     required this.updating,
     required this.onEditUser,
     required this.onEditRoles,
+    required this.onEditSereno,
   });
 
   final AdminUserSummary user;
@@ -274,6 +300,7 @@ class _UserItem extends StatelessWidget {
   final bool updating;
   final VoidCallback onEditUser;
   final VoidCallback onEditRoles;
+  final VoidCallback onEditSereno;
 
   bool get _hasProtectedRole =>
       user.roles.any(const {'OFFICER_ADMINISTRADOR', 'DEVELOPMENT'}.contains);
@@ -306,6 +333,15 @@ class _UserItem extends StatelessWidget {
                 ),
               ],
             ),
+            if (user.roles.contains('OFFICER_SERENO'))
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton.icon(
+                  onPressed: updating ? null : onEditSereno,
+                  icon: const Icon(Icons.badge_outlined),
+                  label: const Text('Editar sereno'),
+                ),
+              ),
             const SizedBox(height: 16),
             Wrap(
               spacing: 8,
@@ -354,12 +390,15 @@ class _UserItem extends StatelessWidget {
             child: _NotificationStatus(enabled: user.notificationsEnabled),
           ),
           SizedBox(
-            width: 96,
+            width: user.roles.contains('OFFICER_SERENO') ? 144 : 96,
             child: _UserActions(
               updating: updating,
               protected: _hasProtectedRole,
               onEditUser: onEditUser,
               onEditRoles: onEditRoles,
+              onEditSereno: user.roles.contains('OFFICER_SERENO')
+                  ? onEditSereno
+                  : null,
             ),
           ),
         ],
@@ -374,12 +413,14 @@ class _UserActions extends StatelessWidget {
     required this.protected,
     required this.onEditUser,
     required this.onEditRoles,
+    this.onEditSereno,
   });
 
   final bool updating;
   final bool protected;
   final VoidCallback onEditUser;
   final VoidCallback onEditRoles;
+  final VoidCallback? onEditSereno;
 
   @override
   Widget build(BuildContext context) {
@@ -407,9 +448,108 @@ class _UserActions extends StatelessWidget {
           onPressed: protected ? null : onEditRoles,
           icon: const Icon(Icons.manage_accounts_outlined),
         ),
+        if (onEditSereno != null)
+          IconButton(
+            tooltip: 'Editar sereno',
+            onPressed: onEditSereno,
+            icon: const Icon(Icons.badge_outlined),
+          ),
       ],
     );
   }
+}
+
+class _EditSerenoDialog extends StatefulWidget {
+  const _EditSerenoDialog();
+
+  @override
+  State<_EditSerenoDialog> createState() => _EditSerenoDialogState();
+}
+
+class _EditSerenoDialogState extends State<_EditSerenoDialog> {
+  final _formKey = GlobalKey<FormState>();
+  final _codeController = TextEditingController();
+  AdminSerenoStatus? _status;
+
+  @override
+  void dispose() {
+    _codeController.dispose();
+    super.dispose();
+  }
+
+  void _submit() {
+    if (_formKey.currentState?.validate() != true) return;
+    final code = _codeController.text.trim();
+    if (code.isEmpty && _status == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Ingresa un código o selecciona un estado.'),
+        ),
+      );
+      return;
+    }
+    Navigator.of(context).pop(
+      AdminSerenoUpdateRequest(
+        codeSereno: code.isEmpty ? null : code,
+        serviceStatus: _status,
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) => AlertDialog(
+    title: const Text('Editar sereno'),
+    content: ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: 420),
+      child: SingleChildScrollView(
+        child: Form(
+          key: _formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                'Modifica solo los datos que necesitas cambiar.',
+                style: TextStyle(color: context.appColors.textSecondary),
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _codeController,
+                maxLength: 30,
+                decoration: const InputDecoration(
+                  labelText: 'Código de sereno',
+                ),
+              ),
+              const SizedBox(height: 8),
+              DropdownButtonFormField<AdminSerenoStatus?>(
+                initialValue: _status,
+                isExpanded: true,
+                decoration: const InputDecoration(
+                  labelText: 'Estado de servicio',
+                ),
+                items: [
+                  const DropdownMenuItem(
+                    value: null,
+                    child: Text('Sin cambios'),
+                  ),
+                  for (final status in AdminSerenoStatus.values)
+                    DropdownMenuItem(value: status, child: Text(status.label)),
+                ],
+                onChanged: (value) => setState(() => _status = value),
+              ),
+            ],
+          ),
+        ),
+      ),
+    ),
+    actions: [
+      TextButton(
+        onPressed: () => Navigator.of(context).pop(),
+        child: const Text('Cancelar'),
+      ),
+      FilledButton(onPressed: _submit, child: const Text('Guardar')),
+    ],
+  );
 }
 
 class _UserIdentity extends StatelessWidget {
@@ -658,8 +798,6 @@ class _EditRolesDialogState extends State<_EditRolesDialog> {
   final _formKey = GlobalKey<FormState>();
   late final Set<String> _selectedRoles;
   final _serenoCode = TextEditingController();
-  final _serenoLatitude = TextEditingController();
-  final _serenoLongitude = TextEditingController();
   final _citizenLatitude = TextEditingController();
   final _citizenLongitude = TextEditingController();
 
@@ -680,8 +818,6 @@ class _EditRolesDialogState extends State<_EditRolesDialog> {
   @override
   void dispose() {
     _serenoCode.dispose();
-    _serenoLatitude.dispose();
-    _serenoLongitude.dispose();
     _citizenLatitude.dispose();
     _citizenLongitude.dispose();
     super.dispose();
@@ -698,12 +834,6 @@ class _EditRolesDialogState extends State<_EditRolesDialog> {
         roles: Set.of(_selectedRoles),
         serenoCode: _selectedRoles.contains(_officerRole)
             ? _serenoCode.text.trim()
-            : null,
-        serenoLatitude: _selectedRoles.contains(_officerRole)
-            ? double.parse(_serenoLatitude.text.trim())
-            : null,
-        serenoLongitude: _selectedRoles.contains(_officerRole)
-            ? double.parse(_serenoLongitude.text.trim())
             : null,
         citizenLatitude: _selectedRoles.contains(_citizenRole)
             ? double.parse(_citizenLatitude.text.trim())
@@ -751,18 +881,6 @@ class _EditRolesDialogState extends State<_EditRolesDialog> {
                     validator: (value) => (value?.trim().isEmpty ?? true)
                         ? 'Ingresa el código de sereno.'
                         : null,
-                  ),
-                  _RoleCoordinateField(
-                    controller: _serenoLatitude,
-                    label: 'Latitud operativa',
-                    min: -90,
-                    max: 90,
-                  ),
-                  _RoleCoordinateField(
-                    controller: _serenoLongitude,
-                    label: 'Longitud operativa',
-                    min: -180,
-                    max: 180,
                   ),
                 ],
                 CheckboxListTile(

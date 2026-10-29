@@ -11,6 +11,7 @@ import 'package:sereno_ya/data/repositories/officer/officer_repository.dart';
 import 'package:sereno_ya/data/repositories/route/route_compare_repository.dart';
 import 'package:sereno_ya/data/services/api/incident_api_service.dart';
 import 'package:sereno_ya/data/services/maps/citizen_location_service.dart';
+import 'package:sereno_ya/data/services/officer/screen_awake_service.dart';
 import 'package:sereno_ya/models/auth/auth_failure.dart';
 import 'package:sereno_ya/models/auth/result.dart';
 import 'package:sereno_ya/ui/core/theme/mapped_palette.dart';
@@ -142,6 +143,15 @@ class FakeOfficerRepository extends OfficerRepository {
 class AtSiteLocationService extends FakeLocationService {
   @override
   Future<LatLng> currentLocation() async => const LatLng(-13.65, -73.36);
+}
+
+class FakeScreenAwakeService extends ScreenAwakeService {
+  final changes = <bool>[];
+
+  @override
+  Future<void> setEnabled(bool enabled) async {
+    changes.add(enabled);
+  }
 }
 
 OfficerRouteViewModel _model({bool fail = false, bool noGps = false}) {
@@ -499,6 +509,54 @@ void main() {
     expect(repository.compareCalls, 1);
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets(
+    'el botón flotante mantiene la pantalla encendida solo durante el seguimiento',
+    (tester) async {
+      final model = _model();
+      final screenAwake = FakeScreenAwakeService();
+      addTearDown(model.dispose);
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: buildAppTheme(Brightness.light, ThemeVariant.normal),
+          home: OfficerMapScreen(
+            item: _incident(),
+            routeModel: model,
+            screenAwakeService: screenAwake,
+          ),
+        ),
+      );
+      expect(find.byTooltip('Mantener la pantalla encendida'), findsNothing);
+      await tester.tap(find.text('Iniciar Seguimiento'));
+      await tester.pumpAndSettle();
+      expect(find.byTooltip('Mantener la pantalla encendida'), findsOneWidget);
+      await tester.tap(find.byTooltip('Mantener la pantalla encendida'));
+      await tester.pumpAndSettle();
+      expect(screenAwake.changes, [true]);
+      expect(
+        find.byTooltip('Permitir que se apague la pantalla'),
+        findsOneWidget,
+      );
+
+      await tester.tap(find.byTooltip('Permitir que se apague la pantalla'));
+      await tester.pumpAndSettle();
+      expect(screenAwake.changes, [true, false]);
+      await tester.tap(find.byTooltip('Mantener la pantalla encendida'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Detener seguimiento'));
+      await tester.pumpAndSettle();
+      expect(screenAwake.changes, [true, false, true, false]);
+      expect(find.byTooltip('Mantener la pantalla encendida'), findsNothing);
+
+      await tester.tap(find.text('Iniciar Seguimiento'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('Mantener la pantalla encendida'));
+      await tester.pumpAndSettle();
+      await tester.pumpWidget(const MaterialApp(home: SizedBox()));
+      await tester.pumpAndSettle();
+      expect(screenAwake.changes.last, false);
+    },
+  );
 
   testWidgets('el mapa ofrece las opciones con la más rápida destacada', (
     tester,

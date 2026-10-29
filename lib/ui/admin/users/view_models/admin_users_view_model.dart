@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:sereno_ya/data/models/admin/admin_user_summary.dart';
+import 'package:sereno_ya/data/models/admin/admin_sereno_update_request.dart';
 import 'package:sereno_ya/data/models/admin/admin_user_roles_update_request.dart';
 import 'package:sereno_ya/data/services/api/admin/admin_user_api_service.dart';
 import 'package:sereno_ya/models/auth/auth_failure.dart';
@@ -24,6 +25,7 @@ class AdminUsersViewModel extends ChangeNotifier {
   String? loadMoreError;
   String? updatingUserId;
   String? updateRolesError;
+  String? updateSerenoError;
 
   int _nextPage = 0;
   int _generation = 0;
@@ -169,6 +171,39 @@ class AdminUsersViewModel extends ChangeNotifier {
     } catch (_) {
       if (!_disposed) {
         updateRolesError = 'No se pudieron actualizar los roles del usuario.';
+      }
+      return false;
+    } finally {
+      if (!_disposed) {
+        updatingUserId = null;
+        _notify();
+      }
+    }
+  }
+
+  Future<bool> updateSereno(
+    String userId,
+    AdminSerenoUpdateRequest request,
+  ) async {
+    if (_disposed || updatingUserId != null) return false;
+    updatingUserId = userId;
+    updateSerenoError = null;
+    _notify();
+
+    try {
+      final response = await _apiService.updateSereno(userId, request);
+      if (_disposed) return false;
+      if (!response.isSuccess) {
+        updateSerenoError = response.errorMessage;
+        return false;
+      }
+      return true;
+    } on AuthFailure catch (failure) {
+      if (!_disposed) updateSerenoError = failure.message;
+      return false;
+    } catch (_) {
+      if (!_disposed) {
+        updateSerenoError = 'No se pudo actualizar el perfil del sereno.';
       }
       return false;
     } finally {

@@ -5,19 +5,26 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:sereno_ya/config/maps_config.dart';
 import 'package:sereno_ya/data/models/officer/officer_incident.dart';
 import 'package:sereno_ya/data/models/route/route_compare.dart';
+import 'package:sereno_ya/data/services/officer/screen_awake_service.dart';
 import 'package:sereno_ya/data/services/maps/maps_loader.dart';
 import 'package:sereno_ya/ui/core/theme/colors.dart';
 import 'package:sereno_ya/ui/core/widgets/map_style.dart';
 import 'package:sereno_ya/ui/officer/view_models/officer_route_view_model.dart';
 
 class OfficerMapScreen extends StatefulWidget {
-  const OfficerMapScreen({super.key, required this.item, this.routeModel});
+  const OfficerMapScreen({
+    super.key,
+    required this.item,
+    this.routeModel,
+    this.screenAwakeService,
+  });
 
   final OfficerIncident item;
 
   /// Comparación de rutas GPS del sereno al incidente. Cuando es `null`
   /// el mapa muestra las ubicaciones del incidente y del reporte.
   final OfficerRouteViewModel? routeModel;
+  final ScreenAwakeService? screenAwakeService;
 
   @override
   State<OfficerMapScreen> createState() => _OfficerMapScreenState();
@@ -27,10 +34,15 @@ class _OfficerMapScreenState extends State<OfficerMapScreen> {
   Future<void>? _initialization;
   final _mapController = Completer<GoogleMapController>();
   String? _fittedRouteKey;
+  late final ScreenAwakeService _screenAwakeService;
+  Future<void> _awakeOperation = Future.value();
+  bool _keepScreenOn = false;
 
   @override
   void initState() {
     super.initState();
+    _screenAwakeService = widget.screenAwakeService ?? ScreenAwakeService();
+    widget.routeModel?.addListener(_onTrackingChanged);
     if (widget.item.hasCoordinates &&
         MapsConfig.isSupported &&
         MapsConfig.apiKey.isNotEmpty) {
@@ -39,11 +51,79 @@ class _OfficerMapScreenState extends State<OfficerMapScreen> {
   }
 
   @override
+  void didUpdateWidget(OfficerMapScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.routeModel != widget.routeModel) {
+      oldWidget.routeModel?.removeListener(_onTrackingChanged);
+      widget.routeModel?.addListener(_onTrackingChanged);
+      _onTrackingChanged();
+    }
+  }
+
+  void _onTrackingChanged() {
+    if (widget.routeModel?.tracking != true && _keepScreenOn) {
+      _changeScreenAwake(false);
+    }
+  }
+
+  void _changeScreenAwake(bool enabled) {
+    if (_keepScreenOn == enabled) return;
+    setState(() => _keepScreenOn = enabled);
+    _awakeOperation = _awakeOperation
+        .then((_) => _screenAwakeService.setEnabled(enabled))
+        .catchError((Object _) {
+          if (!mounted || _keepScreenOn != enabled) return;
+          setState(() => _keepScreenOn = !enabled);
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('No se pudo cambiar el bloqueo de pantalla.'),
+            ),
+          );
+        });
+  }
+
+  @override
+  void dispose() {
+    widget.routeModel?.removeListener(_onTrackingChanged);
+    if (_keepScreenOn) {
+      unawaited(
+        _awakeOperation
+            .then((_) => _screenAwakeService.setEnabled(false))
+            .catchError((Object _) {}),
+      );
+    }
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final incident = widget.item.incident;
     final routeModel = widget.routeModel;
     return Scaffold(
       appBar: AppBar(title: const Text('Ubicación del incidente')),
+      floatingActionButtonLocation: FloatingActionButtonLocation.startFloat,
+      floatingActionButton: routeModel == null
+          ? null
+          : ListenableBuilder(
+              listenable: routeModel,
+              builder: (context, _) => routeModel.tracking
+                  ? FloatingActionButton.small(
+                      heroTag: 'officer-screen-awake',
+                      tooltip: _keepScreenOn
+                          ? 'Permitir que se apague la pantalla'
+                          : 'Mantener la pantalla encendida',
+                      onPressed: () => _changeScreenAwake(!_keepScreenOn),
+                      backgroundColor: _keepScreenOn
+                          ? Theme.of(context).colorScheme.primaryContainer
+                          : null,
+                      child: Icon(
+                        _keepScreenOn
+                            ? Icons.lightbulb
+                            : Icons.lightbulb_outline,
+                      ),
+                    )
+                  : const SizedBox.shrink(),
+            ),
       body: SafeArea(
         child: Column(
           children: [

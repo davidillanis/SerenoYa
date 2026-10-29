@@ -3,8 +3,6 @@ class AdminUserRolesUpdateRequest {
     required this.userId,
     required this.roles,
     this.serenoCode,
-    this.serenoLatitude,
-    this.serenoLongitude,
     this.citizenLatitude,
     this.citizenLongitude,
   });
@@ -12,8 +10,6 @@ class AdminUserRolesUpdateRequest {
   final String userId;
   final Set<String> roles;
   final String? serenoCode;
-  final double? serenoLatitude;
-  final double? serenoLongitude;
   final double? citizenLatitude;
   final double? citizenLongitude;
 
@@ -21,11 +17,7 @@ class AdminUserRolesUpdateRequest {
     'userId': userId,
     'roles': roles.toList(growable: false),
     if (roles.contains('OFFICER_SERENO'))
-      'serenoDTO': {
-        'codeSereno': serenoCode,
-        'currentLatitude': serenoLatitude,
-        'currentLongitude': serenoLongitude,
-      },
+      'serenoDTO': {'codeSereno': serenoCode},
     if (roles.contains('CITIZEN'))
       'citizenDTO': {
         'homeLatitude': citizenLatitude,
