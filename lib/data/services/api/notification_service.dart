@@ -8,6 +8,26 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import '../../../firebase_options.dart';
 import 'device_token_service.dart';
 
+const notificationChannel = AndroidNotificationChannel(
+  'serenoya_alerts_v1',
+  'Notificaciones Serenoya',
+  description: 'Avisos de Serenoya',
+  importance: Importance.high,
+  playSound: true,
+  sound: RawResourceAndroidNotificationSound('serenoya'),
+);
+
+const foregroundAndroidDetails = AndroidNotificationDetails(
+  'serenoya_alerts_v1',
+  'Notificaciones Serenoya',
+  channelDescription: 'Avisos de Serenoya',
+  icon: 'ic_stat_notification',
+  importance: Importance.high,
+  priority: Priority.high,
+  playSound: true,
+  sound: RawResourceAndroidNotificationSound('serenoya'),
+);
+
 @pragma('vm:entry-point')
 Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
@@ -34,8 +54,8 @@ class NotificationService {
       return;
     }
     _deviceTokens = deviceTokens;
-    await _requestPermission();
     await _initializeLocalNotifications();
+    await _requestPermission();
     await _configureFirebaseListeners();
     await synchronizeToken();
   }
@@ -55,7 +75,7 @@ class NotificationService {
 
   Future<void> _initializeLocalNotifications() async {
     const androidSettings = AndroidInitializationSettings(
-      '@mipmap/ic_launcher',
+      'ic_stat_notification',
     );
     const iosSettings = DarwinInitializationSettings();
     const settings = InitializationSettings(
@@ -74,18 +94,11 @@ class NotificationService {
     );
 
     if (defaultTargetPlatform == TargetPlatform.android) {
-      const channel = AndroidNotificationChannel(
-        'high_importance_channel',
-        'Notificaciones importantes',
-        description: 'Canal utilizado para notificaciones importantes.',
-        importance: Importance.high,
-      );
-
       await _localNotifications
           .resolvePlatformSpecificImplementation<
             AndroidFlutterLocalNotificationsPlugin
           >()
-          ?.createNotificationChannel(channel);
+          ?.createNotificationChannel(notificationChannel);
     }
   }
 
@@ -126,18 +139,10 @@ class NotificationService {
 
     if (notification == null) return;
 
-    const androidDetails = AndroidNotificationDetails(
-      'high_importance_channel',
-      'Notificaciones importantes',
-      channelDescription: 'Canal utilizado para notificaciones importantes.',
-      importance: Importance.high,
-      priority: Priority.high,
-    );
-
     const iosDetails = DarwinNotificationDetails();
 
     const details = NotificationDetails(
-      android: androidDetails,
+      android: foregroundAndroidDetails,
       iOS: iosDetails,
     );
 

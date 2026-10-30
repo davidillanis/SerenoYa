@@ -1,2 +1,2 @@
 <resources xmlns:tools="http://schemas.android.com/tools"
-    tools:keep="@drawable/ic_tracking" />
+    tools:keep="@drawable/ic_tracking,@raw/serenoya" />

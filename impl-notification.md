@@ -355,3 +355,39 @@ App cerrada
 [ ] obtener FCM TOKEN
 [ ] enviar prueba desde Firebase
 ```
+
+
+## CONFIG NOTIFY ICON
+stos son los pasos para configurar el icono pequeño de las notificaciones en tu proyecto Flutter. No se hacen en el proyecto Java.
+1. Genera el icono
+En Android Asset Studio — Notification icon generator (https://romannurik.github.io/AndroidAssetStudio/icons-notification.html):
+1. Sube una imagen sencilla, preferiblemente una silueta.
+2. Descarga el ZIP.
+3. Dentro del ZIP encontrarás archivos como res/drawable-mdpi/ic_stat_notification.png. Si el generador les da otro nombre, puedes renombrarlos todos a ic_stat_notification.png.
+2. Copia los archivos a Flutter
+Copia cada PNG a la carpeta de su misma densidad:
+ZIP/res/drawable-mdpi/ic_stat_notification.png
+    → TU_APP/android/app/src/main/res/drawable-mdpi/ic_stat_notification.png
+
+ZIP/res/drawable-hdpi/ic_stat_notification.png
+    → TU_APP/android/app/src/main/res/drawable-hdpi/ic_stat_notification.png
+Haz lo mismo con drawable-xhdpi, drawable-xxhdpi y drawable-xxxhdpi. Crea las carpetas que falten. No coloques estos archivos en assets/ de Flutter.
+3. Configura el icono para las notificaciones FCM
+Abre android/app/src/main/AndroidManifest.xml de Flutter y añade esto dentro de <application>:
+<meta-data
+    android:name="com.google.firebase.messaging.default_notification_icon"
+    android:resource="@drawable/ic_stat_notification" />
+Esto cubre las notificaciones que FCM muestra cuando la app está en segundo plano. No necesitas cambiar el backend para este icono.
+4. Configura el icono para las notificaciones mostradas por Flutter
+Si usas el ejemplo de flutter_local_notifications de NOTIFICACIONES_ANDROID.md, cambia su inicialización a:
+const InitializationSettings(
+  android: AndroidInitializationSettings('ic_stat_notification'),
+);
+Y, cuando muestres una notificación en primer plano, usa también ese icono:
+const AndroidNotificationDetails(
+  'serenoya_alerts_v1',
+  'Notificaciones Serenoya',
+  icon: 'ic_stat_notification',
+  sound: RawResourceAndroidNotificationSound('serenoya'),
+);
+El icono es ic_stat_notification; el sonido sigue siendo serenoya. Después, recompila e instala la app Flutter y envía una notificación de prueba.
