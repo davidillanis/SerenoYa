@@ -76,6 +76,13 @@ class IncidentDetailScreen extends StatelessWidget {
               ?.copyWith(color: context.appColors.textSecondary, height: 1.5),
         ),
         const SizedBox(height: 24),
+        if (viewModel.canContactSereno) ...[
+          _SerenoContactCard(
+            isLoading: viewModel.isCallingContact,
+            onCall: () => _callSereno(context, viewModel),
+          ),
+          const SizedBox(height: 16),
+        ],
         _InformationCard(
           children: [
             _InformationRow(
@@ -104,6 +111,85 @@ class IncidentDetailScreen extends StatelessWidget {
         const SizedBox(height: 16),
         IncidentTimelineCard(incident: incident),
       ],
+    );
+  }
+
+  Future<void> _callSereno(
+    BuildContext context,
+    IncidentDetailViewModel viewModel,
+  ) async {
+    final opened = await viewModel.callSereno();
+    if (!context.mounted || opened) return;
+
+    final message = viewModel.contactErrorMessage;
+    if (message == null) return;
+    ScaffoldMessenger.of(context)
+      ..clearSnackBars()
+      ..showSnackBar(SnackBar(content: Text(message)));
+  }
+}
+
+class _SerenoContactCard extends StatelessWidget {
+  const _SerenoContactCard({required this.isLoading, required this.onCall});
+
+  final bool isLoading;
+  final VoidCallback onCall;
+
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: context.appColors.card,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: context.appColors.borderVariant),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.shield_outlined, color: context.appColors.primary),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'Sereno asignado',
+                  style: textTheme.titleMedium?.copyWith(
+                    color: context.appColors.text,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Comunícate directamente si necesitas coordinar la atención.',
+            style: textTheme.bodyMedium?.copyWith(
+              color: context.appColors.textSecondary,
+              height: 1.4,
+            ),
+          ),
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            height: 48,
+            child: FilledButton.icon(
+              onPressed: isLoading ? null : onCall,
+              icon: isLoading
+                  ? const SizedBox.square(
+                      dimension: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.call_outlined),
+              label: Text(
+                isLoading ? 'Obteniendo contacto...' : 'Llamar al sereno',
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

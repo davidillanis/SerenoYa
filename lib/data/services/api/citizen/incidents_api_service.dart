@@ -212,6 +212,21 @@ class IncidentsApiService {
     );
   }
 
+  Future<ApiResponseDto<String>> getContactPhone(String incidentId) async {
+    return _request(
+      () => _dio.get<dynamic>('/incident/$incidentId/contact/phone'),
+      (value) {
+        final phone = _asJsonMap(value)['phone']?.toString().trim() ?? '';
+        if (phone.isEmpty) {
+          throw const FormatException(
+            'La API no devolvió un teléfono de contacto válido.',
+          );
+        }
+        return phone;
+      },
+    );
+  }
+
   Future<ApiResponseDto<Incident>> updateStatus({
     required String incidentId,
     required String status,

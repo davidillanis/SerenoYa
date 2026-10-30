@@ -425,6 +425,25 @@ class IncidentRepository {
     }
   }
 
+  Future<Result<String>> getContactPhone(String incidentId) async {
+    try {
+      final response = await _apiService.getContactPhone(incidentId);
+      final phone = response.data;
+      if (response.isSuccess && phone != null) {
+        return Result.success(phone);
+      }
+      return Result.failure(
+        AuthFailure(AuthFailureCode.server, response.errorMessage),
+      );
+    } on AuthFailure catch (failure) {
+      return Result.failure(failure);
+    } catch (error) {
+      return Result.failure(
+        AuthFailure(AuthFailureCode.unknown, error.toString()),
+      );
+    }
+  }
+
   Future<Result<Incident>> cancelIncident(String incidentId) async {
     final cacheOwnerId = _cacheOwnerId;
     try {

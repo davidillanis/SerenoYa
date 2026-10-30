@@ -7,6 +7,7 @@ import 'package:sereno_ya/data/repositories/citizen/incident_repository.dart';
 import 'package:sereno_ya/data/services/api/citizen/incidents_api_service.dart';
 import 'package:sereno_ya/data/services/api/incident_api_service.dart';
 import 'package:sereno_ya/data/services/local/citizen/incident_local_data_source.dart';
+import 'package:sereno_ya/data/services/officer/contact_service.dart';
 import 'package:sereno_ya/ui/citizen/incident_detail/incident_detail_screen.dart';
 import 'package:sereno_ya/ui/citizen/incident_detail/view_models/incident_detail_view_model.dart';
 import 'package:sereno_ya/ui/core/theme/mapped_palette.dart';
@@ -46,9 +47,57 @@ void main() {
       expect(find.text('Solicitada'), findsOneWidget);
       expect(find.text('Evidencia no disponible'), findsOneWidget);
       expect(find.byTooltip('Actualizar incidencia'), findsOneWidget);
+      expect(find.text('Llamar al sereno'), findsNothing);
       expect(tester.takeException(), isNull);
     });
   }
+
+  testWidgets('obtiene el contacto activo y abre el marcador', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(320, 720));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    final contactService = _FakeContactService();
+    final dio = _detailDio(status: 'ACCEPTED');
+    final repository = IncidentRepository(
+      apiService: IncidentsApiService(dio),
+      localDataSource: _NoopIncidentLocalDataSource(),
+      incidentApiService: IncidentApiService(dio),
+    );
+
+    await tester.pumpWidget(
+      ChangeNotifierProvider(
+        create: (_) => IncidentDetailViewModel(
+          repository,
+          'incident-1',
+          contactService: contactService,
+        ),
+        child: MaterialApp(
+          theme: buildAppTheme(Brightness.light, ThemeVariant.normal),
+          home: const IncidentDetailScreen(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final callButton = find.text('Llamar al sereno');
+    await tester.scrollUntilVisible(
+      callButton,
+      120,
+      scrollable: find
+          .descendant(
+            of: find.byType(ListView),
+            matching: find.byType(Scrollable),
+          )
+          .first,
+    );
+    await tester.tap(callButton);
+    await tester.pumpAndSettle();
+
+    expect(contactService.calledPhones, ['987654321']);
+    expect(find.text('No se pudo abrir el marcador telefónico.'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
   for (final status in [
     'REQUESTED',
     'ATTENDED',
@@ -124,6 +173,21 @@ Dio _detailDio({String status = 'REQUESTED'}) {
   dio.interceptors.add(
     InterceptorsWrapper(
       onRequest: (options, handler) {
+        if (options.path.endsWith('/incident-1/contact/phone')) {
+          handler.resolve(
+            Response<dynamic>(
+              requestOptions: options,
+              statusCode: 200,
+              data: {
+                'isSuccess': true,
+                'message': 'Successful operation',
+                'errors': null,
+                'data': {'phone': '987654321'},
+              },
+            ),
+          );
+          return;
+        }
         handler.resolve(
           Response<dynamic>(
             requestOptions: options,
@@ -157,6 +221,16 @@ Dio _detailDio({String status = 'REQUESTED'}) {
     ),
   );
   return dio;
+}
+
+class _FakeContactService extends ContactService {
+  final List<String> calledPhones = [];
+
+  @override
+  Future<bool> call(String phone) async {
+    calledPhones.add(phone);
+    return true;
+  }
 }
 
 class _NoopIncidentLocalDataSource implements IncidentLocalDataSource {

@@ -1,8 +1,6 @@
 import 'package:url_launcher/url_launcher.dart';
 
-/// Contacto con el ciudadano desde el detalle del sereno.
-/// Solo se usa con incidentes aceptados: en pendientes la información del
-/// ciudadano no se expone.
+/// Abre aplicaciones externas para contactar a una persona por teléfono.
 class ContactService {
   const ContactService();
 
