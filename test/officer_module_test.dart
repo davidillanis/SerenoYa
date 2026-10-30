@@ -137,7 +137,7 @@ void main() {
   });
 
   test('el inicio carga mis incidentes en curso con list-me-sereno', () async {
-    final repository = FakeRepository();
+    final repository = FakeRepository()..distinctMineIds = true;
     final model = OfficerIncidentsViewModel(
       repository,
       session,
@@ -464,20 +464,28 @@ void main() {
         session,
         locationService: FakeLocationService(),
       );
-      // El constructor encola la lista principal y mis incidentes.
+      // La lista principal y mis incidentes usan colas distintas para no
+      // confundir respuestas de endpoints diferentes.
       final old = repository.pending.removeAt(0);
-      repository.pending
-          .removeAt(0)
-          .complete(Result.success(page('REQUESTED')));
+      for (final status in [
+        OfficerIncidentStatus.enRoute,
+        OfficerIncidentStatus.attending,
+      ]) {
+        repository.pendingMine
+            .removeAt(0)
+            .complete(Result.success(page(status.apiValue)));
+      }
       final current = model.selectFilter(OfficerIncidentStatus.attended);
-      repository.pending.removeAt(0).complete(Result.success(page('ATTENDED')));
+      repository.pendingMine
+          .removeAt(0)
+          .complete(Result.success(page('ATTENDED')));
       await current;
       old.complete(Result.success(page('REQUESTED')));
       await Future<void>.delayed(Duration.zero);
       expect(model.incidents.single.status, OfficerIncidentStatus.attended);
       final refresh = model.loadInitial();
       model.dispose();
-      repository.pending
+      repository.pendingMine
           .removeAt(0)
           .complete(Result.success(page('REQUESTED')));
       await refresh;
@@ -684,12 +692,14 @@ class FakeRepository extends OfficerRepository {
   String currentStatus = 'REQUESTED';
   bool hold = false;
   bool holdMine = false;
+  bool distinctMineIds = false;
   bool detailFails = false;
   int acceptCount = 0;
   int citizenRequests = 0;
   bool citizenFails = false;
   OfficerIncidentStatus? lastMineStatus;
   final pending = <Completer<Result<PageResponse<OfficerIncident>>>>[];
+  final pendingMine = <Completer<Result<PageResponse<OfficerIncident>>>>[];
   @override
   Future<Result<PageResponse<OfficerIncident>>> list({
     OfficerIncidentStatus? status,
@@ -724,14 +734,23 @@ class FakeRepository extends OfficerRepository {
     // afectar a las demás pruebas, donde responde de inmediato.
     if (holdMine) {
       final completer = Completer<Result<PageResponse<OfficerIncident>>>();
-      pending.add(completer);
+      pendingMine.add(completer);
       return completer.future;
     }
     lastMineStatus = status;
     return Future.value(
       Result.success(
         PageResponse(
-          content: [item(status?.apiValue ?? currentStatus)],
+          content: [
+            OfficerIncident.fromJson(
+              incidentJson(
+                status?.apiValue ?? currentStatus,
+                id: distinctMineIds
+                    ? 'mine-${status?.apiValue ?? currentStatus}'
+                    : 'incident-test',
+              ),
+            ),
+          ],
           page: page,
           size: 15,
           totalElements: 31,

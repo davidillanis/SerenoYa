@@ -30,7 +30,7 @@ void main() {
       dio.interceptors.add(
         InterceptorsWrapper(
           onRequest: (options, handler) {
-            if (options.path == '/user-role/list') userListRequests++;
+            if (options.path == '/user-role/list-details') userListRequests++;
             final content = options.path == '/incidents/categories/list'
                 ? <Object>[
                     {

@@ -20,7 +20,9 @@ void main() {
 
     expect(claims.email, 'citizen@example.com');
     expect(claims.authorities, 'ROLE_CLIENTE');
-    expect(claims.citizenId, 42);
+    // Los identificadores de la sesión se normalizan como texto, incluso
+    // cuando el JWT trae un valor numérico.
+    expect(claims.citizenId, '42');
     expect(claims.expiresAt, DateTime.utc(2100));
   });
 

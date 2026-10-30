@@ -1,6 +1,7 @@
 class AdminUserDetail {
   const AdminUserDetail({
     required this.id,
+    required this.issoraId,
     required this.name,
     required this.lastName,
     required this.email,
@@ -14,6 +15,7 @@ class AdminUserDetail {
   });
 
   final String id;
+  final String issoraId;
   final String name;
   final String lastName;
   final String email;
@@ -28,6 +30,7 @@ class AdminUserDetail {
   factory AdminUserDetail.fromJson(Map<String, dynamic> json) {
     return AdminUserDetail(
       id: json['id']?.toString() ?? '',
+      issoraId: json['issoraId']?.toString() ?? '',
       name: json['name']?.toString() ?? '',
       lastName: json['lastName']?.toString() ?? '',
       email: json['email']?.toString() ?? '',

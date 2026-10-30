@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:sereno_ya/data/models/admin/admin_user_summary.dart';
+import 'package:sereno_ya/data/models/admin/admin_user_detail.dart';
 import 'package:sereno_ya/data/models/admin/admin_sereno_update_request.dart';
 import 'package:sereno_ya/data/models/admin/admin_user_roles_update_request.dart';
 import 'package:sereno_ya/data/services/api/admin/admin_user_api_service.dart';
@@ -16,16 +17,15 @@ class AdminUsersViewModel extends ChangeNotifier {
   final List<AdminUserSummary> _users = [];
 
   List<AdminUserSummary> get users => List.unmodifiable(_users);
-  AdminUserRoleFilter? roleFilter;
   bool isLoadingInitial = false;
   bool isLoadingMore = false;
   bool hasMore = true;
   int totalElements = 0;
   String? errorMessage;
   String? loadMoreError;
+  String search = '';
   String? updatingUserId;
-  String? updateRolesError;
-  String? updateSerenoError;
+  String? actionError;
 
   int _nextPage = 0;
   int _generation = 0;
@@ -44,7 +44,7 @@ class AdminUsersViewModel extends ChangeNotifier {
     try {
       final response = await _apiService.listUsers(
         size: pageSize,
-        role: roleFilter?.apiValue,
+        search: search,
       );
       if (_disposed || generation != _generation) return;
 
@@ -91,7 +91,7 @@ class AdminUsersViewModel extends ChangeNotifier {
       final response = await _apiService.listUsers(
         page: _nextPage,
         size: pageSize,
-        role: roleFilter?.apiValue,
+        search: search,
       );
       if (_disposed || generation != _generation) return;
 
@@ -121,10 +121,17 @@ class AdminUsersViewModel extends ChangeNotifier {
     _notify();
   }
 
-  Future<void> selectRole(AdminUserRoleFilter? role) async {
-    if (_disposed || role == roleFilter) return;
+  Future<void> retryLoadMore() async {
+    loadMoreError = null;
+    await loadMore();
+  }
+
+  Future<void> setSearch(String value) async {
+    final nextSearch = value.trim();
+    if (_disposed || nextSearch == search) return;
     _generation++;
-    roleFilter = role;
+    search = nextSearch;
+    isLoadingInitial = false;
     isLoadingMore = false;
     _users.clear();
     _nextPage = 0;
@@ -133,52 +140,57 @@ class AdminUsersViewModel extends ChangeNotifier {
     await loadInitial(forceRefresh: true);
   }
 
-  Future<void> retryLoadMore() async {
-    loadMoreError = null;
-    await loadMore();
-  }
-
-  Future<bool> updateRoles(AdminUserRolesUpdateRequest request) async {
-    if (_disposed || updatingUserId != null) return false;
-    updatingUserId = request.userId;
-    updateRolesError = null;
+  Future<AdminUserDetail?> loadUserDetail(String issoraId) async {
+    if (_disposed || updatingUserId != null) return null;
+    updatingUserId = issoraId;
+    actionError = null;
     _notify();
-
     try {
-      final response = await _apiService.updateRoles(request);
-      if (_disposed) return false;
-      if (!response.isSuccess) {
-        updateRolesError = response.errorMessage;
-        return false;
-      }
-
-      final index = _users.indexWhere((user) => user.id == request.userId);
-      if (index >= 0) {
-        if (roleFilter != null &&
-            !request.roles.contains(roleFilter!.apiValue)) {
-          _users.removeAt(index);
-          if (totalElements > 0) totalElements--;
-        } else {
-          _users[index] = _users[index].copyWith(
-            roles: request.roles.toList(growable: false),
-          );
+      final response = await _apiService.getUser(issoraId);
+      if (_disposed) return null;
+      if (response.isSuccess && response.data != null) {
+        final detail = response.data!;
+        if (detail.issoraId == issoraId && detail.id.isNotEmpty) {
+          return detail;
         }
+        actionError = 'La API devolvió identificadores de usuario inválidos.';
+      } else {
+        actionError = response.errorMessage;
       }
-      return true;
     } on AuthFailure catch (failure) {
-      if (!_disposed) updateRolesError = failure.message;
-      return false;
+      if (!_disposed) actionError = failure.message;
     } catch (_) {
-      if (!_disposed) {
-        updateRolesError = 'No se pudieron actualizar los roles del usuario.';
-      }
-      return false;
+      if (!_disposed) actionError = 'No se pudo cargar el usuario.';
     } finally {
       if (!_disposed) {
         updatingUserId = null;
         _notify();
       }
     }
+    return null;
+  }
+
+  Future<bool> updateRoles(AdminUserRolesUpdateRequest request) async {
+    if (_disposed || updatingUserId != null) return false;
+    updatingUserId = request.userId;
+    actionError = null;
+    _notify();
+    try {
+      final response = await _apiService.updateRoles(request);
+      if (_disposed) return false;
+      if (response.isSuccess) return true;
+      actionError = response.errorMessage;
+    } on AuthFailure catch (failure) {
+      if (!_disposed) actionError = failure.message;
+    } catch (_) {
+      if (!_disposed) actionError = 'No se pudieron actualizar los roles.';
+    } finally {
+      if (!_disposed) {
+        updatingUserId = null;
+        _notify();
+      }
+    }
+    return false;
   }
 
   Future<bool> updateSereno(
@@ -187,31 +199,24 @@ class AdminUsersViewModel extends ChangeNotifier {
   ) async {
     if (_disposed || updatingUserId != null) return false;
     updatingUserId = userId;
-    updateSerenoError = null;
+    actionError = null;
     _notify();
-
     try {
       final response = await _apiService.updateSereno(userId, request);
       if (_disposed) return false;
-      if (!response.isSuccess) {
-        updateSerenoError = response.errorMessage;
-        return false;
-      }
-      return true;
+      if (response.isSuccess) return true;
+      actionError = response.errorMessage;
     } on AuthFailure catch (failure) {
-      if (!_disposed) updateSerenoError = failure.message;
-      return false;
+      if (!_disposed) actionError = failure.message;
     } catch (_) {
-      if (!_disposed) {
-        updateSerenoError = 'No se pudo actualizar el perfil del sereno.';
-      }
-      return false;
+      if (!_disposed) actionError = 'No se pudo actualizar el sereno.';
     } finally {
       if (!_disposed) {
         updatingUserId = null;
         _notify();
       }
     }
+    return false;
   }
 
   void _notify() {
@@ -224,16 +229,4 @@ class AdminUsersViewModel extends ChangeNotifier {
     _generation++;
     super.dispose();
   }
-}
-
-enum AdminUserRoleFilter {
-  citizen('CITIZEN', 'Ciudadano'),
-  officer('OFFICER_SERENO', 'Serenazgo'),
-  administrator('OFFICER_ADMINISTRADOR', 'Administrador'),
-  developer('DEVELOPMENT', 'Desarrollo');
-
-  const AdminUserRoleFilter(this.apiValue, this.label);
-
-  final String apiValue;
-  final String label;
 }

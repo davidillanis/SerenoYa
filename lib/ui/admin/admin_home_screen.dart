@@ -109,7 +109,7 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
       builder: (context, viewModel, child) => FloatingActionButton.extended(
         onPressed: viewModel.isLoadingInitial ? null : _openCreateUser,
         icon: const Icon(Icons.person_add_alt_1_outlined),
-        label: const Text('Registrar'),
+        label: const Text('Registrar usuario'),
       ),
     ),
     _ => null,
@@ -207,10 +207,13 @@ class _RegisterUserAction extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Consumer<AdminUsersViewModel>(
-      builder: (context, viewModel, child) => IconButton(
-        tooltip: 'Registrar usuario',
+      builder: (context, viewModel, child) => TextButton.icon(
+        style: TextButton.styleFrom(
+          foregroundColor: Theme.of(context).colorScheme.onPrimary,
+        ),
         onPressed: viewModel.isLoadingInitial ? null : onPressed,
         icon: const Icon(Icons.person_add_alt_1_outlined),
+        label: const Text('Registrar usuario'),
       ),
     );
   }

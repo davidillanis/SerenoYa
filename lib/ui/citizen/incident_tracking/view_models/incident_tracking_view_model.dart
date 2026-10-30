@@ -4,10 +4,11 @@ import 'package:sereno_ya/data/repositories/citizen/incident_repository.dart';
 import 'package:sereno_ya/models/auth/auth_session.dart';
 
 class IncidentTrackingViewModel extends ChangeNotifier {
+  // Mantener `repository` como parámetro público y `_repository` privado.
   IncidentTrackingViewModel({
     required IncidentRepository repository,
     required AuthSession? session,
-  }) : _repository = repository,
+  }) : _repository = repository, // ignore: prefer_initializing_formals
        _session = session {
     final userId = session?.user.id;
     if (userId != null) {

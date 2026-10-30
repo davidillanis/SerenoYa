@@ -15,22 +15,18 @@ class AdminUserApiService {
 
   final Dio _dio;
 
-  static const listFields =
-      'id,enabled,notificationsEnabled,phone,imageUrl,roles.role';
-
   Future<ApiResponseDto<PageResponse<AdminUserSummary>>> listUsers({
     int page = 0,
     int size = 15,
-    String? role,
+    String? search,
   }) => _request(
     () => _dio.get<dynamic>(
-      '/user-role/list',
+      '/user-role/list-details',
       queryParameters: {
-        'fields': listFields,
-        'role': ?role,
         'page': page,
         'size': size,
-        'sortBy': 'id',
+        if (search != null && search.trim().isNotEmpty) 'search': search.trim(),
+        'sortBy': 'createdAt',
         'direction': 'DESC',
       },
     ),

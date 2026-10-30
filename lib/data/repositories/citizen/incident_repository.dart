@@ -11,12 +11,16 @@ import 'package:sereno_ya/models/auth/result.dart';
 import 'package:sereno_ya/data/services/local/citizen/incident_local_data_source.dart';
 
 class IncidentRepository {
+  // Mantener estos nombres públicos evita romper a los consumidores existentes;
+  // los campos internos siguen siendo privados.
   IncidentRepository({
     required IncidentsApiService apiService,
     required IncidentApiService incidentApiService,
     required IncidentLocalDataSource localDataSource,
-  }) : _apiService = apiService,
+  }) : _apiService = apiService, // ignore: prefer_initializing_formals
+       // ignore: prefer_initializing_formals
        _localDataSource = localDataSource,
+       // ignore: prefer_initializing_formals
        _incidentApiService = incidentApiService;
 
   final IncidentsApiService _apiService;

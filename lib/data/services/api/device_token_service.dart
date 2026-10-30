@@ -18,6 +18,7 @@ import 'package:sereno_ya/models/auth/auth_state.dart';
 /// - Si el `update` indica que el registro ya no existe (0 filas o 404),
 ///   reintenta una sola vez con `create` para no dejar el token huérfano.
 class DeviceTokenService {
+  // Conserva los nombres públicos de los parámetros sin exponer los campos.
   DeviceTokenService({
     required AuthRepository authRepository,
     required DeviceApiService apiService,
@@ -26,8 +27,9 @@ class DeviceTokenService {
     DeviceSyncStorage? syncStorage,
   }) : _auth = authRepository,
        _api = apiService,
-       _readDeviceId = readDeviceId,
-       _osType = osType,
+       _readDeviceId = readDeviceId, // ignore: prefer_initializing_formals
+       _osType = osType, // ignore: prefer_initializing_formals
+       // ignore: prefer_initializing_formals
        _syncStorage = syncStorage {
     _restoreFuture = _restorePersistedState();
     _subscription = _auth.states.listen(_onAuthState);
