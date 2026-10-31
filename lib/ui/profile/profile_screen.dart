@@ -10,6 +10,7 @@ import 'package:sereno_ya/ui/core/theme/mapped_palette.dart';
 import 'package:sereno_ya/ui/core/theme/theme.dart';
 import 'package:sereno_ya/ui/core/theme/theme_controller.dart';
 import 'package:sereno_ya/ui/core/widgets/responsive_body.dart';
+import 'package:sereno_ya/ui/profile/view_models/profile_notifications_view_model.dart';
 import 'package:sereno_ya/ui/profile/view_models/profile_view_model.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -175,6 +176,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
             ],
             const SizedBox(height: 32),
+            const _ProfileNotificationTools(),
+            const SizedBox(height: 32),
             Text(
               'Cambiar tema',
               style: textTheme.titleMedium?.copyWith(
@@ -237,6 +240,83 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _ProfileNotificationTools extends StatelessWidget {
+  const _ProfileNotificationTools();
+
+  @override
+  Widget build(BuildContext context) {
+    final viewModel = context.watch<ProfileNotificationsViewModel>();
+    final colors = context.appColors;
+    final message = viewModel.errorMessage ?? viewModel.successMessage;
+    final hasError = viewModel.errorMessage != null;
+
+    return _InformationCard(
+      title: 'Prueba de notificaciones',
+      children: [
+        Text(
+          'Actualiza el token FCM en el servidor y envía un aviso de prueba '
+          'a este dispositivo.',
+          style: Theme.of(context).textTheme.bodyMedium
+              ?.copyWith(color: colors.textSecondary),
+        ),
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton.icon(
+            onPressed: viewModel.isBusy ? null : viewModel.updateToken,
+            icon: viewModel.isUpdatingToken
+                ? const SizedBox.square(
+                    dimension: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.sync),
+            label: Text(
+              viewModel.isUpdatingToken ? 'Actualizando…' : 'Actualizar token',
+            ),
+          ),
+        ),
+        SizedBox(
+          width: double.infinity,
+          child: FilledButton.icon(
+            onPressed: viewModel.isBusy ? null : viewModel.sendTestNotification,
+            icon: viewModel.isSendingTest
+                ? const SizedBox.square(
+                    dimension: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.notifications_active_outlined),
+            label: Text(
+              viewModel.isSendingTest ? 'Enviando…' : 'Enviar prueba',
+            ),
+          ),
+        ),
+        if (message != null)
+          Semantics(
+            liveRegion: true,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(
+                  hasError ? Icons.error_outline : Icons.check_circle_outline,
+                  color: hasError ? colors.error : colors.success,
+                  size: 20,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    message,
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: hasError ? colors.error : colors.text,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+      ],
     );
   }
 }

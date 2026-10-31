@@ -12,7 +12,7 @@ import 'package:sereno_ya/models/auth/auth_state.dart';
 ///
 /// Estrategia eficiente y precisa:
 /// - No llama a la red si el snapshot persistido ya coincide
-///   (mismo usuario, hardware, token FCM y [osType]).
+///   (mismo usuario, hardware, modelo, token FCM y [osType]).
 /// - Crea solo cuando no hay `recordId` para el usuario actual.
 /// - Actualiza cuando ya hay `recordId` y algo cambió.
 /// - Si el `update` indica que el registro ya no existe (0 filas o 404),
@@ -23,11 +23,13 @@ class DeviceTokenService {
     required AuthRepository authRepository,
     required DeviceApiService apiService,
     required Future<String?> Function() readDeviceId,
+    Future<String?> Function()? readDeviceModel,
     required String osType,
     DeviceSyncStorage? syncStorage,
   }) : _auth = authRepository,
        _api = apiService,
        _readDeviceId = readDeviceId, // ignore: prefer_initializing_formals
+       _readDeviceModel = readDeviceModel ?? _noDeviceModel,
        _osType = osType, // ignore: prefer_initializing_formals
        // ignore: prefer_initializing_formals
        _syncStorage = syncStorage {
@@ -39,6 +41,7 @@ class DeviceTokenService {
   final AuthRepository _auth;
   final DeviceApiService _api;
   final Future<String?> Function() _readDeviceId;
+  final Future<String?> Function() _readDeviceModel;
   final String _osType;
   final DeviceSyncStorage? _syncStorage;
   late final StreamSubscription<AuthState> _subscription;
@@ -49,10 +52,12 @@ class DeviceTokenService {
   String? _token;
   String? _sentToken;
   String? _sentDeviceId;
+  String? _sentDeviceModel;
   String? _sentOsType;
   DeviceSyncSnapshot? _persisted;
   String? _cachedHardwareId;
   bool _hardwareIdLoaded = false;
+  String? _cachedDeviceModel;
   int _generation = 0;
   bool _disposed = false;
 
@@ -82,6 +87,7 @@ class DeviceTokenService {
       _recordId = null;
       _sentToken = null;
       _sentDeviceId = null;
+      _sentDeviceModel = null;
       _sentOsType = null;
       // Readopta el snapshot persistido si pertenece al nuevo usuario.
       final snapshot = _persisted;
@@ -98,19 +104,52 @@ class DeviceTokenService {
     return _enqueue();
   }
 
-  Future<void> _enqueue() {
-    final generation = _generation;
-    _pending = _pending.then((_) => _synchronize(generation));
-    return _pending;
+  /// Reenvía el token actual, incluso si coincide con la última sincronización.
+  /// A diferencia de la sincronización automática, comunica los errores a la UI.
+  Future<void> updateToken(String token) async {
+    if (token.trim().isEmpty) {
+      throw const AuthFailure(
+        AuthFailureCode.validation,
+        'No se pudo obtener el token de notificaciones del dispositivo.',
+      );
+    }
+    _token = token;
+    await _enqueue(force: true);
   }
 
-  Future<void> _synchronize(int generation) async {
+  Future<void> _enqueue({bool force = false}) {
+    final generation = _generation;
+    final operation = _pending.then(
+      (_) => _synchronize(generation, force: force),
+    );
+    // Un error manual se entrega al llamador sin bloquear la siguiente sync.
+    _pending = operation.then<void>((_) {}, onError: (Object error) {});
+    return operation;
+  }
+
+  Future<void> _synchronize(int generation, {bool force = false}) async {
     await _restoreFuture;
     final userId = _userId;
     final token = _token;
 
-    bool isCurrent() => !_disposed && generation == _generation;
+    bool isCurrent() {
+      final current = !_disposed && generation == _generation;
+      if (!current && force) {
+        throw const AuthFailure(
+          AuthFailureCode.invalidSession,
+          'La sesión cambió. Vuelve a intentar la actualización del token.',
+        );
+      }
+      return current;
+    }
+
     if (!isCurrent() || userId == null || userId.isEmpty || token == null) {
+      if (force) {
+        throw const AuthFailure(
+          AuthFailureCode.invalidSession,
+          'Inicia sesión para actualizar el token del dispositivo.',
+        );
+      }
       return;
     }
     try {
@@ -118,10 +157,14 @@ class DeviceTokenService {
       // channel nativo en cada sincronización; solo se relee si fue nulo.
       final deviceId = await _readHardwareId();
       if (!isCurrent()) return;
+      final deviceModel = await _readModel();
+      if (!isCurrent()) return;
 
       // Vía rápida en memoria: payload idéntico al último confirmado.
-      if (token == _sentToken &&
+      if (!force &&
+          token == _sentToken &&
           deviceId == _sentDeviceId &&
+          deviceModel == _sentDeviceModel &&
           _osType == _sentOsType &&
           _recordId != null) {
         return;
@@ -129,22 +172,26 @@ class DeviceTokenService {
 
       // Vía precisa tras reinicio: si lo persistido ya coincide, no hay red.
       final persisted = _persisted;
-      if (persisted != null &&
+      if (!force &&
+          persisted != null &&
           persisted.matches(
             userId: userId,
             deviceId: deviceId,
+            deviceModel: deviceModel,
             token: token,
             osType: _osType,
           )) {
         _recordId = persisted.recordId;
         _sentToken = token;
         _sentDeviceId = deviceId;
+        _sentDeviceModel = deviceModel;
         _sentOsType = _osType;
         return;
       }
 
       final request = DeviceRequest(
         deviceId: deviceId,
+        deviceModel: deviceModel,
         fcmToken: token,
         osType: _osType,
       );
@@ -165,9 +212,9 @@ class DeviceTokenService {
           if (!isCurrent()) return;
         } on _MissingDevice {
           // El backend ya no conoce el registro: crea uno nuevo una sola vez.
+          if (!isCurrent()) return;
           _recordId = null;
           _persisted = null;
-          if (!isCurrent()) return;
           final created = await _create(request);
           if (!isCurrent()) return;
           newRecordId = created;
@@ -181,14 +228,18 @@ class DeviceTokenService {
       _recordId = finalId;
       _sentToken = token;
       _sentDeviceId = deviceId;
+      _sentDeviceModel = deviceModel;
       _sentOsType = _osType;
       await _persistSnapshot(
         userId: userId,
         recordId: finalId,
         deviceId: deviceId,
+        deviceModel: deviceModel,
         token: token,
       );
+      isCurrent();
     } on Object {
+      if (force) rethrow;
       // Conserva el token pendiente para el próximo evento de sesión o FCM.
       debugPrint('No se pudo sincronizar el dispositivo para notificaciones.');
     }
@@ -206,12 +257,31 @@ class DeviceTokenService {
     return deviceId;
   }
 
+  static Future<String?> _noDeviceModel() async => null;
+
+  Future<String?> _readModel() async {
+    if (_cachedDeviceModel != null) return _cachedDeviceModel;
+    try {
+      final model = (await _readDeviceModel())?.trim();
+      if (model != null && model.isNotEmpty) {
+        _cachedDeviceModel = model;
+      }
+    } on Object {
+      // El modelo es opcional; no debe impedir registrar el token.
+    }
+    return _cachedDeviceModel;
+  }
+
   Future<String> _create(DeviceRequest request) async {
     final response = await _api.createDevice(request: request);
-    if (!response.isSuccess ||
-        response.data == null ||
-        response.data!.isEmpty) {
-      throw StateError('No se pudo registrar el dispositivo.');
+    if (!response.isSuccess) {
+      throw AuthFailure(AuthFailureCode.server, response.errorMessage);
+    }
+    if (response.data == null || response.data!.isEmpty) {
+      throw const AuthFailure(
+        AuthFailureCode.server,
+        'No se pudo confirmar el registro del dispositivo.',
+      );
     }
     return response.data!;
   }
@@ -222,8 +292,17 @@ class DeviceTokenService {
         deviceId: recordId,
         request: request,
       );
-      if (!response.isSuccess || (response.data ?? 0) <= 0) {
+      if (!response.isSuccess) {
+        throw AuthFailure(AuthFailureCode.server, response.errorMessage);
+      }
+      if (response.data == 0) {
         throw const _MissingDevice();
+      }
+      if (response.data == null || response.data! < 0) {
+        throw const AuthFailure(
+          AuthFailureCode.server,
+          'No se pudo confirmar la actualización del dispositivo.',
+        );
       }
     } on AuthFailure catch (error) {
       // 404 se mapea como server con el mensaje exacto de "No se encontró".
@@ -241,12 +320,14 @@ class DeviceTokenService {
     required String userId,
     required String recordId,
     required String? deviceId,
+    required String? deviceModel,
     required String? token,
   }) async {
     final snapshot = DeviceSyncSnapshot(
       userId: userId,
       recordId: recordId,
       deviceId: deviceId,
+      deviceModel: deviceModel,
       fcmToken: token,
       osType: _osType,
     );

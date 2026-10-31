@@ -41,11 +41,13 @@ DeviceTokenService buildService(
   Dio dio, {
   DeviceSyncStorage? storage,
   Future<String?> Function()? readDeviceId,
+  Future<String?> Function()? readDeviceModel,
 }) {
   return DeviceTokenService(
     authRepository: auth,
     apiService: DeviceApiService(dio),
     readDeviceId: readDeviceId ?? () async => 'android-id',
+    readDeviceModel: readDeviceModel ?? () async => 'Redmi Note 14',
     osType: 'ANDROID',
     syncStorage: storage,
   );
@@ -112,8 +114,81 @@ void main() {
     await service.synchronizeToken('two');
     expect(requests.map((r) => r.method), ['POST', 'PUT']);
     expect(requests.last.path, '/device/update/server-uuid');
+    expect(requests.last.data['deviceModel'], 'Redmi Note 14');
     service.dispose();
     await auth.controller.close();
+  });
+
+  test(
+    'el update manual omite ambas cachés y conserva el UUID persistido',
+    () async {
+      final auth = FakeAuth()..signIn('user-1');
+      final storage = InMemoryDeviceSyncStorage();
+      final requests = <RequestOptions>[];
+      final dio = buildDio(requests);
+      final first = buildService(auth, dio, storage: storage);
+      await first.synchronizeToken('current-token');
+      await first.updateToken('current-token');
+      expect(requests.map((r) => r.method), ['POST', 'PUT']);
+      first.dispose();
+
+      requests.clear();
+      final second = buildService(auth, dio, storage: storage);
+      addTearDown(second.dispose);
+      addTearDown(auth.controller.close);
+      await second.updateToken('current-token');
+      expect(requests.single.path, '/device/update/server-uuid');
+      expect(requests.single.data['deviceId'], 'android-id');
+      expect(requests.single.data['deviceModel'], 'Redmi Note 14');
+      expect(requests.single.data['fcmToken'], 'current-token');
+      expect((await storage.read())?.recordId, 'server-uuid');
+      await second.synchronizeToken('current-token');
+      expect(requests, hasLength(1));
+    },
+  );
+
+  test(
+    'un snapshot anterior sin modelo actualiza el registro existente',
+    () async {
+      final auth = FakeAuth()..signIn('user-1');
+      final storage = InMemoryDeviceSyncStorage();
+      await storage.write(
+        const DeviceSyncSnapshot(
+          userId: 'user-1',
+          recordId: 'server-uuid',
+          deviceId: 'android-id',
+          fcmToken: 'same-token',
+          osType: 'ANDROID',
+        ),
+      );
+      final requests = <RequestOptions>[];
+      final service = buildService(auth, buildDio(requests), storage: storage);
+      addTearDown(service.dispose);
+      addTearDown(auth.controller.close);
+
+      await service.synchronizeToken('same-token');
+      expect(requests.single.path, '/device/update/server-uuid');
+      expect(requests.single.data['deviceModel'], 'Redmi Note 14');
+      expect((await storage.read())?.deviceModel, 'Redmi Note 14');
+      await service.synchronizeToken('same-token');
+      expect(requests, hasLength(1));
+    },
+  );
+
+  test('si no se puede leer el modelo se sigue registrando el token', () async {
+    final auth = FakeAuth()..signIn('user-1');
+    final requests = <RequestOptions>[];
+    final service = buildService(
+      auth,
+      buildDio(requests),
+      readDeviceModel: () async => throw StateError('Sin canal nativo'),
+    );
+    addTearDown(service.dispose);
+    addTearDown(auth.controller.close);
+
+    await service.synchronizeToken('token');
+    expect(requests.single.data['deviceModel'], isNull);
+    expect(requests.single.data['fcmToken'], 'token');
   });
 
   test('si el update devuelve 0 filas reintenta con create una vez', () async {

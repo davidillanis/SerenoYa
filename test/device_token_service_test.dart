@@ -6,6 +6,7 @@ import 'package:sereno_ya/data/repositories/auth/auth_repository.dart';
 import 'package:sereno_ya/data/services/api/device_api_service.dart';
 import 'package:sereno_ya/data/services/api/device_token_service.dart';
 import 'package:sereno_ya/models/auth/auth_state.dart';
+import 'package:sereno_ya/models/auth/auth_failure.dart';
 import 'package:sereno_ya/models/auth/auth_session.dart';
 import 'package:sereno_ya/models/auth/authenticated_user.dart';
 
@@ -74,6 +75,7 @@ void main() {
       authRepository: auth,
       apiService: DeviceApiService(dio),
       readDeviceId: () async => 'android-id',
+      readDeviceModel: () async => 'Redmi Note 14',
       osType: 'ANDROID',
     );
   });
@@ -90,9 +92,11 @@ void main() {
       await service.synchronizeToken('initial');
       expect(requests.single.path, '/device/create');
       expect(requests.single.data['deviceId'], 'android-id');
+      expect(requests.single.data['deviceModel'], 'Redmi Note 14');
       await service.synchronizeToken('renewed');
       expect(requests.last.path, '/device/update/server-uuid');
       expect(requests.last.data['fcmToken'], 'renewed');
+      expect(requests.last.data['deviceModel'], 'Redmi Note 14');
       await service.synchronizeToken('renewed');
       expect(requests, hasLength(2));
     },
@@ -129,6 +133,78 @@ void main() {
       ]);
       expect(requests.where((r) => r.method == 'POST'), hasLength(1));
       expect(requests.last.data['fcmToken'], 'third');
+    },
+  );
+
+  test('la actualización manual exige una sesión y un token', () async {
+    await expectLater(
+      service.updateToken('token'),
+      throwsA(isA<AuthFailure>()),
+    );
+    await expectLater(service.updateToken('  '), throwsA(isA<AuthFailure>()));
+    expect(requests, isEmpty);
+  });
+
+  test('el error manual no crea duplicados ni bloquea próximas sync', () async {
+    auth.signIn('user-1');
+    await service.synchronizeToken('initial');
+    fail = true;
+    await expectLater(
+      service.updateToken('renewed'),
+      throwsA(isA<AuthFailure>()),
+    );
+    expect(requests.map((r) => r.method), ['POST', 'PUT']);
+
+    fail = false;
+    await service.synchronizeToken('renewed');
+    expect(requests.map((r) => r.method), ['POST', 'PUT', 'PUT']);
+    expect(requests.last.path, '/device/update/server-uuid');
+    expect(requests.last.data['fcmToken'], 'renewed');
+  });
+
+  test(
+    'cerrar sesión mientras obtiene el hardware cancela el update',
+    () async {
+      service.dispose();
+      final hardware = Completer<String?>();
+      service = DeviceTokenService(
+        authRepository: auth,
+        apiService: DeviceApiService(
+          Dio()
+            ..interceptors.add(
+              InterceptorsWrapper(
+                onRequest: (options, handler) {
+                  requests.add(options);
+                  handler.resolve(
+                    Response<dynamic>(
+                      requestOptions: options,
+                      data: {'isSuccess': true, 'data': 'server-uuid'},
+                    ),
+                  );
+                },
+              ),
+            ),
+        ),
+        readDeviceId: () => hardware.future,
+        osType: 'ANDROID',
+      );
+      auth.signIn('user-1');
+      final operation = service.updateToken('token');
+      final expectation = expectLater(
+        operation,
+        throwsA(
+          isA<AuthFailure>().having(
+            (error) => error.code,
+            'code',
+            AuthFailureCode.invalidSession,
+          ),
+        ),
+      );
+      await Future<void>.delayed(Duration.zero);
+      await auth.logout();
+      hardware.complete('hardware-id');
+      await expectation;
+      expect(requests, isEmpty);
     },
   );
 }

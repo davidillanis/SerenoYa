@@ -40,6 +40,19 @@ class NotificationService {
 
   static final NotificationService instance = NotificationService._();
   FirebaseMessaging get _messaging => FirebaseMessaging.instance;
+  bool get _supportsMessaging =>
+      !kIsWeb &&
+      Firebase.apps.isNotEmpty &&
+      (defaultTargetPlatform == TargetPlatform.android ||
+          defaultTargetPlatform == TargetPlatform.iOS);
+
+  Future<String?> getToken() async {
+    if (!_supportsMessaging) return null;
+    return _messaging.getToken();
+  }
+
+  Stream<String> get tokenRefreshes =>
+      _supportsMessaging ? _messaging.onTokenRefresh : const Stream.empty();
   final FlutterLocalNotificationsPlugin _localNotifications =
       FlutterLocalNotificationsPlugin();
 

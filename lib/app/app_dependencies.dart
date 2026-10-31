@@ -3,6 +3,7 @@ import 'package:sereno_ya/data/repositories/route/route_compare_repository.dart'
 import 'package:sereno_ya/data/services/api/notification_service.dart';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 
 import 'package:sereno_ya/data/services/auth/google_identity_service.dart';
 
@@ -57,6 +58,7 @@ class AppDependencies {
     final routeCompareRepository = RouteCompareRepository(officerApiService);
     final officerRepository = OfficerRepository(officerApiService);
     final profileApiService = ProfileApiService(apiClient.dio);
+    final deviceApiService = DeviceApiService(apiClient.dio);
     final localDataSource = IncidentLocalDataSourceImpl();
     final incidentRepository = IncidentRepository(
       apiService: incidentsApiService,
@@ -81,9 +83,13 @@ class AppDependencies {
       storageService: imageApiService,
       deviceTokenService: DeviceTokenService(
         authRepository: authRepository,
-        apiService: DeviceApiService(apiClient.dio),
+        apiService: deviceApiService,
         readDeviceId: () async =>
             isAndroid ? await const AndroidId().getId() : null,
+        readDeviceModel: () async => isAndroid
+            ? await const MethodChannel('com.oppsissora.serenoya/device')
+                  .invokeMethod<String>('getModel')
+            : null,
         osType: kIsWeb ? 'WEB' : (isAndroid ? 'ANDROID' : 'IOS'),
         syncStorage: SharedPreferencesDeviceSyncStorage(),
       ),
@@ -97,6 +103,8 @@ class AppDependencies {
       incidentRepository: incidentRepository,
       storageService: imageApiService,
       profileApiService: profileApiService,
+      deviceApiService: deviceApiService,
+      deviceTokenService: dependencies.deviceTokenService,
       incidentsApiService: incidentsApiService,
       adminUserApiService: adminUserApiService,
       routerNotifier: dependencies.routerNotifier,

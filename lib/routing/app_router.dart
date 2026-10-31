@@ -6,6 +6,9 @@ import 'package:provider/provider.dart';
 import 'package:sereno_ya/data/repositories/auth/auth_repository.dart';
 import 'package:sereno_ya/data/services/api/admin/admin_user_api_service.dart';
 import 'package:sereno_ya/data/services/api/citizen/incidents_api_service.dart';
+import 'package:sereno_ya/data/services/api/device_api_service.dart';
+import 'package:sereno_ya/data/services/api/device_token_service.dart';
+import 'package:sereno_ya/data/services/api/notification_service.dart';
 import 'package:sereno_ya/data/services/api/file/image_api_service.dart';
 import 'package:sereno_ya/data/services/api/profile/profile_api_service.dart';
 import 'package:sereno_ya/models/auth/auth_state.dart';
@@ -24,6 +27,7 @@ import 'package:sereno_ya/ui/auth/view_models/reset_password_view_model.dart';
 import 'package:sereno_ya/ui/core/role_home_screen.dart';
 import 'package:sereno_ya/ui/core/unauthorized_screen.dart';
 import 'package:sereno_ya/ui/profile/profile_screen.dart';
+import 'package:sereno_ya/ui/profile/view_models/profile_notifications_view_model.dart';
 import 'package:sereno_ya/ui/profile/view_models/profile_view_model.dart';
 import 'package:sereno_ya/data/repositories/citizen/incident_repository.dart';
 import 'package:sereno_ya/ui/citizen/citizen_home_screen.dart';
@@ -59,6 +63,8 @@ GoRouter createAppRouter({
   required IncidentsApiService incidentsApiService,
   required StorageService storageService,
   required ProfileApiService profileApiService,
+  required DeviceApiService deviceApiService,
+  required DeviceTokenService deviceTokenService,
   required AuthRouterNotifier routerNotifier,
 }) {
   const publicRoutes = {
@@ -110,21 +116,33 @@ GoRouter createAppRouter({
     routes: [
       GoRoute(
         path: RouteNames.profile,
-        builder: (context, _) => ChangeNotifierProvider(
-          create: (_) => ProfileViewModel(
-            profileApiService,
-            userId:
-                context.read<SessionViewModel>().state.session?.user.id ?? '',
-            includeCitizenProfile:
-                context
-                    .read<SessionViewModel>()
-                    .state
-                    .session
-                    ?.user
-                    .roles
-                    .contains(UserRole.citizen) ==
-                true,
-          ),
+        builder: (context, _) => MultiProvider(
+          providers: [
+            ChangeNotifierProvider(
+              create: (_) => ProfileViewModel(
+                profileApiService,
+                userId:
+                    context.read<SessionViewModel>().state.session?.user.id ??
+                    '',
+                includeCitizenProfile:
+                    context
+                        .read<SessionViewModel>()
+                        .state
+                        .session
+                        ?.user
+                        .roles
+                        .contains(UserRole.citizen) ==
+                    true,
+              ),
+            ),
+            ChangeNotifierProvider(
+              create: (_) => ProfileNotificationsViewModel(
+                apiService: deviceApiService,
+                deviceTokens: deviceTokenService,
+                readToken: NotificationService.instance.getToken,
+              ),
+            ),
+          ],
           child: const ProfileScreen(),
         ),
       ),

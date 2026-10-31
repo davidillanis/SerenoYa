@@ -11,6 +11,7 @@ class DeviceSyncSnapshot {
     required this.userId,
     required this.recordId,
     this.deviceId,
+    this.deviceModel,
     this.fcmToken,
     this.osType,
   });
@@ -18,6 +19,7 @@ class DeviceSyncSnapshot {
   final String userId;
   final String recordId;
   final String? deviceId;
+  final String? deviceModel;
   final String? fcmToken;
   final String? osType;
 
@@ -26,12 +28,14 @@ class DeviceSyncSnapshot {
   bool matches({
     required String userId,
     required String? deviceId,
+    required String? deviceModel,
     required String? token,
     required String osType,
   }) {
     return this.userId == userId &&
         recordId.isNotEmpty &&
         this.deviceId == deviceId &&
+        this.deviceModel == deviceModel &&
         fcmToken == token &&
         this.osType == osType;
   }
@@ -40,6 +44,7 @@ class DeviceSyncSnapshot {
     'userId': userId,
     'recordId': recordId,
     'deviceId': deviceId,
+    'deviceModel': deviceModel,
     'fcmToken': fcmToken,
     'osType': osType,
   };
@@ -49,6 +54,7 @@ class DeviceSyncSnapshot {
       userId: json['userId'] as String? ?? '',
       recordId: json['recordId'] as String? ?? '',
       deviceId: json['deviceId'] as String?,
+      deviceModel: json['deviceModel'] as String?,
       fcmToken: json['fcmToken'] as String?,
       osType: json['osType'] as String?,
     );
