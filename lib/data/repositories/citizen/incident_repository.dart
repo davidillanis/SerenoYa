@@ -1,6 +1,7 @@
 import 'package:sereno_ya/data/models/citizen/incident_category.dart';
 import 'package:sereno_ya/data/models/citizen/incident_create_request.dart';
 import 'package:sereno_ya/data/models/citizen/incident.dart';
+import 'package:sereno_ya/data/models/incident_contact_info.dart';
 import 'package:sereno_ya/data/models/page_dto.dart';
 import 'package:sereno_ya/data/models/officer/incident_acceptance.dart';
 import 'package:sereno_ya/data/services/api/citizen/incidents_api_service.dart';
@@ -429,12 +430,12 @@ class IncidentRepository {
     }
   }
 
-  Future<Result<String>> getContactPhone(String incidentId) async {
+  Future<Result<IncidentContactInfo>> getSerenoInfo(String incidentId) async {
     try {
-      final response = await _apiService.getContactPhone(incidentId);
-      final phone = response.data;
-      if (response.isSuccess && phone != null) {
-        return Result.success(phone);
+      final response = await _apiService.getSerenoInfo(incidentId);
+      final serenoInfo = response.data;
+      if (response.isSuccess && serenoInfo != null) {
+        return Result.success(serenoInfo);
       }
       return Result.failure(
         AuthFailure(AuthFailureCode.server, response.errorMessage),

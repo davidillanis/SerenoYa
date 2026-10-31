@@ -6,6 +6,7 @@ import 'package:sereno_ya/data/models/auth/api_response_dto.dart';
 import 'package:sereno_ya/data/models/citizen/incident_category.dart';
 import 'package:sereno_ya/data/models/citizen/incident_create_request.dart';
 import 'package:sereno_ya/data/models/citizen/incident.dart';
+import 'package:sereno_ya/data/models/incident_contact_info.dart';
 import 'package:sereno_ya/data/models/page_dto.dart';
 import 'package:sereno_ya/data/models/officer/incident_acceptance.dart';
 import 'package:sereno_ya/models/auth/auth_failure.dart';
@@ -18,8 +19,7 @@ class IncidentsApiService {
   // Only fields exposed by IncidentEntity; priority is not yet in that contract.
   static const officerFields =
       'id,status,latitude,longitude,currentLat,currentLong,description,referenceAddress,createdAt,'
-      'acceptedAt,arrivedAt,attendedAt,cancelledAt,category.name,'
-      'citizen.id,citizen.userEntity.phone';
+      'acceptedAt,arrivedAt,attendedAt,cancelledAt,category.name';
 
   static const adminIncidentFields =
       'id,status,latitude,longitude,description,referenceAddress,createdAt,'
@@ -212,18 +212,12 @@ class IncidentsApiService {
     );
   }
 
-  Future<ApiResponseDto<String>> getContactPhone(String incidentId) async {
+  Future<ApiResponseDto<IncidentContactInfo>> getSerenoInfo(
+    String incidentId,
+  ) async {
     return _request(
-      () => _dio.get<dynamic>('/incident/$incidentId/contact/phone'),
-      (value) {
-        final phone = _asJsonMap(value)['phone']?.toString().trim() ?? '';
-        if (phone.isEmpty) {
-          throw const FormatException(
-            'La API no devolvió un teléfono de contacto válido.',
-          );
-        }
-        return phone;
-      },
+      () => _dio.get<dynamic>('/incident/$incidentId/info-sereno'),
+      (value) => IncidentContactInfo.fromJson(_asJsonMap(value)),
     );
   }
 

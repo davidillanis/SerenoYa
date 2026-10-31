@@ -1,8 +1,8 @@
 import 'package:sereno_ya/data/models/auth/api_response_dto.dart';
 import 'package:sereno_ya/data/models/incident_assignment.dart';
+import 'package:sereno_ya/data/models/incident_contact_info.dart';
 import 'package:sereno_ya/data/models/incident_status.dart';
 import 'package:sereno_ya/data/models/officer/officer_incident.dart';
-import 'package:sereno_ya/data/models/officer/incident_citizen.dart';
 import 'package:sereno_ya/data/models/page_dto.dart';
 import 'package:sereno_ya/data/services/api/incident_api_service.dart';
 import 'package:sereno_ya/models/auth/auth_failure.dart';
@@ -15,7 +15,6 @@ class OfficerRepository {
   static const officerFields =
       'id,status,latitude,longitude,currentLat,currentLong,description,referenceAddress,createdAt,'
       'acceptedAt,arrivedAt,attendedAt,cancelledAt,category.name,'
-      'citizen.id,citizen.userEntity.phone,'
       'evidences.id,evidences.fileUrl,evidences.fileName,evidences.fileType,'
       'evidences.createdAt';
 
@@ -61,8 +60,8 @@ class OfficerRepository {
   Future<Result<OfficerIncident>> detail(String id) =>
       _run(() => _service.byIdSereno(fields: officerFields, id: id));
 
-  Future<Result<IncidentCitizen>> citizenByIncidentId(String id) =>
-      _run(() => _service.citizenByIncidentId(id));
+  Future<Result<IncidentContactInfo>> getCitizenInfo(String id) =>
+      _run(() => _service.getCitizenInfo(id));
 
   /// Acepta con la ubicación del sereno (`POST /incident/accept`).
   Future<Result<bool>> accept({

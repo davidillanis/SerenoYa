@@ -1,6 +1,6 @@
 import 'package:flutter/foundation.dart';
+import 'package:sereno_ya/data/models/incident_contact_info.dart';
 import 'package:sereno_ya/data/models/officer/officer_incident.dart';
-import 'package:sereno_ya/data/models/officer/incident_citizen.dart';
 import 'package:sereno_ya/data/repositories/officer/officer_repository.dart';
 import 'package:sereno_ya/data/services/maps/citizen_location_service.dart';
 
@@ -17,8 +17,9 @@ class OfficerDetailViewModel extends ChangeNotifier {
   final CitizenLocationService _locationService;
   final String id;
   OfficerIncident? item;
-  IncidentCitizen? citizen;
+  IncidentContactInfo? citizen;
   String? citizenError;
+  bool loadingCitizen = false;
   bool loading = false;
   bool saving = false;
   bool acceptedHere = false;
@@ -34,26 +35,51 @@ class OfficerDetailViewModel extends ChangeNotifier {
     if (loading || _disposed) return;
     loading = true;
     error = null;
-    citizen = null;
-    citizenError = null;
     _notify();
     final result = await _repository.detail(id);
     if (_disposed) return;
     if (result.isSuccess) {
       item = result.data;
-      if (item!.showsCitizenInfo) {
-        final citizenResult = await _repository.citizenByIncidentId(id);
-        if (_disposed) return;
-        if (citizenResult.isSuccess) {
-          citizen = citizenResult.data;
-        } else {
-          citizenError = citizenResult.failure!.message;
-        }
+      if (!item!.showsCitizenInfo) {
+        citizen = null;
+        citizenError = null;
       }
     } else {
+      item = null;
       error = result.failure!.message;
     }
     loading = false;
+    _notify();
+
+    if (item?.showsCitizenInfo == true) {
+      await loadCitizenInfo(forceRefresh: true);
+    }
+  }
+
+  Future<void> loadCitizenInfo({bool forceRefresh = false}) async {
+    if (_disposed ||
+        item?.showsCitizenInfo != true ||
+        loadingCitizen ||
+        (!forceRefresh && citizen != null)) {
+      return;
+    }
+
+    loadingCitizen = true;
+    citizenError = null;
+    _notify();
+
+    final result = await _repository.getCitizenInfo(id);
+    if (_disposed) return;
+    if (item?.showsCitizenInfo == true) {
+      if (result.isSuccess && result.data != null) {
+        citizen = result.data;
+      } else {
+        citizenError =
+            result.failure?.message ??
+            'No se pudo cargar la información del ciudadano.';
+      }
+    }
+    loadingCitizen = false;
     _notify();
   }
 

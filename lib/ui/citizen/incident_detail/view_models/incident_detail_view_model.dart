@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:sereno_ya/data/models/citizen/incident.dart';
+import 'package:sereno_ya/data/models/incident_contact_info.dart';
 import 'package:sereno_ya/data/repositories/citizen/incident_repository.dart';
 import 'package:sereno_ya/data/services/officer/contact_service.dart';
 
@@ -20,6 +21,8 @@ class IncidentDetailViewModel extends ChangeNotifier {
     );
     if (_incident == null) {
       load();
+    } else if (canContactSereno) {
+      loadSerenoInfo();
     }
   }
 
@@ -45,6 +48,15 @@ class IncidentDetailViewModel extends ChangeNotifier {
   String? _contactErrorMessage;
   String? get contactErrorMessage => _contactErrorMessage;
 
+  IncidentContactInfo? _serenoInfo;
+  IncidentContactInfo? get serenoInfo => _serenoInfo;
+
+  bool _isLoadingSerenoInfo = false;
+  bool get isLoadingSerenoInfo => _isLoadingSerenoInfo;
+
+  String? _serenoInfoErrorMessage;
+  String? get serenoInfoErrorMessage => _serenoInfoErrorMessage;
+
   bool get canContactSereno => _contactableStatuses.contains(_incident?.status);
 
   bool _disposed = false;
@@ -60,8 +72,12 @@ class IncidentDetailViewModel extends ChangeNotifier {
       forceRefresh: forceRefresh,
       requireAdminDetails: requireAdminDetails,
     );
-    if (result.isSuccess && result.data != null) {
+    final loaded = result.isSuccess && result.data != null;
+    if (loaded) {
       _incident = result.data;
+      if (!canContactSereno) {
+        _clearSerenoInfo();
+      }
     } else {
       _errorMessage =
           result.failure?.message ?? 'No se pudo cargar la incidencia';
@@ -69,25 +85,53 @@ class IncidentDetailViewModel extends ChangeNotifier {
 
     _isLoading = false;
     _notifyListeners();
+
+    if (loaded && canContactSereno) {
+      await loadSerenoInfo(forceRefresh: forceRefresh);
+    }
+  }
+
+  Future<void> loadSerenoInfo({bool forceRefresh = false}) async {
+    if (!canContactSereno ||
+        _isLoadingSerenoInfo ||
+        (!forceRefresh && _serenoInfo != null)) {
+      return;
+    }
+
+    _isLoadingSerenoInfo = true;
+    _serenoInfoErrorMessage = null;
+    _notifyListeners();
+
+    final result = await _repository.getSerenoInfo(_incidentId);
+    if (canContactSereno) {
+      if (result.isSuccess && result.data != null) {
+        _serenoInfo = result.data;
+      } else {
+        _serenoInfoErrorMessage =
+            result.failure?.message ??
+            'No se pudo cargar la información del sereno.';
+      }
+    }
+
+    _isLoadingSerenoInfo = false;
+    _notifyListeners();
   }
 
   Future<bool> callSereno() async {
     if (_isCallingContact || !canContactSereno) return false;
+
+    final phone = _serenoInfo?.phone.trim();
+    if (phone == null || phone.isEmpty) {
+      _contactErrorMessage = 'El sereno no tiene un teléfono disponible.';
+      _notifyListeners();
+      return false;
+    }
 
     _isCallingContact = true;
     _contactErrorMessage = null;
     _notifyListeners();
 
     try {
-      final result = await _repository.getContactPhone(_incidentId);
-      final phone = result.data;
-      if (!result.isSuccess || phone == null) {
-        _contactErrorMessage =
-            result.failure?.message ??
-            'No se pudo obtener el teléfono del sereno.';
-        return false;
-      }
-
       final opened = await contactService.call(phone);
       if (!opened) {
         _contactErrorMessage = 'No se pudo abrir el marcador telefónico.';
@@ -97,6 +141,11 @@ class IncidentDetailViewModel extends ChangeNotifier {
       _isCallingContact = false;
       _notifyListeners();
     }
+  }
+
+  void _clearSerenoInfo() {
+    _serenoInfo = null;
+    _serenoInfoErrorMessage = null;
   }
 
   void _notifyListeners() {

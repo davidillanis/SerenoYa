@@ -9,8 +9,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:provider/provider.dart';
+import 'package:sereno_ya/data/models/incident_contact_info.dart';
 import 'package:sereno_ya/data/models/officer/officer_incident.dart';
-import 'package:sereno_ya/data/models/officer/incident_citizen.dart';
 import 'package:sereno_ya/data/models/page_dto.dart';
 import 'package:sereno_ya/data/repositories/officer/officer_repository.dart';
 import 'package:sereno_ya/data/services/api/incident_api_service.dart';
@@ -287,11 +287,10 @@ void main() {
             .hasCoordinates,
         isFalse,
       );
-      expect(item('REQUESTED').citizenPhone, isNull);
-      expect(item('REQUESTED').citizenId, isNull);
       expect(item('REQUESTED').showsCitizenInfo, isFalse);
-      expect(item('ACCEPTED').citizenPhone, '000000000');
       expect(item('ACCEPTED').showsCitizenInfo, isTrue);
+      expect(item('ON_SITE').showsCitizenInfo, isTrue);
+      expect(item('ATTENDED').showsCitizenInfo, isFalse);
       expect(
         elapsedLabel(
           DateTime(2026, 10, 5, 9),
@@ -339,9 +338,9 @@ void main() {
                 'serenoId': 'test-officer',
                 'status': 'ACCEPTED',
               };
-            } else if (request.path == '/incident/incident-test/citizen') {
+            } else if (request.path == '/incident/incident-test/info-citizen') {
               data = {
-                'citizenId': 'citizen-test',
+                'userId': 'citizen-user-test',
                 'name': 'Ana',
                 'lastName': 'Quispe',
                 'phone': '987654321',
@@ -381,7 +380,7 @@ void main() {
       expect(requests.last.queryParameters['direction'], 'DESC');
       expect(
         requests.last.queryParameters['fields'],
-        contains('citizen.userEntity.phone'),
+        isNot(contains('citizen.userEntity.phone')),
       );
       expect(
         requests.last.queryParameters['fields'],
@@ -393,10 +392,11 @@ void main() {
         isNot(contains('priority')),
       );
 
-      final citizen = await repository.citizenByIncidentId('incident-test');
+      final citizen = await repository.getCitizenInfo('incident-test');
+      expect(citizen.data!.userId, 'citizen-user-test');
       expect(citizen.data!.fullName, 'Ana Quispe');
       expect(citizen.data!.phone, '987654321');
-      expect(requests.last.path, '/incident/incident-test/citizen');
+      expect(requests.last.path, '/incident/incident-test/info-citizen');
       expect(requests.last.method, 'GET');
 
       await repository.listMine(status: OfficerIncidentStatus.attended);
@@ -410,7 +410,7 @@ void main() {
       expect(requests.last.queryParameters.containsKey('id'), isFalse);
       expect(
         requests.last.queryParameters['fields'],
-        contains('citizen.userEntity.phone'),
+        isNot(contains('citizen.userEntity.phone')),
       );
       expect(
         requests.last.queryParameters['fields'],
@@ -767,15 +767,15 @@ class FakeRepository extends OfficerRepository {
         )
       : Result.success(item(currentStatus));
   @override
-  Future<Result<IncidentCitizen>> citizenByIncidentId(String id) async {
+  Future<Result<IncidentContactInfo>> getCitizenInfo(String id) async {
     citizenRequests++;
     return citizenFails
         ? Result.failure(
             const AuthFailure(AuthFailureCode.network, 'Sin conexión'),
           )
         : Result.success(
-            const IncidentCitizen(
-              citizenId: 'citizen-test',
+            const IncidentContactInfo(
+              userId: 'citizen-user-test',
               name: 'Ana',
               lastName: 'Quispe',
               phone: '987654321',

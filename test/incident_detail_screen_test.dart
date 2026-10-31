@@ -52,12 +52,13 @@ void main() {
     });
   }
 
-  testWidgets('obtiene el contacto activo y abre el marcador', (tester) async {
+  testWidgets('muestra al sereno asignado y abre el marcador', (tester) async {
     await tester.binding.setSurfaceSize(const Size(320, 720));
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
     final contactService = _FakeContactService();
-    final dio = _detailDio(status: 'ACCEPTED');
+    final requestedPaths = <String>[];
+    final dio = _detailDio(status: 'ACCEPTED', requestedPaths: requestedPaths);
     final repository = IncidentRepository(
       apiService: IncidentsApiService(dio),
       localDataSource: _NoopIncidentLocalDataSource(),
@@ -79,6 +80,9 @@ void main() {
     );
     await tester.pumpAndSettle();
 
+    expect(find.text('DANI SERENO'), findsOneWidget);
+    expect(find.text('987654321'), findsOneWidget);
+
     final callButton = find.text('Llamar al sereno');
     await tester.scrollUntilVisible(
       callButton,
@@ -94,6 +98,14 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(contactService.calledPhones, ['987654321']);
+    expect(
+      requestedPaths.where((path) => path.endsWith('/info-sereno')),
+      hasLength(1),
+    );
+    expect(
+      requestedPaths.where((path) => path.endsWith('/contact/phone')),
+      isEmpty,
+    );
     expect(find.text('No se pudo abrir el marcador telefónico.'), findsNothing);
     expect(tester.takeException(), isNull);
   });
@@ -168,12 +180,13 @@ void main() {
   }
 }
 
-Dio _detailDio({String status = 'REQUESTED'}) {
+Dio _detailDio({String status = 'REQUESTED', List<String>? requestedPaths}) {
   final dio = Dio(BaseOptions(baseUrl: 'http://localhost/api/v1'));
   dio.interceptors.add(
     InterceptorsWrapper(
       onRequest: (options, handler) {
-        if (options.path.endsWith('/incident-1/contact/phone')) {
+        requestedPaths?.add(options.path);
+        if (options.path.endsWith('/incident-1/info-sereno')) {
           handler.resolve(
             Response<dynamic>(
               requestOptions: options,
@@ -182,7 +195,13 @@ Dio _detailDio({String status = 'REQUESTED'}) {
                 'isSuccess': true,
                 'message': 'Successful operation',
                 'errors': null,
-                'data': {'phone': '987654321'},
+                'data': {
+                  'userId': 'sereno-1',
+                  'name': 'DANI',
+                  'lastName': 'SERENO',
+                  'phone': '987654321',
+                  'imageUrl': null,
+                },
               },
             ),
           );

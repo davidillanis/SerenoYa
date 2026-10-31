@@ -176,14 +176,24 @@ class OfficerDetailScreen extends StatelessWidget {
             Text('Ciudadano', style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 12),
             if (!model.item!.showsCitizenInfo)
-              const Text('Disponible una vez aceptado el incidente.')
-            else if (model.citizenError != null) ...[
+              Text(
+                model.item!.status == OfficerIncidentStatus.pending
+                    ? 'Disponible una vez aceptado el incidente.'
+                    : 'El contacto ya no está disponible porque el incidente finalizó.',
+              )
+            else if (model.loadingCitizen) ...[
+              const Center(child: CircularProgressIndicator()),
+              const SizedBox(height: 12),
+              const Center(
+                child: Text('Obteniendo información del ciudadano...'),
+              ),
+            ] else if (model.citizenError != null) ...[
               Text(
                 model.citizenError!,
                 style: TextStyle(color: context.appColors.error),
               ),
               TextButton(
-                onPressed: model.load,
+                onPressed: () => model.loadCitizenInfo(forceRefresh: true),
                 child: const Text('Reintentar'),
               ),
             ] else if (citizen == null)
@@ -219,7 +229,7 @@ class OfficerDetailScreen extends StatelessWidget {
               ),
               const SizedBox(height: 12),
               SelectableText(
-                'Teléfono: ${citizen.phone?.trim().isNotEmpty == true ? citizen.phone!.trim() : 'No disponible'}',
+                'Teléfono: ${citizen.phone.trim().isNotEmpty ? citizen.phone.trim() : 'No disponible'}',
               ),
             ],
           ],
@@ -269,18 +279,18 @@ class OfficerDetailScreen extends StatelessWidget {
 class _CitizenContactButtons extends StatelessWidget {
   const _CitizenContactButtons({required this.item, required this.phone});
   final OfficerIncident item;
-  final String? phone;
+  final String phone;
 
   @override
   Widget build(BuildContext context) {
-    final hasPhone = telUri(phone ?? '') != null;
+    final hasPhone = telUri(phone) != null;
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
       child: Row(
         children: [
           Expanded(
             child: OutlinedButton.icon(
-              onPressed: hasPhone ? () => _call(context, phone!) : null,
+              onPressed: hasPhone ? () => _call(context, phone) : null,
               icon: const Icon(Icons.call_outlined),
               label: const Text('Llamar'),
             ),
@@ -288,7 +298,7 @@ class _CitizenContactButtons extends StatelessWidget {
           const SizedBox(width: 8),
           Expanded(
             child: OutlinedButton.icon(
-              onPressed: hasPhone ? () => _message(context, phone!) : null,
+              onPressed: hasPhone ? () => _message(context, phone) : null,
               icon: const Icon(Icons.chat_outlined),
               label: const Text('WhatsApp'),
             ),

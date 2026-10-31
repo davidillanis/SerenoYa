@@ -3,9 +3,9 @@ import 'package:sereno_ya/data/models/auth/api_response_dto.dart';
 import 'package:sereno_ya/data/models/citizen/incident.dart';
 import 'package:sereno_ya/data/models/citizen/incident_create_request.dart';
 import 'package:sereno_ya/data/models/incident_assignment.dart';
+import 'package:sereno_ya/data/models/incident_contact_info.dart';
 import 'package:sereno_ya/data/models/incident_status.dart';
 import 'package:sereno_ya/data/models/officer/incident_acceptance.dart';
-import 'package:sereno_ya/data/models/officer/incident_citizen.dart';
 import 'package:sereno_ya/data/models/officer/officer_incident.dart';
 import 'package:sereno_ya/data/models/page_dto.dart';
 import 'package:sereno_ya/data/models/route/route_compare.dart';
@@ -16,52 +16,99 @@ class IncidentApiService {
 
   final Dio _dio;
 
-  Future<ApiResponseDto<PageResponse<OfficerIncident>>> list({required String fields,IncidentStatus? status,PageRequestDTO pageRequest = const PageRequestDTO(page: 0,size: 15,sortBy: 'id',direction: EDirection.DESC,),}) => _request(
-    () => _dio.get<dynamic>('/incident/list',
-      queryParameters: {'fields': fields,'status': ?status?.apiValue,...pageRequest.toMap(),},
+  Future<ApiResponseDto<PageResponse<OfficerIncident>>> list({
+    required String fields,
+    IncidentStatus? status,
+    PageRequestDTO pageRequest = const PageRequestDTO(
+      page: 0,
+      size: 15,
+      sortBy: 'id',
+      direction: EDirection.DESC,
+    ),
+  }) => _request(
+    () => _dio.get<dynamic>(
+      '/incident/list',
+      queryParameters: {
+        'fields': fields,
+        'status': ?status?.apiValue,
+        ...pageRequest.toMap(),
+      },
     ),
     (value) => PageResponse.fromJson(value, OfficerIncident.fromJson),
   );
 
-  Future<ApiResponseDto<PageResponse<OfficerIncident>>> listMeSereno({required String fields,IncidentStatus? status,PageRequestDTO pageRequest = const PageRequestDTO(page: 0,size: 15,sortBy: 'id',direction: EDirection.DESC,),}) => _request(
-    () => _dio.get<dynamic>('/incident/list-me-sereno',
-      queryParameters: {'fields': fields,'status': ?status?.apiValue,...pageRequest.toMap(),},
+  Future<ApiResponseDto<PageResponse<OfficerIncident>>> listMeSereno({
+    required String fields,
+    IncidentStatus? status,
+    PageRequestDTO pageRequest = const PageRequestDTO(
+      page: 0,
+      size: 15,
+      sortBy: 'id',
+      direction: EDirection.DESC,
+    ),
+  }) => _request(
+    () => _dio.get<dynamic>(
+      '/incident/list-me-sereno',
+      queryParameters: {
+        'fields': fields,
+        'status': ?status?.apiValue,
+        ...pageRequest.toMap(),
+      },
     ),
     (value) => PageResponse.fromJson(value, OfficerIncident.fromJson),
   );
 
-  Future<ApiResponseDto<OfficerIncident>> byIdSereno({required String fields,required String id,}) => _request(
-    () => _dio.get<dynamic>('/incident/byId-sereno/$id',queryParameters: {'fields': fields},),
+  Future<ApiResponseDto<OfficerIncident>> byIdSereno({
+    required String fields,
+    required String id,
+  }) => _request(
+    () => _dio.get<dynamic>(
+      '/incident/byId-sereno/$id',
+      queryParameters: {'fields': fields},
+    ),
     (value) => OfficerIncident.fromJson(_asJsonMap(value)),
   );
 
-  Future<ApiResponseDto<IncidentCitizen>> citizenByIncidentId(String id) => _request(
-    () => _dio.get<dynamic>('/incident/$id/citizen'),
-    (value) => IncidentCitizen.fromJson(_asJsonMap(value)),
-  );
+  Future<ApiResponseDto<IncidentContactInfo>> getCitizenInfo(String id) =>
+      _request(
+        () => _dio.get<dynamic>('/incident/$id/info-citizen'),
+        (value) => IncidentContactInfo.fromJson(_asJsonMap(value)),
+      );
 
-  Future<ApiResponseDto<Incident>> createIncident(IncidentCreateRequest request,) async {
+  Future<ApiResponseDto<Incident>> createIncident(
+    IncidentCreateRequest request,
+  ) async {
     return _request(
       () => _dio.post<dynamic>('/incident/create', data: request.toJson()),
       (value) => Incident.fromJson(_asJsonMap(value)),
     );
   }
 
-  Future<ApiResponseDto<IncidentAcceptance>> accept(IncidentAcceptRequest request,) {
+  Future<ApiResponseDto<IncidentAcceptance>> accept(
+    IncidentAcceptRequest request,
+  ) {
     return _request(
       () => _dio.post<dynamic>('/incident/accept', data: request.toJson()),
       (value) => IncidentAcceptance.fromJson(_asJsonMap(value)),
     );
   }
 
-  Future<ApiResponseDto<List<RouteOption>>> compare(RouteCompareRequest request, String incidentId) {
+  Future<ApiResponseDto<List<RouteOption>>> compare(
+    RouteCompareRequest request,
+    String incidentId,
+  ) {
     return _request(
-      () => _dio.post<dynamic>('/incident/incident-compare/$incidentId', data: request.toJson()),
+      () => _dio.post<dynamic>(
+        '/incident/incident-compare/$incidentId',
+        data: request.toJson(),
+      ),
       (value) {
         if (value is! List) {
           throw const FormatException('La API devolvió datos inválidos.');
         }
-        return value.map((item) => RouteOption.fromJson(_asJsonMap(item))).toList(growable: false);
+        return value
+            .map((item) => RouteOption.fromJson(_asJsonMap(item)))
+            .toList(growable: false);
       },
     );
   }
@@ -71,14 +118,23 @@ class IncidentApiService {
     (value) => value?.toString() ?? '',
   );
 
-  Future<ApiResponseDto<T>> _request<T>(Future<Response<dynamic>> Function() action,T Function(Object? value) decodeData,) async {
+  Future<ApiResponseDto<T>> _request<T>(
+    Future<Response<dynamic>> Function() action,
+    T Function(Object? value) decodeData,
+  ) async {
     try {
       final response = await action();
       final body = response.data;
       if (body is! Map) {
-        throw const AuthFailure(AuthFailureCode.server,'La API devolvió una respuesta inválida.',);
+        throw const AuthFailure(
+          AuthFailureCode.server,
+          'La API devolvió una respuesta inválida.',
+        );
       }
-      return ApiResponseDto<T>.fromJson(Map<String, dynamic>.from(body),decodeData,);
+      return ApiResponseDto<T>.fromJson(
+        Map<String, dynamic>.from(body),
+        decodeData,
+      );
     } on AuthFailure {
       rethrow;
     } on FormatException catch (error) {
@@ -86,7 +142,10 @@ class IncidentApiService {
     } on DioException catch (error) {
       throw _mapDioFailure(error);
     } on Object {
-      throw const AuthFailure(AuthFailureCode.unknown,'Ocurrió un error inesperado en la red.',);
+      throw const AuthFailure(
+        AuthFailureCode.unknown,
+        'Ocurrió un error inesperado en la red.',
+      );
     }
   }
 
@@ -109,21 +168,34 @@ class IncidentApiService {
       if (serverMessage.isNotEmpty) {
         return AuthFailure(AuthFailureCode.unauthorized, serverMessage);
       }
-      return const AuthFailure(AuthFailureCode.unauthorized,'No tienes permisos para realizar esta acción.',);
+      return const AuthFailure(
+        AuthFailureCode.unauthorized,
+        'No tienes permisos para realizar esta acción.',
+      );
     }
 
     if (statusCode == 400 || statusCode == 422) {
-      return AuthFailure(AuthFailureCode.validation,serverMessage.isEmpty ? 'Revisa los datos ingresados.' : serverMessage,);
+      return AuthFailure(
+        AuthFailureCode.validation,
+        serverMessage.isEmpty ? 'Revisa los datos ingresados.' : serverMessage,
+      );
     }
 
     if (statusCode == 409) {
-      return AuthFailure(AuthFailureCode.validation,serverMessage.isEmpty? 'La incidencia ya no está disponible.': serverMessage,);
+      return AuthFailure(
+        AuthFailureCode.validation,
+        serverMessage.isEmpty
+            ? 'La incidencia ya no está disponible.'
+            : serverMessage,
+      );
     }
 
     if (serverMessage.isNotEmpty) {
       return AuthFailure(AuthFailureCode.server, serverMessage);
     }
-    return const AuthFailure(AuthFailureCode.server,'El servicio no está disponible en este momento.',
+    return const AuthFailure(
+      AuthFailureCode.server,
+      'El servicio no está disponible en este momento.',
     );
   }
 

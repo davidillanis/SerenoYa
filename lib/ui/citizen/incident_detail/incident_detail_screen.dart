@@ -2,6 +2,7 @@ import 'package:sereno_ya/ui/core/widgets/incident_timeline_card.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:sereno_ya/data/models/citizen/incident.dart';
+import 'package:sereno_ya/data/models/incident_contact_info.dart';
 import 'package:sereno_ya/ui/citizen/incident_detail/view_models/incident_detail_view_model.dart';
 import 'package:sereno_ya/ui/citizen/incident_tracking/widgets/incident_status_badge.dart';
 import 'package:sereno_ya/ui/core/theme/colors.dart';
@@ -78,7 +79,11 @@ class IncidentDetailScreen extends StatelessWidget {
         const SizedBox(height: 24),
         if (viewModel.canContactSereno) ...[
           _SerenoContactCard(
-            isLoading: viewModel.isCallingContact,
+            info: viewModel.serenoInfo,
+            isLoadingInfo: viewModel.isLoadingSerenoInfo,
+            isCalling: viewModel.isCallingContact,
+            errorMessage: viewModel.serenoInfoErrorMessage,
+            onRetry: () => viewModel.loadSerenoInfo(forceRefresh: true),
             onCall: () => _callSereno(context, viewModel),
           ),
           const SizedBox(height: 16),
@@ -130,9 +135,20 @@ class IncidentDetailScreen extends StatelessWidget {
 }
 
 class _SerenoContactCard extends StatelessWidget {
-  const _SerenoContactCard({required this.isLoading, required this.onCall});
+  const _SerenoContactCard({
+    required this.info,
+    required this.isLoadingInfo,
+    required this.isCalling,
+    required this.errorMessage,
+    required this.onRetry,
+    required this.onCall,
+  });
 
-  final bool isLoading;
+  final IncidentContactInfo? info;
+  final bool isLoadingInfo;
+  final bool isCalling;
+  final String? errorMessage;
+  final VoidCallback onRetry;
   final VoidCallback onCall;
 
   @override
@@ -147,50 +163,155 @@ class _SerenoContactCard extends StatelessWidget {
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(Icons.shield_outlined, color: context.appColors.primary),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  'Sereno asignado',
-                  style: textTheme.titleMedium?.copyWith(
-                    color: context.appColors.text,
-                    fontWeight: FontWeight.w700,
+        children: isLoadingInfo
+            ? [
+                const Center(
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(vertical: 24),
+                    child: CircularProgressIndicator(),
                   ),
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Comunícate directamente si necesitas coordinar la atención.',
-            style: textTheme.bodyMedium?.copyWith(
-              color: context.appColors.textSecondary,
-              height: 1.4,
-            ),
-          ),
-          const SizedBox(height: 16),
-          SizedBox(
-            width: double.infinity,
-            height: 48,
-            child: FilledButton.icon(
-              onPressed: isLoading ? null : onCall,
-              icon: isLoading
-                  ? const SizedBox.square(
-                      dimension: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Icon(Icons.call_outlined),
-              label: Text(
-                isLoading ? 'Obteniendo contacto...' : 'Llamar al sereno',
-              ),
-            ),
-          ),
-        ],
+                Center(
+                  child: Text(
+                    'Obteniendo información del sereno...',
+                    style: textTheme.bodyMedium?.copyWith(
+                      color: context.appColors.textSecondary,
+                    ),
+                  ),
+                ),
+              ]
+            : info == null
+            ? [
+                Row(
+                  children: [
+                    Icon(
+                      Icons.shield_outlined,
+                      color: context.appColors.textSecondary,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        'No se pudo cargar al sereno asignado',
+                        style: textTheme.titleMedium?.copyWith(
+                          color: context.appColors.text,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                if (errorMessage != null) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    errorMessage!,
+                    style: textTheme.bodyMedium?.copyWith(
+                      color: context.appColors.textSecondary,
+                      height: 1.4,
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 16),
+                OutlinedButton.icon(
+                  onPressed: onRetry,
+                  icon: const Icon(Icons.refresh),
+                  label: const Text('Reintentar'),
+                ),
+              ]
+            : [
+                Row(
+                  children: [
+                    _SerenoAvatar(info: info!),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Sereno asignado',
+                            style: textTheme.labelMedium?.copyWith(
+                              color: context.appColors.textTertiary,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            info!.fullName.isEmpty
+                                ? 'Nombre no disponible'
+                                : info!.fullName,
+                            style: textTheme.titleMedium?.copyWith(
+                              color: context.appColors.text,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          SelectableText(
+                            info!.phone.isEmpty
+                                ? 'Teléfono no disponible'
+                                : info!.phone,
+                            style: textTheme.bodyMedium?.copyWith(
+                              color: context.appColors.textSecondary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                SizedBox(
+                  width: double.infinity,
+                  height: 48,
+                  child: FilledButton.icon(
+                    onPressed: isCalling || info!.phone.isEmpty ? null : onCall,
+                    icon: isCalling
+                        ? const SizedBox.square(
+                            dimension: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.call_outlined),
+                    label: Text(
+                      isCalling ? 'Abriendo marcador...' : 'Llamar al sereno',
+                    ),
+                  ),
+                ),
+              ],
       ),
     );
+  }
+}
+
+class _SerenoAvatar extends StatelessWidget {
+  const _SerenoAvatar({required this.info});
+
+  final IncidentContactInfo info;
+
+  @override
+  Widget build(BuildContext context) {
+    final imageUrl = info.imageUrl;
+    return ClipOval(
+      child: SizedBox.square(
+        dimension: 52,
+        child: ColoredBox(
+          color: context.appColors.surfaceVariant,
+          child: imageUrl == null || imageUrl.trim().isEmpty
+              ? const _SerenoAvatarFallback()
+              : Image.network(
+                  imageUrl,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, _, _) => const _SerenoAvatarFallback(),
+                ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SerenoAvatarFallback extends StatelessWidget {
+  const _SerenoAvatarFallback();
+
+  @override
+  Widget build(BuildContext context) {
+    return Icon(Icons.person_outline, color: context.appColors.textSecondary);
   }
 }
 
