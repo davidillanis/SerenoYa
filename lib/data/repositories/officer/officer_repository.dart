@@ -92,6 +92,15 @@ class OfficerRepository {
         : Result.failure(result.failure!);
   }
 
+  /// Finaliza la asignación porque el incidente está fuera del rango de
+  /// atención (`POST /incident/outOfRange/{incidentId}`).
+  Future<Result<bool>> markOutOfRange({required String id}) async {
+    final result = await _run(() => _service.markOutOfRange(id: id));
+    return result.isSuccess
+        ? Result.success(true)
+        : Result.failure(result.failure!);
+  }
+
   Future<Result<T>> _run<T>(Future<ApiResponseDto<T>> Function() action) async {
     try {
       final response = await action();

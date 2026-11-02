@@ -4,6 +4,7 @@ enum IncidentStatus {
   accepted('ACCEPTED', 'Aceptado'),
   onSite('ON_SITE', 'En recorrido'),
   attended('ATTENDED', 'Completado'),
+  outOfRange('OUT_OF_RANGE', 'Fuera de rango'),
   cancelledByCitizen('CANCELLED_BY_CITIZEN', 'Cancelado por el ciudadano'),
   expired('EXPIRED', 'Expirado');
 

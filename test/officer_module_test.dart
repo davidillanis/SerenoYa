@@ -267,6 +267,7 @@ void main() {
       expect(item('ACCEPTED').status, OfficerIncidentStatus.enRoute);
       expect(item('ON_SITE').status, OfficerIncidentStatus.attending);
       expect(item('ATTENDED').status, OfficerIncidentStatus.attended);
+      expect(item('OUT_OF_RANGE').status, OfficerIncidentStatus.outOfRange);
       expect(item('NEW_STATUS').status, OfficerIncidentStatus.unknown);
       expect(item('REQUESTED').priority, IncidentPriority.unknown);
       for (final priority in ['HIGH', 'MEDIUM', 'LOW']) {
@@ -322,7 +323,7 @@ void main() {
   });
 
   test(
-    'servicio usa los contratos v2 de listado, detalle, mis casos y aceptación',
+    'servicio usa los contratos de listado, detalle y acciones del sereno',
     () async {
       final requests = <RequestOptions>[];
       final dio = Dio();
@@ -338,6 +339,8 @@ void main() {
                 'serenoId': 'test-officer',
                 'status': 'ACCEPTED',
               };
+            } else if (request.path.contains('/outOfRange/')) {
+              data = 'Incidente marcado fuera de rango';
             } else if (request.path == '/incident/incident-test/info-citizen') {
               data = {
                 'userId': 'citizen-user-test',
@@ -430,6 +433,12 @@ void main() {
       final onSite = await repository.markOnSite(id: 'incident-test');
       expect(onSite.isSuccess, isTrue);
       expect(requests.last.path, '/incident/onSite/incident-test');
+
+      final outOfRange = await repository.markOutOfRange(id: 'incident-test');
+      expect(outOfRange.isSuccess, isTrue);
+      expect(requests.last.path, '/incident/outOfRange/incident-test');
+      expect(requests.last.method, 'POST');
+      expect(requests.last.data, isNull);
     },
   );
 
@@ -509,25 +518,60 @@ void main() {
     model.dispose();
   });
 
-  test('detalle acepta pendientes con GPS y bloquea otros estados', () async {
-    final repository = FakeRepository();
-    final model = OfficerDetailViewModel(
-      repository,
-      'incident-test',
-      locationService: FakeLocationService(),
-    );
-    await Future<void>.delayed(Duration.zero);
-    expect(repository.citizenRequests, 0);
-    expect(model.citizen, isNull);
-    expect(await model.act(), isNull);
-    expect(model.item!.status, OfficerIncidentStatus.enRoute);
-    expect(model.citizen!.fullName, 'Ana Quispe');
-    expect(repository.citizenRequests, 1);
-    expect(model.acceptedHere, isTrue);
-    // La API v2 no expone llegada/atendido: no hay más acciones.
-    expect(await model.act(), isNotNull);
-    expect(repository.acceptCount, 1);
-    model.dispose();
+  test(
+    'detalle acepta pendientes y luego permite marcar fuera de rango',
+    () async {
+      final repository = FakeRepository();
+      final model = OfficerDetailViewModel(
+        repository,
+        'incident-test',
+        locationService: FakeLocationService(),
+      );
+      await Future<void>.delayed(Duration.zero);
+      expect(repository.citizenRequests, 0);
+      expect(model.citizen, isNull);
+      expect(await model.act(), isNull);
+      expect(model.item!.status, OfficerIncidentStatus.enRoute);
+      expect(model.citizen!.fullName, 'Ana Quispe');
+      expect(repository.citizenRequests, 1);
+      expect(model.acceptedHere, isTrue);
+      expect(await model.act(), isNotNull);
+      expect(repository.acceptCount, 1);
+      expect(await model.markOutOfRange(), isNull);
+      expect(repository.outOfRangeCount, 1);
+      expect(model.item!.status, OfficerIncidentStatus.outOfRange);
+      expect(await model.markOutOfRange(), isNotNull);
+      expect(repository.outOfRangeCount, 1);
+      model.dispose();
+    },
+  );
+
+  testWidgets('fuera de rango solo aparece en ACCEPTED y ON_SITE', (
+    tester,
+  ) async {
+    for (final status in ['REQUESTED', 'ACCEPTED', 'ON_SITE', 'ATTENDED']) {
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: buildAppTheme(Brightness.light, ThemeVariant.normal),
+          home: Scaffold(
+            body: SingleChildScrollView(
+              child: OfficerIncidentCard(
+                item: item(status),
+                onOpen: () {},
+                onOutOfRange: () {},
+              ),
+            ),
+          ),
+        ),
+      );
+      expect(
+        find.text('Marcar fuera de rango'),
+        status == 'ACCEPTED' || status == 'ON_SITE'
+            ? findsOneWidget
+            : findsNothing,
+        reason: status,
+      );
+    }
   });
 
   test(
@@ -644,7 +688,9 @@ void main() {
         expect(find.text('Mis incidentes en curso'), findsOneWidget);
         // La bolsa general aporta el pendiente con botón de aceptar; mis
         // incidentes en curso (ACCEPTED) no muestran ese botón.
-        expect(find.text('Aceptar y enviar respuesta'), findsOneWidget);
+        final acceptButton = find.text('Aceptar y enviar respuesta');
+        await tester.scrollUntilVisible(acceptButton, 200);
+        expect(acceptButton, findsOneWidget);
         expect(tester.takeException(), isNull);
         await tester.runAsync(
           () => _capture(boundary, 'inicio-${brightness.name}-$width'),
@@ -695,6 +741,7 @@ class FakeRepository extends OfficerRepository {
   bool distinctMineIds = false;
   bool detailFails = false;
   int acceptCount = 0;
+  int outOfRangeCount = 0;
   int citizenRequests = 0;
   bool citizenFails = false;
   OfficerIncidentStatus? lastMineStatus;
@@ -791,6 +838,13 @@ class FakeRepository extends OfficerRepository {
   }) async {
     acceptCount++;
     currentStatus = 'ACCEPTED';
+    return Result.success(true);
+  }
+
+  @override
+  Future<Result<bool>> markOutOfRange({required String id}) async {
+    outOfRangeCount++;
+    currentStatus = 'OUT_OF_RANGE';
     return Result.success(true);
   }
 }

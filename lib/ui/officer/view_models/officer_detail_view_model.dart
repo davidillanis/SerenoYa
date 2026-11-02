@@ -129,6 +129,29 @@ class OfficerDetailViewModel extends ChangeNotifier {
     return result.failure?.message;
   }
 
+  Future<String?> markOutOfRange() async {
+    if (_disposed || saving || loading || item == null) {
+      return 'Espera a que termine la operación.';
+    }
+    if (!item!.canMarkOutOfRange) {
+      return 'Solo los incidentes aceptados o en sitio pueden marcarse fuera de rango.';
+    }
+    saving = true;
+    _notify();
+    final result = await _repository.markOutOfRange(id: id);
+    if (_disposed) return null;
+    if (result.isSuccess) {
+      changed = true;
+      item = null;
+      citizen = null;
+      citizenError = null;
+      await _load();
+    }
+    saving = false;
+    _notify();
+    return result.failure?.message;
+  }
+
   void _notify() {
     if (!_disposed) notifyListeners();
   }

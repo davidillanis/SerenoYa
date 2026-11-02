@@ -6,6 +6,7 @@ enum OfficerIncidentStatus {
   enRoute(IncidentStatus.accepted),
   attending(IncidentStatus.onSite),
   attended(IncidentStatus.attended),
+  outOfRange(IncidentStatus.outOfRange),
   cancelled(IncidentStatus.cancelledByCitizen),
   expired(IncidentStatus.expired),
   unknown(null);
@@ -76,6 +77,10 @@ class OfficerIncident {
   /// La ruta comparada solo se obtiene en incidentes aceptados o en curso
   /// (ACCEPTED, ON_SITE); en pendientes no se consulta.
   bool get showsRoute =>
+      status == OfficerIncidentStatus.enRoute ||
+      status == OfficerIncidentStatus.attending;
+
+  bool get canMarkOutOfRange =>
       status == OfficerIncidentStatus.enRoute ||
       status == OfficerIncidentStatus.attending;
   String get priorityLabel => switch (priority) {

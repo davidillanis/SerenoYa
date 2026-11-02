@@ -119,6 +119,8 @@ class _OfficerHomeScreenState extends State<OfficerHomeScreen> {
     onOpen: () => _open(model, item),
     busy: model.isAccepting(item.id),
     onAccept: () => _accept(model, item),
+    outOfRangeBusy: model.isMarkingOutOfRange(item.id),
+    onOutOfRange: compact ? null : () => _markOutOfRange(model, item),
     compact: compact,
   );
   Future<void> _refresh(OfficerIncidentsViewModel model) async {
@@ -141,6 +143,48 @@ class _OfficerHomeScreenState extends State<OfficerHomeScreen> {
       ),
     );
     if (error == null) await _open(model, item);
+  }
+
+  Future<void> _markOutOfRange(
+    OfficerIncidentsViewModel model,
+    OfficerIncident item,
+  ) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Marcar fuera de rango'),
+        content: const Text(
+          'El incidente dejará de aparecer entre tus atenciones en curso. '
+          'Confirma únicamente si está fuera de tu rango de atención.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            style: FilledButton.styleFrom(
+              backgroundColor: context.appColors.error,
+              foregroundColor: context.appColors.textInverse,
+            ),
+            child: const Text('Confirmar'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    final error = await model.markOutOfRange(item);
+    if (!mounted) return;
+    final activeRoute = context.read<OfficerTrackingViewModel?>()?.activeRoute;
+    if (error == null && activeRoute?.item.id == item.id) {
+      activeRoute?.stopTracking();
+    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(error ?? 'Incidente marcado como fuera de rango.'),
+      ),
+    );
   }
 
   Future<void> _open(

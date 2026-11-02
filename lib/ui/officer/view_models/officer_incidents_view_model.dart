@@ -16,7 +16,9 @@ class OfficerIncidentsViewModel extends ChangeNotifier {
   final OfficerRepository repository;
   final CitizenLocationService _locationService;
   final Set<String> _accepting = {};
+  final Set<String> _markingOutOfRange = {};
   bool isAccepting(String id) => _accepting.contains(id);
+  bool isMarkingOutOfRange(String id) => _markingOutOfRange.contains(id);
 
   /// Acepta con la ubicación GPS actual (`POST /incident/accept`).
   Future<String?> acceptIncident(String id) async {
@@ -55,6 +57,29 @@ class OfficerIncidentsViewModel extends ChangeNotifier {
     _accepting.remove(id);
     _notify();
     return error;
+  }
+
+  Future<String?> markOutOfRange(OfficerIncident item) async {
+    if (_disposed || _session == null) return 'No hay sesión activa';
+    if (!item.canMarkOutOfRange) {
+      return 'Solo los incidentes aceptados o en sitio pueden marcarse fuera de rango.';
+    }
+    if (!_markingOutOfRange.add(item.id)) {
+      return 'La actualización está en curso.';
+    }
+    _notify();
+    final result = await repository.markOutOfRange(id: item.id);
+    if (_disposed) return result.failure?.message;
+    if (result.isSuccess) {
+      _accepted.remove(item.id);
+      _acceptedIds.remove(item.id);
+      _mine.removeWhere((incident) => incident.id == item.id);
+      _incidents.removeWhere((incident) => incident.id == item.id);
+      await synchronize(null);
+    }
+    _markingOutOfRange.remove(item.id);
+    _notify();
+    return result.failure?.message;
   }
 
   final AuthSession? _session;

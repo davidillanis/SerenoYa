@@ -7,6 +7,7 @@ import 'package:sereno_ya/ui/core/theme/colors.dart';
 import 'package:sereno_ya/ui/core/widgets/evidence_gallery.dart';
 import 'package:sereno_ya/ui/core/widgets/responsive_body.dart';
 import 'package:sereno_ya/ui/officer/view_models/officer_detail_view_model.dart';
+import 'package:sereno_ya/ui/officer/view_models/officer_tracking_view_model.dart';
 import 'package:sereno_ya/ui/officer/widgets/officer_incident_card.dart';
 
 // Detail uses the same quiet cards and type hierarchy as the existing citizen
@@ -89,6 +90,27 @@ class OfficerDetailScreen extends StatelessWidget {
                         icon: const Icon(Icons.near_me_outlined),
                         label: const Text('Ver en el mapa'),
                       ),
+                      if (item.canMarkOutOfRange) ...[
+                        const SizedBox(height: 8),
+                        OutlinedButton.icon(
+                          onPressed: model.saving
+                              ? null
+                              : () => _markOutOfRange(context, model),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: context.appColors.error,
+                            side: BorderSide(color: context.appColors.error),
+                          ),
+                          icon: model.saving
+                              ? const SizedBox.square(
+                                  dimension: 18,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : const Icon(Icons.location_off_outlined),
+                          label: const Text('Marcar fuera de rango'),
+                        ),
+                      ],
                       const SizedBox(height: 16),
                       _section(
                         context,
@@ -268,6 +290,48 @@ class OfficerDetailScreen extends StatelessWidget {
     if (!context.mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(error ?? 'Respuesta enviada correctamente.')),
+    );
+  }
+
+  Future<void> _markOutOfRange(
+    BuildContext context,
+    OfficerDetailViewModel model,
+  ) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Marcar fuera de rango'),
+        content: const Text(
+          'El incidente dejará de aparecer entre tus atenciones en curso. '
+          'Confirma únicamente si está fuera de tu rango de atención.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            style: FilledButton.styleFrom(
+              backgroundColor: context.appColors.error,
+              foregroundColor: context.appColors.textInverse,
+            ),
+            child: const Text('Confirmar'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !context.mounted) return;
+    final error = await model.markOutOfRange();
+    if (!context.mounted) return;
+    final activeRoute = context.read<OfficerTrackingViewModel?>()?.activeRoute;
+    if (error == null && activeRoute?.item.id == model.id) {
+      activeRoute?.stopTracking();
+    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(error ?? 'Incidente marcado como fuera de rango.'),
+      ),
     );
   }
 }

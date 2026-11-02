@@ -9,6 +9,7 @@ enum IncidentHistoryFilter {
   accepted,
   onSite,
   attended,
+  outOfRange,
   cancelled,
   expired,
 }
@@ -20,6 +21,7 @@ extension IncidentHistoryFilterPresentation on IncidentHistoryFilter {
     IncidentHistoryFilter.accepted => 'Aceptadas',
     IncidentHistoryFilter.onSite => 'En recorrido',
     IncidentHistoryFilter.attended => 'Atendidas',
+    IncidentHistoryFilter.outOfRange => 'Fuera de área',
     IncidentHistoryFilter.cancelled => 'Canceladas',
     IncidentHistoryFilter.expired => 'Expiradas',
   };
@@ -30,6 +32,7 @@ extension IncidentHistoryFilterPresentation on IncidentHistoryFilter {
     IncidentHistoryFilter.accepted => 'ACCEPTED',
     IncidentHistoryFilter.onSite => 'ON_SITE',
     IncidentHistoryFilter.attended => 'ATTENDED',
+    IncidentHistoryFilter.outOfRange => 'OUT_OF_RANGE',
     IncidentHistoryFilter.cancelled => 'CANCELLED_BY_CITIZEN',
     IncidentHistoryFilter.expired => 'EXPIRED',
   };

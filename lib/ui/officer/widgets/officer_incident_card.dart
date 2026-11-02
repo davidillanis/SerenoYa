@@ -17,13 +17,17 @@ class OfficerIncidentCard extends StatelessWidget {
     required this.item,
     required this.onOpen,
     this.onAccept,
+    this.onOutOfRange,
     this.busy = false,
+    this.outOfRangeBusy = false,
     this.compact = false,
   });
   final OfficerIncident item;
   final VoidCallback onOpen;
   final VoidCallback? onAccept;
+  final VoidCallback? onOutOfRange;
   final bool busy;
+  final bool outOfRangeBusy;
 
   /// En el historial solo se muestra la información mínima indispensable,
   /// sin acceso al detalle ni al mapa.
@@ -115,6 +119,26 @@ class OfficerIncidentCard extends StatelessWidget {
                   label: const Text('Ver en el mapa'),
                 ),
               ),
+            if (!compact && onOutOfRange != null && item.canMarkOutOfRange) ...[
+              const SizedBox(height: 8),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: outOfRangeBusy ? null : onOutOfRange,
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: context.appColors.error,
+                    side: BorderSide(color: context.appColors.error),
+                  ),
+                  icon: outOfRangeBusy
+                      ? const SizedBox.square(
+                          dimension: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.location_off_outlined),
+                  label: const Text('Marcar fuera de rango'),
+                ),
+              ),
+            ],
           ],
         ),
       ),

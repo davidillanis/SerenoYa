@@ -118,6 +118,12 @@ class IncidentApiService {
     (value) => value?.toString() ?? '',
   );
 
+  Future<ApiResponseDto<String>> markOutOfRange({required String id}) =>
+      _request(
+        () => _dio.post<dynamic>('/incident/outOfRange/$id'),
+        (value) => value?.toString() ?? '',
+      );
+
   Future<ApiResponseDto<T>> _request<T>(
     Future<Response<dynamic>> Function() action,
     T Function(Object? value) decodeData,

@@ -12,6 +12,11 @@ La preparación, firma, prueba y publicación de Android se documentan en
 flutter pub get
 flutter run --dart-define-from-file=.env
 ```
+## Ejecución en Desarrollo el codido de produccion
+```powershell
+flutter pub get
+flutter run --dart-define-from-file=.env --dart-define=PREVIEW_PRODUCTION_AUTH=true
+```
 
 Configura las variables en `.env`, en la raíz del proyecto. Para una nueva copia
 del repositorio, copia `.env.example` a `.env` y sustituye sus valores:

@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sereno_ya/data/models/citizen/incident_category.dart';
 import 'package:sereno_ya/data/repositories/citizen/incident_repository.dart';
@@ -9,16 +10,20 @@ import 'package:sereno_ya/models/auth/auth_session.dart';
 import 'package:sereno_ya/models/auth/authenticated_user.dart';
 import 'package:sereno_ya/models/auth/user_role.dart';
 import 'package:sereno_ya/ui/citizen/incident_history/view_models/incident_history_view_model.dart';
+import 'package:sereno_ya/ui/citizen/incident_tracking/widgets/incident_status_badge.dart';
+import 'package:sereno_ya/ui/core/theme/mapped_palette.dart';
+import 'package:sereno_ya/ui/core/theme/theme.dart';
 
 void main() {
   test(
-    'Todas conserva los seis estados al paginar y permite filtrarlos',
+    'Todas conserva los siete estados al paginar y permite filtrarlos',
     () async {
       final statuses = [
         'REQUESTED',
         'ACCEPTED',
         'ON_SITE',
         'ATTENDED',
+        'OUT_OF_RANGE',
         'CANCELLED_BY_CITIZEN',
         'EXPIRED',
       ];
@@ -47,8 +52,8 @@ void main() {
                     ],
                     'page': page,
                     'size': 15,
-                    'totalElements': status == null ? 6 : 1,
-                    'totalPages': status == null ? 6 : 1,
+                    'totalElements': status == null ? 7 : 1,
+                    'totalPages': status == null ? 7 : 1,
                   },
                 },
               ),
@@ -81,7 +86,7 @@ void main() {
       while (model.hasMore) {
         await model.loadMore();
       }
-      expect(requestedPages, [0, 1, 2, 3, 4, 5]);
+      expect(requestedPages, [0, 1, 2, 3, 4, 5, 6]);
       expect(model.incidents.map((item) => item.status), statuses);
       expect(requestedStatuses, everyElement(isNull));
       for (final filter in IncidentHistoryFilter.values.skip(1)) {
@@ -91,6 +96,18 @@ void main() {
       }
     },
   );
+
+  testWidgets('presenta OUT_OF_RANGE como Fuera de área', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: buildAppTheme(Brightness.light, ThemeVariant.normal),
+        home: const Scaffold(body: IncidentStatusBadge(status: 'OUT_OF_RANGE')),
+      ),
+    );
+
+    expect(find.text('Fuera de área'), findsOneWidget);
+    expect(find.byIcon(Icons.location_off_outlined), findsOneWidget);
+  });
 }
 
 class _LocalDataSource implements IncidentLocalDataSource {

@@ -136,7 +136,8 @@ class IncidentsApiService {
 
   /// GET /incidents/me/list
   /// Contrato backend: `fields` requerido, `status` opcional único
-  /// (REQUESTED, ACCEPTED, ON_SITE, ATTENDED, CANCELLED_BY_CITIZEN, EXPIRED)
+  /// (REQUESTED, ACCEPTED, ON_SITE, ATTENDED, OUT_OF_RANGE,
+  /// CANCELLED_BY_CITIZEN, EXPIRED)
   /// y paginación `page,size,sortBy,direction` (PageRequestDTO).
   Future<ApiResponseDto<PageResponse<Incident>>> listMyIncidents({
     String? status,

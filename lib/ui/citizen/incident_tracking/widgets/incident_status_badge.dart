@@ -56,6 +56,11 @@ class IncidentStatusBadge extends StatelessWidget {
         'Atendida',
         Icons.check_circle_outline,
       ),
+      'OUT_OF_RANGE' => _StatusPresentation(
+        context.appColors.warning,
+        'Fuera de área',
+        Icons.location_off_outlined,
+      ),
       'CANCELLED_BY_CITIZEN' => _StatusPresentation(
         context.appColors.error,
         'Cancelada',
