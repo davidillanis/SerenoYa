@@ -9,6 +9,7 @@ import 'package:sereno_ya/data/services/maps/nearby_police_service.dart';
 import 'package:sereno_ya/ui/citizen/home/emergency_numbers_screen.dart';
 import 'package:sereno_ya/ui/citizen/home/nearby_police_stations_screen.dart';
 import 'package:sereno_ya/ui/citizen/home/safety_tips_screen.dart';
+import 'package:sereno_ya/ui/citizen/home/view_models/quick_sos_view_model.dart';
 
 class CitizenHomeTab extends StatefulWidget {
   const CitizenHomeTab({super.key, this.nearbyPoliceService});
@@ -22,6 +23,86 @@ class CitizenHomeTab extends StatefulWidget {
 class _CitizenHomeTabState extends State<CitizenHomeTab> {
   void _openPage(Widget page) =>
       Navigator.of(context).push<void>(MaterialPageRoute(builder: (_) => page));
+
+  Future<void> _openSos() async {
+    final sos = context.read<QuickSosViewModel>();
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => ChangeNotifierProvider.value(
+        value: sos,
+        child: Consumer<QuickSosViewModel>(
+          builder: (context, model, _) => PopScope(
+            canPop: !model.isSubmitting,
+            child: AlertDialog(
+              title: const Text('Alerta SOS'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Puedes completar un reporte o enviar una alerta inmediata '
+                    'con una imagen referencial, no una foto del incidente.',
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    'Si no se obtiene tu GPS, se enviará un punto de referencia '
+                    'en San Jerónimo, marcado como ubicación no verificada.',
+                    style: Theme.of(context).textTheme.bodySmall
+                        ?.copyWith(color: context.appColors.textSecondary),
+                  ),
+                  if (model.isSubmitting) ...[
+                    const SizedBox(height: 16),
+                    const LinearProgressIndicator(),
+                    const SizedBox(height: 8),
+                    const Text('Enviando alerta...'),
+                  ],
+                  if (model.errorMessage != null) ...[
+                    const SizedBox(height: 12),
+                    Text(
+                      model.errorMessage!,
+                      style: TextStyle(color: context.appColors.error),
+                    ),
+                  ],
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: model.isSubmitting
+                      ? null
+                      : () {
+                          Navigator.of(dialogContext).pop();
+                          if (mounted)
+                            this.context.go('${RouteNames.citizen}/report');
+                        },
+                  child: const Text('Configurar'),
+                ),
+                FilledButton(
+                  onPressed: model.isSubmitting
+                      ? null
+                      : () async {
+                          final sent = await model.submit();
+                          if (!dialogContext.mounted || !sent) return;
+                          Navigator.of(dialogContext).pop();
+                          if (!mounted) return;
+                          ScaffoldMessenger.of(this.context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                model.usedFallbackLocation
+                                    ? 'SOS enviado con ubicación no verificada.'
+                                    : 'SOS enviado correctamente.',
+                              ),
+                            ),
+                          );
+                        },
+                  child: const Text('Crear incidencia'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -114,7 +195,7 @@ class _CitizenHomeTabState extends State<CitizenHomeTab> {
               child: Column(
                 children: [
                   GestureDetector(
-                    onTap: () => context.go('${RouteNames.citizen}/report'),
+                    onTap: _openSos,
                     child: Container(
                       width: 200,
                       height: 200,

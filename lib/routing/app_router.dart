@@ -31,6 +31,7 @@ import 'package:sereno_ya/ui/profile/view_models/profile_notifications_view_mode
 import 'package:sereno_ya/ui/profile/view_models/profile_view_model.dart';
 import 'package:sereno_ya/data/repositories/citizen/incident_repository.dart';
 import 'package:sereno_ya/ui/citizen/citizen_home_screen.dart';
+import 'package:sereno_ya/ui/citizen/home/view_models/quick_sos_view_model.dart';
 import 'package:sereno_ya/ui/citizen/report_incident/report_incident_screen.dart';
 import 'package:sereno_ya/ui/citizen/report_incident/view_models/report_incident_view_model.dart';
 import 'package:sereno_ya/ui/citizen/incident_tracking/view_models/incident_tracking_view_model.dart';
@@ -191,6 +192,9 @@ GoRouter createAppRouter({
           incidentRepository.getCategories();
           return MultiProvider(
             providers: [
+              ChangeNotifierProvider(
+                create: (_) => QuickSosViewModel(incidentRepository),
+              ),
               ChangeNotifierProvider(
                 create: (ctx) => IncidentTrackingViewModel(
                   repository: incidentRepository,
