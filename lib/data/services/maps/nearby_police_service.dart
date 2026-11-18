@@ -17,10 +17,25 @@ class NearbyPoliceService {
       return false;
     }
   }
+
+  Future<bool> openDirections(String destination) async {
+    final uri = policeDirectionsUri(destination);
+    try {
+      return await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } catch (_) {
+      return false;
+    }
+  }
 }
 
 Uri nearbyPoliceUri(double latitude, double longitude) => Uri.https(
   'www.google.com',
   '/maps/search/',
   {'api': '1', 'query': 'comisarías cerca de $latitude,$longitude'},
+);
+
+Uri policeDirectionsUri(String destination) => Uri.https(
+  'www.google.com',
+  '/maps/dir/',
+  {'api': '1', 'destination': destination},
 );

@@ -182,12 +182,6 @@ class OfficerDetailScreen extends StatelessWidget {
 
   Widget _citizenSection(BuildContext context, OfficerDetailViewModel model) {
     final citizen = model.citizen;
-    final imageUrl = citizen?.imageUrl?.trim();
-    final imageUri = imageUrl == null ? null : Uri.tryParse(imageUrl);
-    final hasImage =
-        imageUri != null &&
-        (imageUri.scheme == 'https' || imageUri.scheme == 'http') &&
-        imageUri.host.isNotEmpty;
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
       child: Padding(
@@ -220,40 +214,10 @@ class OfficerDetailScreen extends StatelessWidget {
               ),
             ] else if (citizen == null)
               const Text('Información del ciudadano no disponible.')
-            else ...[
-              Row(
-                children: [
-                  CircleAvatar(
-                    radius: 28,
-                    child: hasImage
-                        ? ClipOval(
-                            child: Image.network(
-                              imageUrl!,
-                              width: 56,
-                              height: 56,
-                              fit: BoxFit.cover,
-                              errorBuilder: (_, _, _) =>
-                                  const Icon(Icons.person_outline),
-                            ),
-                          )
-                        : const Icon(Icons.person_outline),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      citizen.fullName.isEmpty
-                          ? 'Nombre no disponible'
-                          : citizen.fullName,
-                      style: Theme.of(context).textTheme.titleMedium,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
+            else
               SelectableText(
                 'Teléfono: ${citizen.phone.trim().isNotEmpty ? citizen.phone.trim() : 'No disponible'}',
               ),
-            ],
           ],
         ),
       ),

@@ -136,6 +136,8 @@ class ActionCard extends StatelessWidget {
     required this.subtitle,
     required this.label,
     this.icon = Icons.phone_in_talk,
+    this.trailingIcon = Icons.chevron_right,
+    this.loading = false,
     this.onTap,
   });
 
@@ -143,64 +145,85 @@ class ActionCard extends StatelessWidget {
   final String subtitle;
   final String label;
   final IconData icon;
+  final IconData trailingIcon;
+  final bool loading;
   final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: context.appColors.card,
-      borderRadius: BorderRadius.circular(16),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: context.appColors.primary,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(icon, color: context.appColors.textInverse),
+    return Semantics(
+      button: true,
+      enabled: onTap != null,
+      liveRegion: loading,
+      label: '$title. $subtitle',
+      child: ExcludeSemantics(
+        child: Material(
+          color: context.appColors.card,
+          borderRadius: BorderRadius.circular(16),
+          clipBehavior: Clip.antiAlias,
+          child: InkWell(
+            onTap: onTap,
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: context.appColors.primary,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(icon, color: context.appColors.textInverse),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          label,
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                            color: context.appColors.textSecondary,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          title,
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                            color: context.appColors.text,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          subtitle,
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: context.appColors.textSecondary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  SizedBox.square(
+                    dimension: 24,
+                    child: loading
+                        ? CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: context.appColors.primary,
+                          )
+                        : Icon(
+                            trailingIcon,
+                            color: context.appColors.textSecondary,
+                          ),
+                  ),
+                ],
               ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      label,
-                      style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
-                        color: context.appColors.textSecondary,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      title,
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                        color: context.appColors.text,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      subtitle,
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: context.appColors.textSecondary,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 8),
-              Icon(Icons.chevron_right, color: context.appColors.textSecondary),
-            ],
+            ),
           ),
         ),
       ),

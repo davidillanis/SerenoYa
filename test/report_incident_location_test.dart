@@ -54,6 +54,10 @@ void main() {
       await tester.pump();
       expect(find.text('DNI'), findsNothing);
       expect(find.text('Completa tus datos'), findsNothing);
+      expect(find.text('SOS rápido · sin imágenes'), findsOneWidget);
+      await tester.tap(find.text('Configurar SOS'));
+      await tester.pump();
+      await tester.pump();
       expect(service.calls, 1);
       expect(
         find.text('Obteniendo tu ubicación mientras completas el reporte...'),
@@ -149,10 +153,116 @@ void main() {
     expect(update, {'phone': '+51987654321'});
     expect(find.byType(AlertDialog), findsNothing);
     expect(profile.hasReportContact, isTrue);
+    expect(find.text('Configurar SOS'), findsOneWidget);
+    expect(location.calls, 0);
+    await tester.tap(find.text('Configurar SOS'));
+    await tester.pumpAndSettle();
     expect(location.calls, 1);
     expect(find.text('Ajustar ubicación en el mapa'), findsOneWidget);
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  testWidgets('SOS rápido confirma y envía sin imágenes', (tester) async {
+    final repository = _Repository(
+      categories: [
+        IncidentCategory(id: 'sos', name: 'Emergencia', description: ''),
+      ],
+    );
+    final location = _LocationService()
+      ..result.complete(const LatLng(-13.65, -73.36));
+    final model = ReportIncidentViewModel(
+      repository,
+      _Storage(),
+      locationService: location,
+    );
+    final profile = _profile(phone: '987654321');
+    addTearDown(model.dispose);
+    addTearDown(profile.dispose);
+    await tester.pumpWidget(
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider.value(value: model),
+          ChangeNotifierProvider.value(value: profile),
+        ],
+        child: MaterialApp(
+          theme: buildAppTheme(Brightness.light, ThemeVariant.normal),
+          home: const ReportIncidentScreen(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('SOS rápido · sin imágenes'));
+    await tester.pump();
+    expect(repository.request, isNull);
+    expect(location.calls, 0);
+    await tester.tap(find.text('Enviar alerta'));
+    await tester.pumpAndSettle();
+    expect(repository.request?.categoryName, 'Emergencia');
+    expect(repository.request?.evidences, isEmpty);
+    expect(repository.request?.latitude, -13.65);
+    expect(location.calls, 2);
+  });
+
+  test('selecciona la categoría recomendada por defecto', () async {
+    final model = ReportIncidentViewModel(
+      _Repository(
+        categories: [
+          IncidentCategory(id: 'other', name: 'Robo', description: ''),
+          IncidentCategory(
+            id: 'recommended',
+            name: 'Recomendado',
+            description: '',
+          ),
+        ],
+      ),
+      _Storage(),
+    );
+    addTearDown(model.dispose);
+    await Future<void>.delayed(Duration.zero);
+    expect(model.selectedCategory?.name, 'Recomendado');
+  });
+
+  testWidgets('no envía SOS rápido si falta la categoría de emergencia', (
+    tester,
+  ) async {
+    final repository = _Repository(
+      categories: [
+        IncidentCategory(id: 'other', name: 'Robo', description: ''),
+      ],
+    );
+    final location = _LocationService();
+    final model = ReportIncidentViewModel(
+      repository,
+      _Storage(),
+      locationService: location,
+    );
+    final profile = _profile(phone: '987654321');
+    addTearDown(model.dispose);
+    addTearDown(profile.dispose);
+    await tester.pumpWidget(
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider.value(value: model),
+          ChangeNotifierProvider.value(value: profile),
+        ],
+        child: MaterialApp(
+          theme: buildAppTheme(Brightness.light, ThemeVariant.normal),
+          home: const ReportIncidentScreen(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('SOS rápido · sin imágenes'));
+    await tester.pump();
+    await tester.tap(find.text('Enviar alerta'));
+    await tester.pump();
+    expect(repository.request, isNull);
+    expect(location.calls, 0);
+    expect(
+      find.textContaining('No hay una categoría de emergencia'),
+      findsOneWidget,
+    );
   });
 
   test('envía el punto elegido en lugar del GPS inicial', () async {
@@ -357,6 +467,8 @@ class _LocationService extends CitizenLocationService {
 }
 
 class _Repository implements IncidentRepository {
+  _Repository({this.categories = const []});
+  final List<IncidentCategory> categories;
   IncidentCreateRequest? request;
   @override
   Future<Result<Incident>> createIncident(IncidentCreateRequest request) async {
@@ -366,7 +478,7 @@ class _Repository implements IncidentRepository {
 
   @override
   Future<Result<List<IncidentCategory>>> getCategories() async =>
-      Result.success([]);
+      Result.success(categories);
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);

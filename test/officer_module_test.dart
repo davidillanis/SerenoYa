@@ -593,9 +593,7 @@ void main() {
     },
   );
 
-  testWidgets('detalle oculta datos antes de aceptar y los muestra después', (
-    tester,
-  ) async {
+  testWidgets('detalle muestra solo el teléfono tras aceptar', (tester) async {
     final repository = FakeRepository();
     final model = OfficerDetailViewModel(
       repository,
@@ -620,7 +618,8 @@ void main() {
     expect(find.text('Ana Quispe'), findsNothing);
     await model.act();
     await tester.pumpAndSettle();
-    expect(find.text('Ana Quispe'), findsOneWidget);
+    expect(find.text('Ana Quispe'), findsNothing);
+    expect(find.byType(CircleAvatar), findsNothing);
     expect(find.text('Teléfono: 987654321'), findsOneWidget);
     expect(find.text('Llamar'), findsOneWidget);
   });

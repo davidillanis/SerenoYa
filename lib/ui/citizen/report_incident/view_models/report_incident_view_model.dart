@@ -204,6 +204,12 @@ class ReportIncidentViewModel extends ChangeNotifier {
     final result = await _repository.getCategories();
     if (result.isSuccess && result.data != null) {
       _categories = result.data!;
+      if (_selectedCategory == null && _categories.isNotEmpty) {
+        _selectedCategory = _categories.firstWhere(
+          (category) => category.name.toLowerCase() == 'recomendado',
+          orElse: () => _categories.first,
+        );
+      }
       _errorMessage = null;
     } else {
       _errorMessage = result.failure?.message ?? 'Error al cargar categorías';

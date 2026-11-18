@@ -5,9 +5,9 @@ import 'package:provider/provider.dart';
 import 'package:sereno_ya/routing/route_names.dart';
 import 'package:sereno_ya/ui/auth/view_models/session_view_model.dart';
 import 'package:sereno_ya/ui/citizen/citizen_home_screen.dart'; // Para reutilizar ActionCard temporalmente
-import 'package:sereno_ya/data/services/maps/citizen_location_service.dart';
 import 'package:sereno_ya/data/services/maps/nearby_police_service.dart';
 import 'package:sereno_ya/ui/citizen/home/emergency_numbers_screen.dart';
+import 'package:sereno_ya/ui/citizen/home/nearby_police_stations_screen.dart';
 import 'package:sereno_ya/ui/citizen/home/safety_tips_screen.dart';
 
 class CitizenHomeTab extends StatefulWidget {
@@ -20,32 +20,6 @@ class CitizenHomeTab extends StatefulWidget {
 }
 
 class _CitizenHomeTabState extends State<CitizenHomeTab> {
-  bool _openingMaps = false;
-
-  Future<void> _openNearby() async {
-    if (_openingMaps) return;
-    setState(() => _openingMaps = true);
-    String? error;
-    try {
-      final opened = await (widget.nearbyPoliceService ?? NearbyPoliceService())
-          .openNearby();
-      if (!opened) {
-        error = 'No se pudo abrir Google Maps. Revisa si tienes una aplicación de mapas disponible.';
-      }
-    } on LocationFailure catch (failure) {
-      error = failure.message;
-    } catch (_) {
-      error = 'No se pudo buscar comisarías cercanas. Vuelve a intentar.';
-    }
-    if (!mounted) return;
-    setState(() => _openingMaps = false);
-    if (error != null) {
-      final messenger = ScaffoldMessenger.of(context);
-      messenger.removeCurrentSnackBar();
-      messenger.showSnackBar(SnackBar(content: Text(error)));
-    }
-  }
-
   void _openPage(Widget page) =>
       Navigator.of(context).push<void>(MaterialPageRoute(builder: (_) => page));
 
@@ -102,7 +76,7 @@ class _CitizenHomeTabState extends State<CitizenHomeTab> {
             ),
             const SizedBox(height: 12),
 
-            // GPS Chip
+            // Location Chip
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
@@ -112,18 +86,22 @@ class _CitizenHomeTabState extends State<CitizenHomeTab> {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Container(
-                    width: 8,
-                    height: 8,
-                    decoration: BoxDecoration(
-                      color: context.appColors.info,
-                      shape: BoxShape.circle,
-                    ),
+                  Icon(
+                    Icons.location_on_outlined,
+                    size: 16,
+                    color: context.appColors.info,
                   ),
                   const SizedBox(width: 8),
-                  const Text(
-                    'GPS Activo:',
-                    style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
+                  const Flexible(
+                    child: Text(
+                      'Usaremos tu ubicación',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 12,
+                      ),
+                    ),
                   ),
                 ],
               ),
@@ -219,17 +197,19 @@ class _CitizenHomeTabState extends State<CitizenHomeTab> {
 
             ActionCard(
               title: 'Comisarías cercanas',
-              subtitle: _openingMaps
-                  ? 'Buscando tu ubicación…'
-                  : 'Buscar en Google Maps',
-              label: 'CERCA DE TI',
+              subtitle: 'Ver direcciones y rutas en Maps',
+              label: 'DIRECTORIO LOCAL',
               icon: Icons.local_police_outlined,
-              onTap: _openingMaps ? null : _openNearby,
+              onTap: () => _openPage(
+                NearbyPoliceStationsScreen(
+                  nearbyPoliceService: widget.nearbyPoliceService,
+                ),
+              ),
             ),
             const SizedBox(height: 12),
             ActionCard(
               title: 'Números de emergencia',
-              subtitle: 'Policía · Bomberos · SAMU',
+              subtitle: 'Contactos locales de San Jerónimo',
               label: 'LLAMADAS',
               icon: Icons.phone_outlined,
               onTap: () => _openPage(const EmergencyNumbersScreen()),
