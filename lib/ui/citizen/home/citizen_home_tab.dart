@@ -74,7 +74,7 @@ class _CitizenHomeTabState extends State<CitizenHomeTab> {
                           if (mounted)
                             this.context.go('${RouteNames.citizen}/report');
                         },
-                  child: const Text('Configurar'),
+                  child: const Text('Reporte Detallado'),
                 ),
                 FilledButton(
                   onPressed: model.isSubmitting
@@ -94,7 +94,7 @@ class _CitizenHomeTabState extends State<CitizenHomeTab> {
                             ),
                           );
                         },
-                  child: const Text('Crear incidencia'),
+                  child: const Text('Alerta Rápida'),
                 ),
               ],
             ),

@@ -425,7 +425,7 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
                         gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
                           maxCrossAxisExtent: 280,
                           mainAxisExtent:
-                              100 + MediaQuery.textScalerOf(context).scale(56),
+                              72 + MediaQuery.textScalerOf(context).scale(84),
                           crossAxisSpacing: 12,
                           mainAxisSpacing: 12,
                         ),
@@ -473,7 +473,7 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
                                               ? context.appColors.textInverse
                                               : context.appColors.text,
                                         ),
-                                        maxLines: 1,
+                                        maxLines: 2,
                                         overflow: TextOverflow.ellipsis,
                                       ),
                                       const SizedBox(height: 4),
@@ -487,7 +487,7 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
                                               : context.appColors.textSecondary,
                                           fontWeight: FontWeight.w600,
                                         ),
-                                        maxLines: 1,
+                                        maxLines: 2,
                                         overflow: TextOverflow.ellipsis,
                                       ),
                                     ],
