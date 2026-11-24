@@ -21,6 +21,8 @@ class AdminCategoriesViewModel extends ChangeNotifier {
   String? errorMessage;
   String? updatingCategoryId;
   String? updateError;
+  String? deletingCategoryId;
+  String? deleteError;
   int totalElements = 0;
 
   bool _disposed = false;
@@ -60,7 +62,9 @@ class AdminCategoriesViewModel extends ChangeNotifier {
     String categoryId,
     AdminCategoryUpdateRequest request,
   ) async {
-    if (_disposed || updatingCategoryId != null) return false;
+    if (_disposed || updatingCategoryId != null || deletingCategoryId != null) {
+      return false;
+    }
     updatingCategoryId = categoryId;
     updateError = null;
     _notify();
@@ -86,6 +90,41 @@ class AdminCategoriesViewModel extends ChangeNotifier {
     } finally {
       if (!_disposed) {
         updatingCategoryId = null;
+        _notify();
+      }
+    }
+  }
+
+  Future<bool> deleteCategory(String categoryId) async {
+    if (_disposed || deletingCategoryId != null || updatingCategoryId != null) {
+      return false;
+    }
+    deletingCategoryId = categoryId;
+    deleteError = null;
+    _notify();
+    try {
+      final response = await _apiService.deleteCategory(categoryId);
+      if (_disposed) return false;
+      if (!response.isSuccess) {
+        deleteError = response.errorMessage;
+        return false;
+      }
+      final previousLength = _categories.length;
+      _categories.removeWhere((category) => category.id == categoryId);
+      if (_categories.length != previousLength && totalElements > 0) {
+        totalElements--;
+      }
+      await _incidentRepository.invalidateCategoriesCache();
+      return true;
+    } on AuthFailure catch (failure) {
+      if (!_disposed) deleteError = failure.message;
+      return false;
+    } catch (_) {
+      if (!_disposed) deleteError = 'No se pudo eliminar la categoría.';
+      return false;
+    } finally {
+      if (!_disposed) {
+        deletingCategoryId = null;
         _notify();
       }
     }

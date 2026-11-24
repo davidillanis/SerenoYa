@@ -203,7 +203,9 @@ class ReportIncidentViewModel extends ChangeNotifier {
     _setLoading(true);
     final result = await _repository.getCategories();
     if (result.isSuccess && result.data != null) {
-      _categories = result.data!;
+      _categories = result.data!
+          .where((category) => category.enabled)
+          .toList(growable: false);
       if (_selectedCategory == null && _categories.isNotEmpty) {
         _selectedCategory = _categories.firstWhere(
           (category) => category.name.toLowerCase() == 'recomendado',

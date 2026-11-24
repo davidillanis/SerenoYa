@@ -55,6 +55,24 @@ void main() {
 
     expect(model.selectedCategory, same(recommended));
   });
+
+  test('excluye las categorías inactivas del reporte', () async {
+    final repository = _CategoryRepository();
+    final model = ReportIncidentViewModel(repository, StorageService());
+    addTearDown(model.dispose);
+    final inactiveRecommended = IncidentCategory(
+      id: 'inactive',
+      name: 'Recomendado',
+      description: '',
+      enabled: false,
+    );
+
+    repository.complete([inactiveRecommended, first]);
+    await repository.loaded;
+
+    expect(model.categories, [first]);
+    expect(model.selectedCategory, same(first));
+  });
 }
 
 class _CategoryRepository implements IncidentRepository {

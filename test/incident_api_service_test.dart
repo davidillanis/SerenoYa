@@ -139,6 +139,43 @@ void main() {
     );
     expect(response.data?.evidence?.fileUrl, contains('incident.jpg'));
   });
+
+  test('envía el filtro opcional de estado al listar categorías', () async {
+    final requests = <RequestOptions>[];
+    final service = _serviceThatResponds(
+      onRequest: requests.add,
+      data: {
+        'content': <Object?>[],
+        'page': 0,
+        'size': 100,
+        'totalElements': 0,
+        'totalPages': 0,
+      },
+    );
+
+    await service.getCategories(enabled: true);
+    await service.getCategories(enabled: false);
+    await service.getCategories();
+
+    expect(requests[0].queryParameters['enabled'], isTrue);
+    expect(requests[1].queryParameters['enabled'], isFalse);
+    expect(requests[2].queryParameters, isNot(contains('enabled')));
+  });
+
+  test('elimina una categoría usando el endpoint administrativo', () async {
+    late RequestOptions capturedRequest;
+    final service = _serviceThatResponds(
+      onRequest: (request) => capturedRequest = request,
+      data: 'Categoría eliminada',
+    );
+
+    final response = await service.deleteCategory('category-1');
+
+    expect(capturedRequest.method, 'DELETE');
+    expect(capturedRequest.path, '/incidents/categories/delete/category-1');
+    expect(response.isSuccess, isTrue);
+    expect(response.data, 'Categoría eliminada');
+  });
 }
 
 IncidentsApiService _serviceThatResponds({

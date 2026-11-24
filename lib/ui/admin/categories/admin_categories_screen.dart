@@ -72,7 +72,9 @@ class AdminCategoriesScreen extends StatelessWidget {
           return _CategoryItem(
             category: category,
             updating: viewModel.updatingCategoryId == category.id,
+            deleting: viewModel.deletingCategoryId == category.id,
             onEdit: () => _editCategory(context, viewModel, category),
+            onDelete: () => _deleteCategory(context, viewModel, category),
           );
         },
       ),
@@ -98,6 +100,57 @@ class AdminCategoriesScreen extends StatelessWidget {
           updated
               ? 'La categoría se actualizó correctamente.'
               : viewModel.updateError ?? 'No se pudo actualizar la categoría.',
+        ),
+      ),
+    );
+  }
+
+  Future<void> _deleteCategory(
+    BuildContext context,
+    AdminCategoriesViewModel viewModel,
+    IncidentCategory category,
+  ) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        icon: Icon(Icons.delete_outline, color: dialogContext.appColors.error),
+        title: const Text('Eliminar categoría'),
+        content: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 420),
+          child: Text(
+            '¿Deseas eliminar “${category.name}”? Esta acción no se puede deshacer.',
+            textAlign: TextAlign.center,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: dialogContext.appColors.error,
+              foregroundColor: dialogContext.appColors.textInverse,
+            ),
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Eliminar'),
+          ),
+        ],
+      ),
+    );
+    if (!context.mounted || confirmed != true) return;
+
+    final deleted = await viewModel.deleteCategory(category.id);
+    if (!context.mounted) return;
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.hideCurrentSnackBar();
+    messenger.showSnackBar(
+      SnackBar(
+        backgroundColor: deleted ? null : context.appColors.error,
+        content: Text(
+          deleted
+              ? 'La categoría se eliminó correctamente.'
+              : viewModel.deleteError ?? 'No se pudo eliminar la categoría.',
         ),
       ),
     );
@@ -139,12 +192,16 @@ class _CategoryItem extends StatelessWidget {
   const _CategoryItem({
     required this.category,
     required this.updating,
+    required this.deleting,
     required this.onEdit,
+    required this.onDelete,
   });
 
   final IncidentCategory category;
   final bool updating;
+  final bool deleting;
   final VoidCallback onEdit;
+  final VoidCallback onDelete;
 
   @override
   Widget build(BuildContext context) {
@@ -218,15 +275,31 @@ class _CategoryItem extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 8),
-          IconButton(
-            tooltip: 'Editar categoría',
-            onPressed: updating ? null : onEdit,
-            icon: updating
-                ? const SizedBox.square(
-                    dimension: 18,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Icon(Icons.edit_outlined),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              IconButton(
+                tooltip: 'Editar categoría',
+                onPressed: updating || deleting ? null : onEdit,
+                icon: updating
+                    ? const SizedBox.square(
+                        dimension: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.edit_outlined),
+              ),
+              IconButton(
+                tooltip: 'Eliminar categoría',
+                color: context.appColors.error,
+                onPressed: updating || deleting ? null : onDelete,
+                icon: deleting
+                    ? const SizedBox.square(
+                        dimension: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.delete_outline),
+              ),
+            ],
           ),
         ],
       ),

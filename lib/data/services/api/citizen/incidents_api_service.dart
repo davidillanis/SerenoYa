@@ -85,6 +85,7 @@ class IncidentsApiService {
   Future<ApiResponseDto<PageResponse<IncidentCategory>>> getCategories({
     int page = 0,
     int size = 100,
+    bool? enabled,
   }) async {
     return _request(
       () => _dio.get<dynamic>(
@@ -95,6 +96,7 @@ class IncidentsApiService {
           'size': size,
           'sortBy': 'name',
           'direction': 'ASC',
+          'enabled': ?enabled,
         },
       ),
       (value) => PageResponse<IncidentCategory>.fromJson(
@@ -123,6 +125,11 @@ class IncidentsApiService {
       data: request.toJson(),
     ),
     (value) => IncidentCategory.fromJson(_asJsonMap(value)),
+  );
+
+  Future<ApiResponseDto<String>> deleteCategory(String categoryId) => _request(
+    () => _dio.delete<dynamic>('/incidents/categories/delete/$categoryId'),
+    (value) => value?.toString() ?? '',
   );
 
   Future<ApiResponseDto<Incident>> createIncident(

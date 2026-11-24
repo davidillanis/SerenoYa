@@ -117,7 +117,7 @@ class IncidentRepository {
     }
 
     try {
-      final response = await _apiService.getCategories();
+      final response = await _apiService.getCategories(enabled: true);
       if (response.isSuccess && response.data != null) {
         _cachedCategories = response.data!.content;
         await _localDataSource.cacheCategories(response.data!.content);
@@ -135,7 +135,7 @@ class IncidentRepository {
 
   Future<void> _refreshCategoriesFromApiQuietly() async {
     try {
-      final response = await _apiService.getCategories();
+      final response = await _apiService.getCategories(enabled: true);
       if (response.isSuccess && response.data != null) {
         _cachedCategories = response.data!.content;
         await _localDataSource.cacheCategories(response.data!.content);

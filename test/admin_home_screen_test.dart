@@ -25,12 +25,31 @@ import 'auth_view_models_test.dart' show RecordingAuthRepository;
 void main() {
   for (final brightness in Brightness.values) {
     testWidgets('las tabs conservan las listas en $brightness', (tester) async {
+      await tester.binding.setSurfaceSize(const Size(390, 800));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
       var userListRequests = 0;
+      var categoryDeleteRequests = 0;
       final dio = Dio(BaseOptions(baseUrl: 'http://localhost/api/v1'));
       dio.interceptors.add(
         InterceptorsWrapper(
           onRequest: (options, handler) {
             if (options.path == '/user-role/list-details') userListRequests++;
+            if (options.path == '/incidents/categories/delete/category-1') {
+              categoryDeleteRequests++;
+              handler.resolve(
+                Response<dynamic>(
+                  requestOptions: options,
+                  statusCode: 200,
+                  data: {
+                    'isSuccess': true,
+                    'message': 'Successful operation',
+                    'errors': null,
+                    'data': 'Categoría eliminada',
+                  },
+                ),
+              );
+              return;
+            }
             final content = options.path == '/incidents/categories/list'
                 ? <Object>[
                     {
@@ -120,6 +139,24 @@ void main() {
       expect(find.text('Categoría activa'), findsOneWidget);
       await tester.tap(find.text('Cancelar'));
       await tester.pumpAndSettle();
+
+      await tester.tap(find.byTooltip('Eliminar categoría'));
+      await tester.pumpAndSettle();
+      expect(find.text('Eliminar categoría'), findsOneWidget);
+      expect(
+        find.text('¿Deseas eliminar “Robo”? Esta acción no se puede deshacer.'),
+        findsOneWidget,
+      );
+      expect(categoryDeleteRequests, 0);
+      await tester.tap(find.widgetWithText(FilledButton, 'Eliminar'));
+      await tester.pumpAndSettle();
+      expect(categoryDeleteRequests, 1);
+      expect(find.text('Robo'), findsNothing);
+      expect(find.text('No hay categorías registradas'), findsOneWidget);
+      expect(
+        find.text('La categoría se eliminó correctamente.'),
+        findsOneWidget,
+      );
 
       await tester.tap(find.text('Usuarios'));
       await tester.pumpAndSettle();

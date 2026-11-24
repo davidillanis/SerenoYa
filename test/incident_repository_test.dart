@@ -8,6 +8,46 @@ import 'package:sereno_ya/data/services/local/citizen/incident_local_data_source
 import 'package:sereno_ya/ui/citizen/incident_detail/view_models/incident_detail_view_model.dart';
 
 void main() {
+  test('solicita únicamente categorías activas para el ciudadano', () async {
+    late RequestOptions capturedRequest;
+    final dio = Dio(BaseOptions(baseUrl: 'http://localhost/api/v1'));
+    dio.interceptors.add(
+      InterceptorsWrapper(
+        onRequest: (options, handler) {
+          capturedRequest = options;
+          handler.resolve(
+            Response<dynamic>(
+              requestOptions: options,
+              statusCode: 200,
+              data: {
+                'isSuccess': true,
+                'message': 'Successful operation',
+                'errors': null,
+                'data': {
+                  'content': <Object?>[],
+                  'page': 0,
+                  'size': 100,
+                  'totalElements': 0,
+                  'totalPages': 0,
+                },
+              },
+            ),
+          );
+        },
+      ),
+    );
+    final repository = IncidentRepository(
+      apiService: IncidentsApiService(dio),
+      localDataSource: _NoopIncidentLocalDataSource(),
+      incidentApiService: IncidentApiService(dio),
+    );
+
+    await repository.getCategories();
+
+    expect(capturedRequest.path, '/incidents/categories/list');
+    expect(capturedRequest.queryParameters['enabled'], isTrue);
+  });
+
   test('reutiliza el detalle hasta que se solicita su recarga', () async {
     var requestCount = 0;
     final dio = Dio(BaseOptions(baseUrl: 'http://localhost/api/v1'));
