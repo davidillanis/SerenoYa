@@ -80,6 +80,74 @@ void main() {
       await tester.pumpWidget(const SizedBox.shrink());
     });
   }
+  testWidgets('muestra completos el nombre y la descripción del incidente', (
+    tester,
+  ) async {
+    const longName =
+        'Alteración del orden público en espacios comunitarios concurridos';
+    const longDescription =
+        'Situaciones que afectan la tranquilidad de vecinos y transeúntes, '
+        'incluyendo disturbios, peleas o conductas de riesgo.';
+    const secondName = 'Ruidos molestos durante la noche';
+    final location = _LocationService()
+      ..result.complete(const LatLng(-13.65, -73.36));
+    final model = ReportIncidentViewModel(
+      _Repository(
+        categories: [
+          IncidentCategory(
+            id: 'long-category',
+            name: longName,
+            description: longDescription,
+          ),
+          IncidentCategory(
+            id: 'second-category',
+            name: secondName,
+            description: 'Música, fiestas o maquinaria a volumen excesivo.',
+          ),
+        ],
+      ),
+      _Storage(),
+      locationService: location,
+    );
+    final profile = _profile(phone: '987654321');
+    addTearDown(model.dispose);
+    addTearDown(profile.dispose);
+
+    await tester.pumpWidget(
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider.value(value: model),
+          ChangeNotifierProvider.value(value: profile),
+        ],
+        child: MaterialApp(
+          theme: buildAppTheme(Brightness.light, ThemeVariant.normal),
+          home: const ReportIncidentScreen(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final name = tester.widget<Text>(find.text(longName));
+    final description = tester.widget<Text>(find.text(longDescription));
+    expect(name.maxLines, isNull);
+    expect(name.overflow, isNull);
+    expect(description.maxLines, isNull);
+    expect(description.overflow, isNull);
+    final firstCard = find.byKey(
+      const ValueKey('incident-category-long-category'),
+    );
+    final secondCard = find.byKey(
+      const ValueKey('incident-category-second-category'),
+    );
+    expect(tester.getTopLeft(firstCard).dy, tester.getTopLeft(secondCard).dy);
+    expect(
+      tester.getTopLeft(firstCard).dx,
+      lessThan(tester.getTopLeft(secondCard).dx),
+    );
+    expect(tester.getSize(firstCard).height, tester.getSize(secondCard).height);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('solicita solo celular antes de iniciar el reporte', (
     tester,
   ) async {

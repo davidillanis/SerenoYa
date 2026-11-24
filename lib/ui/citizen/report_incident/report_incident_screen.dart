@@ -5,6 +5,7 @@ import 'package:sereno_ya/config/maps_config.dart';
 import 'package:sereno_ya/ui/citizen/report_incident/incident_location_picker.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
+import 'package:sereno_ya/data/models/citizen/incident_category.dart';
 import 'package:sereno_ya/ui/core/theme/colors.dart';
 import 'package:sereno_ya/ui/core/widgets/responsive_body.dart';
 import 'package:sereno_ya/ui/citizen/report_incident/view_models/report_incident_view_model.dart';
@@ -171,6 +172,173 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
     }
 
     return Text(emoji, style: const TextStyle(fontSize: 24));
+  }
+
+  Widget _buildCategoryCard(
+    BuildContext context,
+    ReportIncidentViewModel viewModel,
+    IncidentCategory category,
+  ) {
+    final isSelected = viewModel.selectedCategory?.id == category.id;
+    void selectCategory() => viewModel.setSelectedCategory(category);
+
+    return Semantics(
+      button: true,
+      selected: isSelected,
+      onTap: selectCategory,
+      label: category.description.trim().isEmpty
+          ? category.name
+          : '${category.name}. ${category.description}',
+      excludeSemantics: true,
+      child: AnimatedContainer(
+        key: ValueKey('incident-category-${category.id}'),
+        duration: const Duration(milliseconds: 180),
+        curve: Curves.easeOutCubic,
+        decoration: BoxDecoration(
+          color: isSelected
+              ? context.appColors.primary
+              : context.appColors.card,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: isSelected
+                ? context.appColors.textInverse.withAlpha(70)
+                : context.appColors.borderVariant,
+            width: isSelected ? 2 : 1,
+          ),
+        ),
+        child: Material(
+          type: MaterialType.transparency,
+          child: InkWell(
+            onTap: selectCategory,
+            borderRadius: BorderRadius.circular(16),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        width: 44,
+                        height: 44,
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          color: isSelected
+                              ? context.appColors.textInverse.withAlpha(32)
+                              : context.appColors.infoLight,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: _buildCategoryIcon(category.name),
+                      ),
+                      if (isSelected)
+                        Container(
+                          width: 28,
+                          height: 28,
+                          alignment: Alignment.center,
+                          decoration: BoxDecoration(
+                            color: context.appColors.textInverse.withAlpha(32),
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(
+                            Icons.check_rounded,
+                            size: 18,
+                            color: context.appColors.textInverse,
+                          ),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    category.name,
+                    style: TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 16,
+                      height: 1.25,
+                      color: isSelected
+                          ? context.appColors.textInverse
+                          : context.appColors.text,
+                    ),
+                  ),
+                  if (category.description.trim().isNotEmpty) ...[
+                    const SizedBox(height: 6),
+                    Text(
+                      category.description,
+                      style: TextStyle(
+                        fontSize: 13,
+                        height: 1.35,
+                        color: isSelected
+                            ? context.appColors.textInverse.withValues(
+                                alpha: 0.82,
+                              )
+                            : context.appColors.textSecondary,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCategoryGrid(
+    BuildContext context,
+    ReportIncidentViewModel viewModel,
+  ) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final textScale = MediaQuery.textScalerOf(context).scale(1);
+        final useTwoColumns = constraints.maxWidth >= 320 && textScale <= 1.3;
+        final rows = <Widget>[];
+        final columns = useTwoColumns ? 2 : 1;
+
+        for (
+          var index = 0;
+          index < viewModel.categories.length;
+          index += columns
+        ) {
+          if (rows.isNotEmpty) rows.add(const SizedBox(height: 12));
+          final first = _buildCategoryCard(
+            context,
+            viewModel,
+            viewModel.categories[index],
+          );
+          if (!useTwoColumns) {
+            rows.add(first);
+            continue;
+          }
+
+          final hasSecond = index + 1 < viewModel.categories.length;
+          rows.add(
+            IntrinsicHeight(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Expanded(child: first),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: hasSecond
+                        ? _buildCategoryCard(
+                            context,
+                            viewModel,
+                            viewModel.categories[index + 1],
+                          )
+                        : const SizedBox.shrink(),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+
+        return Column(children: rows);
+      },
+    );
   }
 
   Widget _buildEvidenceItem(
@@ -398,7 +566,8 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
                     ),
                     const SizedBox(height: 12),
 
-                    // Grid de categorías
+                    // Lista de categorías con altura flexible para conservar
+                    // completos tanto el nombre como la descripción.
                     if (viewModel.isLoading)
                       const SizedBox(
                         height: 200,
@@ -419,102 +588,7 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
                         ),
                       )
                     else
-                      GridView.builder(
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
-                          maxCrossAxisExtent: 280,
-                          mainAxisExtent:
-                              72 + MediaQuery.textScalerOf(context).scale(84),
-                          crossAxisSpacing: 12,
-                          mainAxisSpacing: 12,
-                        ),
-                        itemCount: viewModel.categories.length,
-                        itemBuilder: (context, index) {
-                          final category = viewModel.categories[index];
-                          final isSelected =
-                              viewModel.selectedCategory?.id == category.id;
-
-                          return GestureDetector(
-                            onTap: () =>
-                                viewModel.setSelectedCategory(category),
-                            child: AnimatedContainer(
-                              duration: const Duration(milliseconds: 200),
-                              padding: const EdgeInsets.all(16),
-                              decoration: BoxDecoration(
-                                color: isSelected
-                                    ? context.appColors.primary
-                                    : context.appColors.card,
-                                borderRadius: BorderRadius.circular(16),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: context.appColors.textSecondary
-                                        .withAlpha(20),
-                                    blurRadius: 10,
-                                    offset: const Offset(0, 4),
-                                  ),
-                                ],
-                              ),
-                              child: Stack(
-                                children: [
-                                  Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      _buildCategoryIcon(category.name),
-                                      const SizedBox(height: 8),
-                                      Text(
-                                        category.name,
-                                        style: TextStyle(
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 16,
-                                          color: isSelected
-                                              ? context.appColors.textInverse
-                                              : context.appColors.text,
-                                        ),
-                                        maxLines: 2,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        category.description,
-                                        style: TextStyle(
-                                          fontSize: 11,
-                                          color: isSelected
-                                              ? context.appColors.textInverse
-                                                    .withValues(alpha: 0.7)
-                                              : context.appColors.textSecondary,
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                        maxLines: 2,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ],
-                                  ),
-                                  if (isSelected)
-                                    Positioned(
-                                      top: 0,
-                                      right: 0,
-                                      child: Container(
-                                        decoration: BoxDecoration(
-                                          color: context.appColors.info,
-                                          shape: BoxShape.circle,
-                                        ),
-                                        padding: const EdgeInsets.all(2),
-                                        child: Icon(
-                                          Icons.check,
-                                          size: 16,
-                                          color: context.appColors.textInverse,
-                                        ),
-                                      ),
-                                    ),
-                                ],
-                              ),
-                            ),
-                          );
-                        },
-                      ),
+                      _buildCategoryGrid(context, viewModel),
 
                     const SizedBox(height: 24),
 
